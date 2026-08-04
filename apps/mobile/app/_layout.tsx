@@ -192,6 +192,9 @@ function RootLayoutContent() {
         <Stack.Screen name="result/[captureId]" />
         <Stack.Screen name="compare" />
         <Stack.Screen name="report" />
+        <Stack.Screen name="learn/atlas" />
+        <Stack.Screen name="learn/scan-practice" />
+        <Stack.Screen name="learn/questions" />
         <Stack.Screen name="roadmap" />
         <Stack.Screen name="model-card" />
       </Stack>

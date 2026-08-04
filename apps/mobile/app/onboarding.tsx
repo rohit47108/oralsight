@@ -4,6 +4,7 @@ import { StyleSheet, Text, TextInput, View } from "react-native";
 
 import { APP_TAGLINE, NEUTRAL_SEEK_CARE_COPY } from "@/constants";
 import { Screen } from "@/components/Screen";
+import { SymptomBodyMap } from "@/components/SymptomBodyMap";
 import { Button, Card, ChoiceChip, SectionTitle } from "@/components/Ui";
 import { useOralSightStore } from "@/store/useOralSightStore";
 import { useAppTheme } from "@/theme";
@@ -193,8 +194,9 @@ export default function OnboardingRoute() {
           ]}
         />
         <Text style={[styles.label, { color: theme.text }]}>
-          Reported symptoms (optional)
+          Reported symptoms and locations (optional)
         </Text>
+        <SymptomBodyMap selected={selectedSymptoms} onToggle={toggleSymptom} />
         <View style={styles.chips}>
           {symptoms.map((symptom) => (
             <ChoiceChip
