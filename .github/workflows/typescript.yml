@@ -1,0 +1,64 @@
+name: TypeScript checks
+
+on:
+  pull_request:
+    paths:
+      - "apps/**"
+      - "packages/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "tsconfig.base.json"
+      - ".github/workflows/typescript.yml"
+  push:
+    branches: [main]
+    paths:
+      - "apps/**"
+      - "packages/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "tsconfig.base.json"
+      - ".github/workflows/typescript.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: typescript-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.9.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Generate public contract schemas
+        run: |
+          pnpm contracts:generate
+          git diff --exit-code -- packages/contracts/generated
+      - name: Test
+        run: pnpm test
+      - name: Typecheck
+        run: pnpm typecheck
+      - name: Audit JavaScript dependencies
+        run: pnpm audit --audit-level high
+      - name: Build production Expo bundles
+        run: |
+          pnpm --filter @oralsight/mobile exec expo export --platform android --output-dir /tmp/oralsight-android
+          pnpm --filter @oralsight/mobile exec expo export --platform ios --output-dir /tmp/oralsight-ios
+      - name: Format check
+        run: pnpm format:check
+
+# No build or test artifact is uploaded. Medical images are forbidden from the repository.

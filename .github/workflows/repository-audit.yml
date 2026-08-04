@@ -1,0 +1,29 @@
+name: Repository safety audit
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: repository-audit-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Audit artifacts, assets, fixture, and contract taxonomies
+        run: python .github/scripts/audit_repository.py
+
+# No artifacts are uploaded. The only embedded image permitted by the audit is the
+# exact checksum-pinned CC0 synthetic fixture in packages/contracts/fixtures.

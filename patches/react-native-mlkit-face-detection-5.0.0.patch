@@ -1,0 +1,12 @@
+diff --git a/android/build.gradle b/android/build.gradle
+index 9b165ad..56131dc 100644
+--- a/android/build.gradle
++++ b/android/build.gradle
+@@ -78,6 +78,6 @@ repositories {
+ dependencies {
+   implementation project(':expo-modules-core')
+   implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:${getKotlinVersion()}"
+-  implementation 'com.google.mlkit:face-detection:16.+'
++  implementation 'com.google.mlkit:face-detection:16.1.7'
+   implementation project(path: ':infinitered-react-native-mlkit-core')
+ }

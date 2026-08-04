@@ -1,0 +1,105 @@
+from __future__ import annotations
+
+import csv
+from pathlib import Path
+
+from oralsight_ml.constants import DISEASE_CLASSES
+from oralsight_ml.release_training import (
+    SUPPLEMENTAL_SEGMENTATION_COLUMNS,
+    _build_parser,
+    _load_supplemental_segmentation_manifest,
+)
+
+
+def test_release_training_accepts_disease_research_task() -> None:
+    args = _build_parser().parse_args(
+        [
+            "--task",
+            "disease",
+            "--manifest",
+            "disease.csv",
+            "--data-root",
+            "data",
+            "--output-dir",
+            "run",
+        ]
+    )
+
+    assert args.task == "disease"
+    assert DISEASE_CLASSES == ("normal", "variation", "opmd", "oral_cancer")
+
+
+def test_segmentation_candidate_can_skip_locked_test_evaluation() -> None:
+    args = _build_parser().parse_args(
+        [
+            "--task",
+            "segmentation",
+            "--manifest",
+            "segmentation.csv",
+            "--data-root",
+            "data",
+            "--output-dir",
+            "run",
+            "--segmentation-architecture",
+            "presence_gated_unetplusplus_efficientnet_b4",
+            "--segmentation-loss-version",
+            "tolerant_boundary_v2",
+            "--validation-only",
+        ]
+    )
+
+    assert args.validation_only is True
+    assert args.segmentation_architecture == "presence_gated_unetplusplus_efficientnet_b4"
+    assert args.segmentation_loss_version == "tolerant_boundary_v2"
+
+
+def test_segmentation_can_evaluate_exact_frozen_validation_checkpoint() -> None:
+    args = _build_parser().parse_args(
+        [
+            "--task",
+            "segmentation",
+            "--manifest",
+            "segmentation.csv",
+            "--data-root",
+            "data",
+            "--output-dir",
+            "run",
+            "--segmentation-loss-version",
+            "tolerant_boundary_presence_v3",
+            "--evaluate-frozen-run",
+            "selected/run.json",
+        ]
+    )
+
+    assert args.validation_only is False
+    assert args.evaluate_frozen_run == Path("selected/run.json")
+    assert args.segmentation_loss_version == "tolerant_boundary_presence_v3"
+
+
+def test_supplemental_segmentation_manifest_is_training_only(tmp_path: Path) -> None:
+    (tmp_path / "image.png").write_bytes(b"image")
+    (tmp_path / "mask.png").write_bytes(b"mask")
+    manifest = tmp_path / "supplement.csv"
+    row = {
+        "sample_id": "external-1",
+        "patient_id": "patient-1",
+        "split": "train",
+        "image_path": "image.png",
+        "mask_path": "mask.png",
+        "source_dataset": "external-source",
+        "device_family": "mixed-smartphone",
+        "license_status": "approved",
+        "audit_status": "approved",
+        "consent_scope": "research_training",
+        "license_terms": "academic_research_noncommercial",
+        "provenance_url": "https://example.test/dataset",
+        "archive_sha256": "a" * 64,
+    }
+    with manifest.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=SUPPLEMENTAL_SEGMENTATION_COLUMNS)
+        writer.writeheader()
+        writer.writerow(row)
+
+    rows = _load_supplemental_segmentation_manifest(manifest, data_root=tmp_path)
+
+    assert rows == [row]

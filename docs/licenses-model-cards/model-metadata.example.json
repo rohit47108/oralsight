@@ -1,0 +1,27 @@
+{
+  "model_name": "replace-with-locked-model-name",
+  "version": "replace-with-version",
+  "task": "anatomy",
+  "artifact_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "owner": "Student 2",
+  "training_code_version": "0000000000000000000000000000000000000000",
+  "evaluation_date": "2026-07-21T00:00:00Z",
+  "intended_uses": [
+    "Research-only validation that a capture resembles its selected oral region."
+  ],
+  "out_of_scope_uses": [
+    "Diagnosis, reassurance, treatment, or autonomous care guidance."
+  ],
+  "limitations": [
+    "Replace with dataset, device, subgroup, label, calibration, and failure limitations."
+  ],
+  "datasets": [
+    {
+      "name": "replace-with-audited-dataset",
+      "version": "replace-with-DVC-or-source-version",
+      "role": "training",
+      "license_status": "approved",
+      "provenance_status": "complete"
+    }
+  ]
+}

@@ -1,0 +1,96 @@
+import type { QualityResult } from "@oralsight/contracts";
+
+import { TRANSPORT_IMAGE_BYTE_LIMIT } from "../constants";
+
+export interface ImageTelemetry {
+  edgeStrength: number;
+  focusVariance?: number;
+  meanLuminance: number;
+  highlightFraction: number;
+  obstructionEstimate: number;
+  faceDetected: boolean;
+  stable: boolean;
+  width?: number;
+  height?: number;
+  byteSize?: number;
+}
+
+const clamp = (value: number) => Math.min(1, Math.max(0, value));
+
+export function evaluateImageTelemetry(
+  telemetry: ImageTelemetry,
+): QualityResult {
+  // The focus-variance reference was selected on licensed SMART-OM
+  // train/validation images and deliberately blurred copies. The legacy edge
+  // score remains a fallback for persisted telemetry created before this field
+  // existed.
+  const blurScore = clamp(
+    telemetry.focusVariance === undefined
+      ? telemetry.edgeStrength / 0.18
+      : telemetry.focusVariance / 0.015,
+  );
+  const exposureScore = clamp(
+    1 - Math.abs(telemetry.meanLuminance - 0.55) / 0.55,
+  );
+  const glareScore = clamp(telemetry.highlightFraction / 0.2);
+  const obstructionScore = clamp(telemetry.obstructionEstimate);
+  const reasons: string[] = [];
+
+  if (!telemetry.stable)
+    reasons.push("Hold the phone still until the stability ring fills.");
+  if (
+    telemetry.width !== undefined &&
+    telemetry.height !== undefined &&
+    Math.min(telemetry.width, telemetry.height) < 480
+  ) {
+    reasons.push(
+      "The image resolution is too low. Use an image that is at least 480 pixels on its shortest side.",
+    );
+  }
+  if (
+    telemetry.width !== undefined &&
+    telemetry.height !== undefined &&
+    telemetry.height > 0
+  ) {
+    const aspectRatio = telemetry.width / telemetry.height;
+    if (aspectRatio < 0.45 || aspectRatio > 2.2) {
+      reasons.push(
+        "The image framing is unusually narrow or wide. Center one mouth region and try again.",
+      );
+    }
+  }
+  if (
+    telemetry.byteSize !== undefined &&
+    telemetry.byteSize > TRANSPORT_IMAGE_BYTE_LIMIT
+  ) {
+    reasons.push(
+      "The sanitized image is larger than the protected upload-size limit.",
+    );
+  }
+  if (blurScore < 0.42)
+    reasons.push("The image looks blurry. Move slightly back and hold still.");
+  if (exposureScore < 0.45) {
+    reasons.push(
+      telemetry.meanLuminance < 0.3
+        ? "The area is too dark."
+        : "The area is too bright.",
+    );
+  }
+  if (glareScore > 0.55) reasons.push("Tilt the phone to reduce glare.");
+  if (obstructionScore > 0.5)
+    reasons.push("The target appears partly blocked.");
+  if (telemetry.faceDetected)
+    reasons.push(
+      "A face may be visible. Reframe to include mouth tissue only.",
+    );
+
+  return {
+    accepted: reasons.length === 0,
+    blurScore,
+    exposureScore,
+    glareScore,
+    obstructionScore,
+    faceDetected: telemetry.faceDetected,
+    reasons,
+  };
+}

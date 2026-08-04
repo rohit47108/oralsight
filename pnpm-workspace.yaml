@@ -1,0 +1,18 @@
+packages:
+  - apps/*
+  - packages/*
+
+allowBuilds:
+  "@shopify/react-native-skia": true
+  esbuild: true
+
+minimumReleaseAgeExclude:
+  - prettier@3.9.6
+
+patchedDependencies:
+  "@infinitered/react-native-mlkit-face-detection@5.0.0": patches/react-native-mlkit-face-detection-5.0.0.patch
+
+overrides:
+  brace-expansion@5.0.7: 5.0.8
+  esbuild: 0.28.1
+  uuid@<11.1.1: 11.1.1

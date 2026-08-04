@@ -1,0 +1,484 @@
+from __future__ import annotations
+
+from dataclasses import replace
+from types import MappingProxyType
+
+import cv2
+import numpy as np
+import pytest
+
+from oralsight_api import processing
+from oralsight_api.contracts import (
+    AnalysisOrigin,
+    AnalysisStatus,
+    AnalyzeMetadata,
+    CompareMetadata,
+    InputOrigin,
+    ModelHead,
+    MouthRegion,
+    QualityResult,
+)
+from oralsight_api.model_adapters import (
+    AdapterPrediction,
+    ClassificationPrediction,
+    EmbeddingPrediction,
+    ModelAdapterError,
+    SegmentationPrediction,
+)
+from oralsight_api.processing import (
+    SanitizedImage,
+    analyze_sanitized_image,
+    compare_sanitized_images,
+)
+from oralsight_api.release_manifest import (
+    HeadReleaseState,
+    ReleaseRuntimeState,
+    empty_release_runtime,
+)
+
+
+class _FakeAdapter:
+    def __init__(
+        self,
+        head: ModelHead,
+        outputs: list[AdapterPrediction | Exception],
+    ) -> None:
+        self.head = head
+        self._outputs = outputs
+        self.calls = 0
+
+    def predict(self, _rgb: np.ndarray) -> AdapterPrediction:
+        if self.calls >= len(self._outputs):
+            raise AssertionError("Fake adapter received too many calls.")
+        output = self._outputs[self.calls]
+        self.calls += 1
+        if isinstance(output, Exception):
+            raise output
+        return output
+
+
+def _image() -> SanitizedImage:
+    yy, xx = np.mgrid[:64, :64]
+    rgb = np.stack(
+        (
+            (80 + xx * 2) % 256,
+            (60 + yy * 2) % 256,
+            (40 + xx + yy) % 256,
+        ),
+        axis=2,
+    ).astype(np.uint8)
+    return SanitizedImage(
+        jpeg_bytes=b"test-only",
+        rgb=rgb,
+        bgr=cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR),
+    )
+
+
+def _accepted_quality(
+    _image: SanitizedImage,
+) -> tuple[QualityResult, float]:
+    return (
+        QualityResult(
+            accepted=True,
+            blur_score=0.9,
+            exposure_score=0.9,
+            glare_score=0.05,
+            obstruction_score=0.02,
+            face_detected=False,
+            reasons=[],
+        ),
+        0.9,
+    )
+
+
+def _runtime(
+    adapters: dict[ModelHead, _FakeAdapter],
+    *,
+    repeated_capture_area_error: float | None = None,
+) -> ReleaseRuntimeState:
+    empty = empty_release_runtime()
+    heads = dict(empty.heads)
+    for head in adapters:
+        heads[head] = HeadReleaseState(
+            head=head,
+            enabled=True,
+            declared_enabled=True,
+            version=f"{head.value}-test-onnx",
+            artifact_sha256="a" * 64,
+            evaluated_at=None,
+            metrics=MappingProxyType({"test_metric": 1.0}),
+            unmet_requirements=(),
+            reviewer_approved=True,
+        )
+    return replace(
+        empty,
+        manifest_loaded=True,
+        release_id="test-release",
+        heads=MappingProxyType(heads),
+        adapters=MappingProxyType(dict(adapters)),
+        repeated_capture_area_error=repeated_capture_area_error,
+        load_reasons=(),
+    )
+
+
+def _anatomy_prediction(
+    region: MouthRegion | None,
+    *,
+    confidence: float = 0.92,
+) -> ClassificationPrediction:
+    labels = tuple(item.value for item in MouthRegion)
+    probabilities = [1 / len(labels)] * len(labels)
+    if region is not None:
+        remainder = (1.0 - confidence) / (len(labels) - 1)
+        probabilities = [remainder] * len(labels)
+        probabilities[labels.index(region.value)] = confidence
+    else:
+        confidence = max(probabilities)
+    return ClassificationPrediction(
+        labels=labels,
+        probabilities=tuple(probabilities),
+        top_label=None if region is None else region.value,
+        confidence=confidence,
+        abstained=region is None,
+    )
+
+
+def _segmentation(
+    *,
+    x_stop: int = 10,
+) -> SegmentationPrediction:
+    probabilities = np.full((16, 16), 0.05, dtype=np.float32)
+    probabilities[4:12, 4:x_stop] = 0.95
+    return SegmentationPrediction(
+        probabilities=probabilities,
+        threshold=0.5,
+        confidence=0.9,
+    )
+
+
+def _analyze_metadata(
+    *,
+    selected_region: MouthRegion = MouthRegion.LOWER_LIP,
+    requested_heads: list[ModelHead] | None = None,
+) -> AnalyzeMetadata:
+    return AnalyzeMetadata(
+        contract_version="1.1.0",
+        capture_id="capture-model-test",
+        selected_region=selected_region,
+        input_origin=InputOrigin.LIVE_CAPTURE,
+        requested_heads=requested_heads or [ModelHead.SEGMENTATION, ModelHead.ANATOMY],
+    )
+
+
+def _compare_metadata() -> CompareMetadata:
+    return CompareMetadata.model_validate(
+        {
+            "contractVersion": "1.1.0",
+            "baselineCaptureId": "baseline-model-test",
+            "currentCaptureId": "current-model-test",
+            "region": "lower_lip",
+            "userConfirmedMatch": True,
+            "inputOrigin": "live_capture",
+            "baselineAnalysis": {
+                "captureId": "baseline-model-test",
+                "region": "lower_lip",
+                "status": "complete",
+                "analysisOrigin": "live_model",
+                "qualityAccepted": True,
+                "candidateNormalizedArea": 0.1,
+                "modelVersions": {"segmentation": "old"},
+            },
+            "currentAnalysis": {
+                "captureId": "current-model-test",
+                "region": "lower_lip",
+                "status": "complete",
+                "analysisOrigin": "live_model",
+                "qualityAccepted": True,
+                "candidateNormalizedArea": 0.9,
+                "modelVersions": {"segmentation": "old"},
+            },
+        }
+    )
+
+
+def test_real_adapter_outputs_complete_primary_analysis_and_mask_descriptors(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(processing, "assess_quality", _accepted_quality)
+    anatomy = _FakeAdapter(
+        ModelHead.ANATOMY,
+        [_anatomy_prediction(MouthRegion.LOWER_LIP)],
+    )
+    segmentation = _FakeAdapter(ModelHead.SEGMENTATION, [_segmentation()])
+    runtime = _runtime(
+        {
+            ModelHead.ANATOMY: anatomy,
+            ModelHead.SEGMENTATION: segmentation,
+        }
+    )
+
+    result = analyze_sanitized_image(_image(), _analyze_metadata(), runtime)
+
+    assert result.status is AnalysisStatus.COMPLETE
+    assert result.analysis_origin is AnalysisOrigin.LIVE_MODEL
+    assert result.anatomy_prediction.region is MouthRegion.LOWER_LIP
+    assert result.anatomy_prediction.selected_region_matches is True
+    assert result.candidate_mask is not None
+    assert result.descriptors is not None
+    assert result.candidate_mask.normalized_area == pytest.approx(
+        result.descriptors.normalized_area
+    )
+    assert result.candidate_mask.normalized_area > 0
+    assert result.uncertainty.overall_confidence == pytest.approx(0.9)
+    assert result.uncertainty.dataset_similarity is None
+    assert result.uncertainty.model_agreement is None
+    assert any(
+        "no released out-of-distribution model" in limitation
+        for limitation in result.uncertainty.limitations
+    )
+    assert any(
+        "no released independent ensemble" in limitation
+        for limitation in result.uncertainty.limitations
+    )
+    assert result.model_versions["segmentation"] == "segmentation-test-onnx"
+    assert anatomy.calls == 1
+    assert segmentation.calls == 1
+
+
+def test_anatomy_mismatch_prevents_segmentation_and_exposes_no_candidate(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(processing, "assess_quality", _accepted_quality)
+    anatomy = _FakeAdapter(
+        ModelHead.ANATOMY,
+        [_anatomy_prediction(MouthRegion.UPPER_LIP)],
+    )
+    segmentation = _FakeAdapter(ModelHead.SEGMENTATION, [_segmentation()])
+    result = analyze_sanitized_image(
+        _image(),
+        _analyze_metadata(selected_region=MouthRegion.LOWER_LIP),
+        _runtime(
+            {
+                ModelHead.ANATOMY: anatomy,
+                ModelHead.SEGMENTATION: segmentation,
+            }
+        ),
+    )
+
+    assert result.status is AnalysisStatus.UNSUPPORTED
+    assert result.analysis_origin is AnalysisOrigin.LIVE_MODEL
+    assert result.candidate_mask is None
+    assert "selected_region_anatomy_mismatch" in result.abstention_reasons
+    assert segmentation.calls == 0
+
+
+def test_request_time_model_exception_fails_closed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(processing, "assess_quality", _accepted_quality)
+    runtime = _runtime(
+        {
+            ModelHead.ANATOMY: _FakeAdapter(
+                ModelHead.ANATOMY,
+                [_anatomy_prediction(MouthRegion.LOWER_LIP)],
+            ),
+            ModelHead.SEGMENTATION: _FakeAdapter(
+                ModelHead.SEGMENTATION,
+                [ModelAdapterError("simulated invalid tensor")],
+            ),
+        }
+    )
+    result = analyze_sanitized_image(_image(), _analyze_metadata(), runtime)
+
+    assert result.status is AnalysisStatus.ABSTAINED
+    assert result.candidate_mask is None
+    assert result.descriptors is None
+    assert "segmentation_inference_failed" in result.abstention_reasons
+
+
+def test_optional_classifier_uses_actual_calibrated_adapter_output(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(processing, "assess_quality", _accepted_quality)
+    appearance_labels = (
+        "red-patch",
+        "white-patch",
+        "ulcer-like",
+        "mixed",
+        "pigmented",
+        "none-detected",
+        "unsupported",
+    )
+    appearance = ClassificationPrediction(
+        labels=appearance_labels,
+        probabilities=(0.8, 0.05, 0.04, 0.03, 0.02, 0.04, 0.02),
+        top_label="red-patch",
+        confidence=0.8,
+        abstained=False,
+    )
+    runtime = _runtime(
+        {
+            ModelHead.ANATOMY: _FakeAdapter(
+                ModelHead.ANATOMY,
+                [_anatomy_prediction(MouthRegion.LOWER_LIP)],
+            ),
+            ModelHead.SEGMENTATION: _FakeAdapter(
+                ModelHead.SEGMENTATION,
+                [_segmentation()],
+            ),
+            ModelHead.APPEARANCE: _FakeAdapter(
+                ModelHead.APPEARANCE,
+                [appearance],
+            ),
+        }
+    )
+    result = analyze_sanitized_image(
+        _image(),
+        _analyze_metadata(
+            requested_heads=[
+                ModelHead.SEGMENTATION,
+                ModelHead.ANATOMY,
+                ModelHead.APPEARANCE,
+            ]
+        ),
+        runtime,
+    )
+
+    assert result.status is AnalysisStatus.COMPLETE
+    assert result.appearance_output is not None
+    assert result.appearance_output.enabled is True
+    assert result.appearance_output.top_label == "red-patch"
+    assert result.appearance_output.confidence == pytest.approx(0.8)
+
+
+def test_compare_uses_model_masks_and_embeddings_not_prior_areas(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(processing, "assess_quality", _accepted_quality)
+    monkeypatch.setattr(
+        processing,
+        "_orb_registration",
+        lambda _baseline, _current: (
+            0.8,
+            0.01,
+            0.9,
+            [],
+            np.eye(3, dtype=np.float64),
+        ),
+    )
+    runtime = _runtime(
+        {
+            ModelHead.SEGMENTATION: _FakeAdapter(
+                ModelHead.SEGMENTATION,
+                [_segmentation(x_stop=8), _segmentation(x_stop=12)],
+            ),
+            ModelHead.LESION_REIDENTIFICATION: _FakeAdapter(
+                ModelHead.LESION_REIDENTIFICATION,
+                [
+                    EmbeddingPrediction(
+                        values=np.array([1.0, 0.0, 0.0], dtype=np.float32)
+                    ),
+                    EmbeddingPrediction(
+                        values=np.array([1.0, 0.0, 0.0], dtype=np.float32)
+                    ),
+                ],
+            ),
+        },
+        repeated_capture_area_error=0.08,
+    )
+    result = compare_sanitized_images(
+        _image(),
+        _image(),
+        _compare_metadata(),
+        runtime,
+    )
+
+    assert result.comparable is True
+    assert result.suppression_reasons == []
+    assert result.analysis_origin is AnalysisOrigin.LIVE_MODEL
+    assert result.candidate_match_score == pytest.approx(1.0)
+    assert result.normalized_change is not None
+    assert result.normalized_change > 0
+    # Caller-provided 0.1 -> 0.9 would imply +800%; the model masks do not.
+    assert result.normalized_change < 2
+
+
+def test_user_confirmed_comparison_does_not_require_automated_reidentification(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(processing, "assess_quality", _accepted_quality)
+    monkeypatch.setattr(
+        processing,
+        "_orb_registration",
+        lambda _baseline, _current: (
+            0.8,
+            0.01,
+            0.9,
+            [],
+            np.eye(3, dtype=np.float64),
+        ),
+    )
+    runtime = _runtime(
+        {
+            ModelHead.SEGMENTATION: _FakeAdapter(
+                ModelHead.SEGMENTATION,
+                [_segmentation(x_stop=8), _segmentation(x_stop=12)],
+            ),
+        },
+        repeated_capture_area_error=0.08,
+    )
+
+    result = compare_sanitized_images(
+        _image(),
+        _image(),
+        _compare_metadata(),
+        runtime,
+    )
+
+    assert result.candidate_match_score is None
+    assert result.comparable is True
+    assert result.normalized_change is not None
+    assert "lesion_reidentification_release_gate_unmet" not in (
+        result.suppression_reasons
+    )
+
+
+def test_comparison_normalizes_candidate_area_with_registration_homography(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(processing, "assess_quality", _accepted_quality)
+    # The current mask is twice as wide only because the registered tissue is
+    # horizontally magnified. Registration maps the baseline mask into the
+    # current frame before area change is calculated.
+    homography = np.array(
+        [
+            [2.0, 0.0, -16.0],
+            [0.0, 1.0, 0.0],
+            [0.0, 0.0, 1.0],
+        ],
+        dtype=np.float64,
+    )
+    monkeypatch.setattr(
+        processing,
+        "_orb_registration",
+        lambda _baseline, _current: (0.9, 0.005, 0.95, [], homography),
+    )
+    runtime = _runtime(
+        {
+            ModelHead.SEGMENTATION: _FakeAdapter(
+                ModelHead.SEGMENTATION,
+                [_segmentation(x_stop=8), _segmentation(x_stop=12)],
+            ),
+        },
+        repeated_capture_area_error=0.08,
+    )
+
+    result = compare_sanitized_images(
+        _image(),
+        _image(),
+        _compare_metadata(),
+        runtime,
+    )
+
+    assert result.comparable is True
+    assert result.normalized_change == pytest.approx(0.0, abs=0.08)

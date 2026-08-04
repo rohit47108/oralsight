@@ -1,0 +1,23 @@
+{
+  "name": "oralsight",
+  "version": "0.1.0",
+  "private": true,
+  "description": "OralSight non-diagnostic oral observation research prototype",
+  "packageManager": "pnpm@11.9.0",
+  "engines": {
+    "node": ">=22 <25"
+  },
+  "scripts": {
+    "dev:mobile": "pnpm --filter @oralsight/mobile start",
+    "contracts:generate": "pnpm --filter @oralsight/contracts generate && prettier --write packages/contracts/generated/oralsight-contracts.schema.json",
+    "test": "pnpm -r --if-present test",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "format:check": "prettier --check .",
+    "format": "prettier --write ."
+  },
+  "devDependencies": {
+    "prettier": "3.9.6",
+    "typescript": "5.9.3",
+    "vitest": "4.1.10"
+  }
+}

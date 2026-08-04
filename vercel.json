@@ -1,0 +1,28 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "services": {
+    "inference": {
+      "root": "services/inference",
+      "framework": "fastapi",
+      "entrypoint": "vercel_entrypoint:app",
+      "routes": [
+        {
+          "src": "/api/(.*)",
+          "transforms": [
+            {
+              "type": "request.path",
+              "op": "set",
+              "args": "/$1"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": { "service": "inference" }
+    }
+  ]
+}

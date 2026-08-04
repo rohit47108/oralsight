@@ -1,0 +1,21 @@
+{
+  "assetVersion": "procedural-v1",
+  "name": "OralSight procedural oral observation map",
+  "format": "react-three-fiber procedural geometry",
+  "license": "CC0-1.0",
+  "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "provenance": "Created in this repository; no patient anatomy or external mesh is used.",
+  "containsPatientData": false,
+  "implementationPath": "apps/mobile/src/components/OralObservationMap.tsx",
+  "implementationSha256": "3f8fc8e321134598299772f32b3048e4e6a49ff19f0bb336651de4f1e0d6d854",
+  "targetRegions": [
+    { "regionId": "dorsal_tongue", "meshId": "tongue_dorsal" },
+    { "regionId": "ventral_tongue", "meshId": "tongue_ventral" },
+    { "regionId": "left_buccal_mucosa", "meshId": "buccal_left" },
+    { "regionId": "right_buccal_mucosa", "meshId": "buccal_right" },
+    { "regionId": "upper_lip", "meshId": "lip_upper" },
+    { "regionId": "lower_lip", "meshId": "lip_lower" },
+    { "regionId": "upper_dental_arch", "meshId": "arch_upper" },
+    { "regionId": "lower_dental_arch", "meshId": "arch_lower" }
+  ]
+}

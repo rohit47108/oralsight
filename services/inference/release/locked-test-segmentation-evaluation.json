@@ -1,0 +1,72 @@
+{
+  "artifact_sha256": "6e0d74557960001b60a181e1fd7444c21c50ca4a30175c8c4449b40298352ac5",
+  "code_revision": "61d327c1c14bfb6b9353ba0d417ca6e018e4c06b91fa918a6a1e30ecdb9d62bb",
+  "configuration": {
+    "architecture": "presence_gated_unetplusplus_efficientnet_b4",
+    "batch_size": 4,
+    "cache_preprocessed_images": true,
+    "epochs": 12,
+    "evaluation_batch_size": 8,
+    "evaluation_mode": "exact_frozen_validation_checkpoint",
+    "evaluation_postprocessing": "largest_connected_component",
+    "frozen_source_run_sha256": "d5bb3756ce8b397c991ddfe7dcdcc8b8112bd64f7e8d3cb61b6c2dbb930f3b74",
+    "image_size": 512,
+    "learning_rate": 0.00018,
+    "metric_device": "cuda",
+    "normalization_mean": [0.485, 0.456, 0.406],
+    "normalization_std": [0.229, 0.224, 0.225],
+    "presence_positive_weight": 0.3729096989966555,
+    "pretrained_imagenet": true,
+    "seed": 20260728,
+    "segmentation_loss_version": "tolerant_boundary_presence_v3",
+    "selected_training_epochs": 12,
+    "selected_validation_epoch": 9,
+    "supplemental_segmentation": {
+      "license_terms": ["academic_research_noncommercial"],
+      "manifest_sha256": "d3bde3934e962192afcb5e8e680e7c5e4b6f2f696a239508d7dae120a07b8eaa",
+      "patient_count": 56,
+      "sample_count": 377,
+      "source_datasets": ["Autooral-SciRep-2024"],
+      "training_only": true
+    },
+    "training_splits": ["train"],
+    "validation_selection": {
+      "source": "current_run_validation_split"
+    }
+  },
+  "data_root_persisted": false,
+  "dataset_manifest_sha256": "ef39dfc15edf7fc3088498b08087bcb5d296146afe2c85958c0f1108872de1f7",
+  "disclaimer": "This result is not a diagnosis and does not establish clinical validity.",
+  "evaluated_at": "2026-07-28T08:49:30.743381Z",
+  "evaluation_id": "smart-om-segmentation-locked-test-2026",
+  "interface": {
+    "input_name": "image",
+    "output_kind": "binary_mask_logits",
+    "output_name": "logits",
+    "segmentation_threshold": 0.55
+  },
+  "patient_disjoint": true,
+  "patient_overlap_count": 0,
+  "schema_version": "1.0",
+  "source_dataset": "SMART-OM figshare 31341790 v1",
+  "source_license": "CC BY 4.0",
+  "split_patient_counts": {
+    "test": 39,
+    "train": 199,
+    "validation": 39
+  },
+  "task": "segmentation",
+  "test": {
+    "boundary_f1": 0.6255609393119812,
+    "boundary_tolerance_ratio": 0.01,
+    "dice": 0.7191798686981201,
+    "negative_pixel_specificity": 0.9819207191467285,
+    "negative_sample_count": 53,
+    "positive_boundary_f1": 0.32659342885017395,
+    "positive_dice": 0.5138314366340637,
+    "positive_sample_count": 53,
+    "presence_threshold": 0.25,
+    "sample_count": 106,
+    "segmentation_threshold": 0.55
+  }
+}

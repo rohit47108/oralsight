@@ -1,0 +1,7 @@
+[core]
+    autostage = false
+    analytics = false
+
+# No remote is configured intentionally. Add only an access-controlled, team-approved
+# remote after the data owner and license inventory permit it. Never use a public bucket.
+

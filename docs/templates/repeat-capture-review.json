@@ -1,0 +1,9 @@
+{
+  "schema_version": "1.0",
+  "reviewer_name": "REPLACE_WITH_REVIEWER_NAME",
+  "reviewer_role": "REPLACE_WITH_REVIEWER_ROLE",
+  "reviewed_at": "2026-01-01T00:00:00Z",
+  "approved": true,
+  "artifact_sha256": "REPLACE_WITH_64_CHARACTER_LOWERCASE_SHA256",
+  "scope": "Repeat-capture metric, pair eligibility, registration gates, and limitations reviewed."
+}

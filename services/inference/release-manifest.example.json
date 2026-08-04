@@ -1,0 +1,48 @@
+{
+  "schemaVersion": "1.1",
+  "releaseId": "no-models-released",
+  "createdAt": "2026-07-27T00:00:00Z",
+  "codeRevision": "0000000000000000000000000000000000000000",
+  "heads": [
+    {
+      "head": "segmentation",
+      "enabled": false,
+      "version": "not-deployed",
+      "unmetRequirements": [
+        "No audited patient-disjoint segmentation artifact is available."
+      ]
+    },
+    {
+      "head": "anatomy",
+      "enabled": false,
+      "version": "not-deployed",
+      "unmetRequirements": [
+        "No audited eight-region anatomy artifact is available."
+      ]
+    },
+    {
+      "head": "appearance",
+      "enabled": false,
+      "version": "not-deployed",
+      "unmetRequirements": [
+        "No appearance artifact has passed its release gate."
+      ]
+    },
+    {
+      "head": "disease_research",
+      "enabled": false,
+      "version": "not-deployed",
+      "unmetRequirements": [
+        "No disease research artifact has passed independent evaluation and signed clinical review."
+      ]
+    },
+    {
+      "head": "lesion_reidentification",
+      "enabled": false,
+      "version": "not-deployed",
+      "unmetRequirements": [
+        "No re-identification artifact has passed held-out matched and hard-negative evaluation."
+      ]
+    }
+  ]
+}

@@ -1,0 +1,54 @@
+# JavaScript / Expo
+node_modules/
+.expo/
+.expo-shared/
+/apps/mobile/android/
+/apps/mobile/ios/
+dist/
+dist-*-verify/
+web-build/
+coverage/
+*.tsbuildinfo
+
+# Python / ML
+.venv/
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.py[cod]
+.dvc/cache/
+ml/data/
+ml/artifacts/
+ml/mlruns/
+
+# Secrets and local state
+.vercel/
+.env
+.env.*
+!.env.example
+!apps/mobile/.env.production.example
+*.db
+*.sqlite*
+*.pem
+*.key
+
+# Medical data must never enter Git
+data/
+datasets/
+patient-data/
+captures/
+
+# Local Codex scratch folders
+work/
+outputs/
+.agents/
+skills-lock.json
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+.vercel

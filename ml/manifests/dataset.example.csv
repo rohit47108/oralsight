@@ -1,0 +1,2 @@
+sample_id,patient_id,split,region,image_path,mask_path,lesion_id,anatomy_label,appearance_label,disease_label,device_family,source_dataset,license_status,audit_status,consent_scope
+

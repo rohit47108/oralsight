@@ -1,0 +1,40 @@
+{
+  "cli": {
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "environment": "development",
+      "android": {
+        "buildType": "apk"
+      }
+    },
+    "development-simulator": {
+      "extends": "development",
+      "ios": {
+        "simulator": true
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "environment": "preview",
+      "env": {
+        "EXPO_PUBLIC_INFERENCE_URL": "https://oralsight-inference.vercel.app/api",
+        "EXPO_PUBLIC_RESPONSE_SIGNING_PUBLIC_KEY_B64": "O1GBNCptNbSyxbsWBSCdlkSWK9+lY7KJKW2J41h7+98="
+      },
+      "android": {
+        "buildType": "apk"
+      }
+    },
+    "production": {
+      "environment": "production",
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_INFERENCE_URL": "https://oralsight-inference.vercel.app/api",
+        "EXPO_PUBLIC_RESPONSE_SIGNING_PUBLIC_KEY_B64": "O1GBNCptNbSyxbsWBSCdlkSWK9+lY7KJKW2J41h7+98="
+      }
+    }
+  }
+}

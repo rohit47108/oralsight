@@ -1,0 +1,81 @@
+name: Python checks
+
+on:
+  pull_request:
+    paths:
+      - "ml/**"
+      - "services/inference/**"
+      - "pyproject.toml"
+      - "uv.lock"
+      - ".python-version"
+      - ".github/workflows/python.yml"
+  push:
+    branches: [main]
+    paths:
+      - "ml/**"
+      - "services/inference/**"
+      - "pyproject.toml"
+      - "uv.lock"
+      - ".python-version"
+      - ".github/workflows/python.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: python-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHONDONTWRITEBYTECODE: "1"
+  UV_NO_PROGRESS: "1"
+
+jobs:
+  workspace-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - name: Install locked uv workspace
+        run: uv sync --frozen --all-packages --extra dev
+      - name: Verify container dependency export
+        run: |
+          uv export --frozen --package oralsight-inference --no-dev --no-emit-project --format requirements.txt --no-header --output-file /tmp/inference-requirements.lock.txt
+          diff -u services/inference/requirements.lock.txt /tmp/inference-requirements.lock.txt
+      - name: Verify standalone Vercel service lock
+        run: |
+          mkdir /tmp/oralsight-inference-lock
+          cp services/inference/pyproject.toml services/inference/README.md services/inference/uv.lock /tmp/oralsight-inference-lock/
+          uv lock --directory /tmp/oralsight-inference-lock --check
+      - name: Run inference and synthetic-metadata ML tests
+        run: uv run --frozen --all-packages --no-sync pytest services/inference/tests ml/tests
+      - name: Lint and format check
+        run: |
+          uvx --from ruff==0.14.14 ruff check services/inference ml .github/scripts
+          uvx --from ruff==0.14.14 ruff format --check services/inference ml .github/scripts
+      - name: Audit production Python dependencies
+        run: uvx --from pip-audit==2.10.0 pip-audit -r services/inference/requirements.lock.txt --disable-pip
+      - name: Confirm default model gates fail closed
+        run: uv run --frozen --package oralsight-ml --no-sync python -m oralsight_ml.gates ml/examples/evaluation.disabled.json
+      - name: Build and smoke-test production inference container
+        run: |
+          docker build --tag oralsight-inference:ci services/inference
+          container_id=$(docker run --detach --read-only --tmpfs /tmp:size=64m --publish 127.0.0.1:8000:8000 oralsight-inference:ci)
+          trap 'docker rm --force "$container_id" >/dev/null 2>&1 || true' EXIT
+          for attempt in $(seq 1 20); do
+            if curl --fail --silent --show-error http://127.0.0.1:8000/healthz >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs "$container_id"
+          exit 1
+
+# Workflows upload no artifacts, reports, manifests, model weights, or medical data.
