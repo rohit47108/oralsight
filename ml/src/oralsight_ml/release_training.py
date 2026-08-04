@@ -1,12 +1,12 @@
 """Train and export release-candidate OralSight models on audited manifests.
 
 SMART-OM supports anatomy classification, candidate-lesion segmentation, and a
-four-category disease research experiment. Segmentation experiments can run in
-validation-only mode so candidate selection never reads the locked test images.
-Release evaluations export an OpenCV-compatible ONNX model and write aggregate
-evidence only. Exporting a disease model does not release it: the separate gate
-still requires adequate patient counts, metrics, provenance, and signed clinical
-review.
+four-category disease research experiment. Separately licensed manifests can
+support the seven-class appearance experiment. Segmentation experiments can run
+in validation-only mode so candidate selection never reads the locked test
+images. Release evaluations export an OpenCV-compatible ONNX model and write
+aggregate evidence only. Exporting a model never releases it: the separate gate
+still requires adequate patient counts, metrics, provenance, and review.
 """
 
 from __future__ import annotations
@@ -25,7 +25,12 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from .constants import DISEASE_CLASSES, MOUTH_REGIONS, RELEASE_THRESHOLDS
+from .constants import (
+    APPEARANCE_CLASSES,
+    DISEASE_CLASSES,
+    MOUTH_REGIONS,
+    RELEASE_THRESHOLDS,
+)
 from .manifest import load_manifest, resolve_data_path, validate_manifest
 from .metrics import classification_metrics, expected_calibration_error
 
@@ -33,7 +38,7 @@ IMAGE_NET_MEAN = (0.485, 0.456, 0.406)
 IMAGE_NET_STD = (0.229, 0.224, 0.225)
 BOUNDARY_TOLERANCE_RATIO = 0.01
 PRESENCE_RECALL_FLOOR = 0.90
-SUPPORTED_TASKS = ("anatomy", "segmentation", "disease")
+SUPPORTED_TASKS = ("anatomy", "segmentation", "appearance", "disease")
 SUPPLEMENTAL_SEGMENTATION_COLUMNS = (
     "sample_id",
     "patient_id",
@@ -350,6 +355,18 @@ def _load_classification_logits(
     )
 
 
+def _classification_artifact_name(task: str) -> str:
+    artifact_names = {
+        "anatomy": "anatomy.onnx",
+        "appearance": "appearance.onnx",
+        "disease": "disease_research.onnx",
+    }
+    try:
+        return artifact_names[task]
+    except KeyError as exc:
+        raise ValueError(f"Unsupported classification task: {task}") from exc
+
+
 def _train_classification(
     rows: Sequence[Mapping[str, str]],
     *,
@@ -507,7 +524,7 @@ def _train_classification(
     test_metrics["cross_entropy"] = test_loss
     weights_path = output / "model.pt"
     torch.save(best_state, weights_path)
-    artifact_name = "disease_research.onnx" if task == "disease" else "anatomy.onnx"
+    artifact_name = _classification_artifact_name(task)
     onnx_path = output / artifact_name
     export_model = _build_classification_model(
         torch,
@@ -1992,6 +2009,14 @@ def _write_evidence(
     test = result["test"]
     assert isinstance(test, Mapping)
     task = str(result["task"])
+    with manifest.open("r", encoding="utf-8", newline="") as handle:
+        manifest_rows = list(csv.DictReader(handle))
+    source_datasets = sorted(
+        {row["source_dataset"] for row in manifest_rows if row.get("source_dataset")}
+    )
+    license_terms = sorted(
+        {row["license_terms"] for row in manifest_rows if row.get("license_terms")}
+    )
     evidence: dict[str, object] = {
         "schema_version": "1.0",
         "evaluation_id": f"smart-om-{task}-locked-test-2026",
@@ -2001,8 +2026,12 @@ def _write_evidence(
         "code_revision": _source_revision(),
         "evaluated_at": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
         "patient_disjoint": True,
-        "source_dataset": "SMART-OM figshare 31341790 v1",
-        "source_license": "CC BY 4.0",
+        "source_dataset": (
+            source_datasets[0] if len(source_datasets) == 1 else "multiple audited sources"
+        ),
+        "source_license": (license_terms[0] if len(license_terms) == 1 else "See license_terms."),
+        "source_datasets": source_datasets,
+        "license_terms": license_terms,
         "data_root_persisted": False,
         "disclaimer": "This result is not a diagnosis and does not establish clinical validity.",
         "configuration": result["configuration"],
@@ -2014,11 +2043,10 @@ def _write_evidence(
         "validation": set(),
         "test": set(),
     }
-    with manifest.open("r", encoding="utf-8", newline="") as handle:
-        for row in csv.DictReader(handle):
-            split = row["split"]
-            if split in split_patients:
-                split_patients[split].add(row["patient_id"])
+    for row in manifest_rows:
+        split = row["split"]
+        if split in split_patients:
+            split_patients[split].add(row["patient_id"])
     evidence["split_patient_counts"] = {
         split: len(patients) for split, patients in split_patients.items()
     }
@@ -2030,15 +2058,36 @@ def _write_evidence(
             ("validation", "test"),
         )
     )
+    if task in {"appearance", "disease"}:
+        labels = APPEARANCE_CLASSES if task == "appearance" else DISEASE_CLASSES
+        label_field = "appearance_label" if task == "appearance" else "disease_label"
+        test_patients_by_class: dict[str, set[str]] = {label: set() for label in labels}
+        for row in manifest_rows:
+            if row["split"] != "test":
+                continue
+            label = row[label_field]
+            if label in test_patients_by_class:
+                test_patients_by_class[label].add(row["patient_id"])
+
+    if task == "appearance":
+        evidence["appearance_release_gate"] = {
+            "patient_disjoint": evidence["patient_overlap_count"] == 0,
+            "provenance_complete": bool(source_datasets and license_terms),
+            "clinical_review_signed": False,
+            "held_out_patients_per_class": {
+                label: len(test_patients_by_class[label]) for label in APPEARANCE_CLASSES
+            },
+            "macro_f1": test["macro_f1"],
+            "per_class_recall": test["per_class_recall"],
+            "expected_calibration_error": test["expected_calibration_error"],
+            "enabled": False,
+            "limitations": [
+                "The seven-class output remains closed until every fixed release gate passes.",
+                "A released appearance output is descriptive and is not a diagnosis.",
+            ],
+        }
+
     if task == "disease":
-        test_patients_by_class: dict[str, set[str]] = {label: set() for label in DISEASE_CLASSES}
-        with manifest.open("r", encoding="utf-8", newline="") as handle:
-            for row in csv.DictReader(handle):
-                if row["split"] != "test":
-                    continue
-                label = row["disease_label"]
-                if label in test_patients_by_class:
-                    test_patients_by_class[label].add(row["patient_id"])
         evidence["disease_release_gate"] = {
             "patient_disjoint": evidence["patient_overlap_count"] == 0,
             "independent_held_out": True,
@@ -2282,10 +2331,13 @@ def main(argv: Sequence[str] | None = None) -> int:
             "seed": args.seed,
             "pretrained": not args.no_pretrained,
         }
-        if args.task in {"anatomy", "disease"}:
+        if args.task in {"anatomy", "appearance", "disease"}:
             if args.task == "anatomy":
                 label_field = "anatomy_label"
                 labels = MOUTH_REGIONS
+            elif args.task == "appearance":
+                label_field = "appearance_label"
+                labels = APPEARANCE_CLASSES
             else:
                 label_field = "disease_label"
                 labels = DISEASE_CLASSES

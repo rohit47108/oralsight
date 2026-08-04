@@ -9,7 +9,7 @@
   },
   "scripts": {
     "dev:mobile": "pnpm --filter @oralsight/mobile start",
-    "contracts:generate": "pnpm --filter @oralsight/contracts generate && prettier --write packages/contracts/generated/oralsight-contracts.schema.json",
+    "contracts:generate": "pnpm --filter @oralsight/contracts generate && prettier --write packages/contracts/generated/oralsight-contracts.schema.json packages/contracts/generated/oralsight-platform-contracts.schema.json",
     "test": "pnpm -r --if-present test",
     "typecheck": "pnpm -r --if-present typecheck",
     "format:check": "prettier --check .",

@@ -3,10 +3,11 @@ from __future__ import annotations
 import csv
 from pathlib import Path
 
-from oralsight_ml.constants import DISEASE_CLASSES
+from oralsight_ml.constants import APPEARANCE_CLASSES, DISEASE_CLASSES
 from oralsight_ml.release_training import (
     SUPPLEMENTAL_SEGMENTATION_COLUMNS,
     _build_parser,
+    _classification_artifact_name,
     _load_supplemental_segmentation_manifest,
 )
 
@@ -27,6 +28,33 @@ def test_release_training_accepts_disease_research_task() -> None:
 
     assert args.task == "disease"
     assert DISEASE_CLASSES == ("normal", "variation", "opmd", "oral_cancer")
+
+
+def test_release_training_accepts_appearance_task() -> None:
+    args = _build_parser().parse_args(
+        [
+            "--task",
+            "appearance",
+            "--manifest",
+            "appearance.csv",
+            "--data-root",
+            "data",
+            "--output-dir",
+            "run",
+        ]
+    )
+
+    assert args.task == "appearance"
+    assert APPEARANCE_CLASSES == (
+        "red-patch",
+        "white-patch",
+        "ulcer-like",
+        "mixed",
+        "pigmented",
+        "none-detected",
+        "unsupported",
+    )
+    assert _classification_artifact_name("appearance") == "appearance.onnx"
 
 
 def test_segmentation_candidate_can_skip_locked_test_evaluation() -> None:

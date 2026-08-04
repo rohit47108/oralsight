@@ -114,3 +114,30 @@ Pass that CSV with `--supplemental-segmentation-manifest` and its controlled roo
 `--supplemental-segmentation-data-root`. Supplemental rows are accepted only for the
 training split, require patient IDs and approved provenance fields, and never replace
 SMART-OM validation or locked-test evidence.
+
+## Re-identification release evaluation
+
+Re-identification uses a separate locked workflow. It can deterministically build
+same-lesion and region-matched hard-negative pairs from the audited sample manifest,
+or accept an explicit pair CSV with these columns:
+
+```text
+pair_id,split,first_sample_id,second_sample_id,expected_match,pair_kind
+```
+
+Run a data-only check before training:
+
+```powershell
+uv run --project ml --extra research oralsight-train-reidentification-release `
+  --manifest C:\controlled\longitudinal-manifest.csv `
+  --data-root C:\controlled\longitudinal-images `
+  --output-dir C:\controlled\runs\reidentification-release `
+  --acknowledge-audited-data `
+  --dry-run
+```
+
+The release run chooses its similarity threshold on validation pairs, then opens the
+locked test images once. Evidence records precision, recall, the Wilson 95% lower
+bound, pair and patient counts, and the exact artifact hashes. The service release
+manifest is never changed automatically. Even passing evidence permits candidate
+suggestions only; every proposed link still requires user confirmation.
