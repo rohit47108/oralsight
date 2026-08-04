@@ -8,6 +8,7 @@ const icons = {
   scan: ["scan-outline", "scan"] as const,
   map: ["cube-outline", "cube"] as const,
   timeline: ["analytics-outline", "analytics"] as const,
+  learn: ["book-outline", "book"] as const,
   settings: ["options-outline", "options"] as const,
 };
 
@@ -58,7 +59,11 @@ export default function TabsLayout() {
       <Tabs.Screen name="scan" options={{ title: "Scan" }} />
       <Tabs.Screen name="map" options={{ title: "3D map" }} />
       <Tabs.Screen name="timeline" options={{ title: "Timeline" }} />
-      <Tabs.Screen name="settings" options={{ title: "Settings" }} />
+      <Tabs.Screen name="learn" options={{ title: "Learn" }} />
+      <Tabs.Screen
+        name="settings"
+        options={{ title: "Settings", href: null }}
+      />
     </Tabs>
   );
 }
