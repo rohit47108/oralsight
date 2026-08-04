@@ -1,0 +1,9 @@
+manifests/dataset.csv
+artifacts/
+data/
+mlruns/
+.venv/
+*.pt
+*.pth
+*.onnx
+

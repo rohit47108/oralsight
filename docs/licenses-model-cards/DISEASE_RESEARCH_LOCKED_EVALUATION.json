@@ -1,0 +1,113 @@
+{
+  "artifact_sha256": "1556c90933f41cf35e525c7d4ad20a734563010eae03e3717170efeb9063f817",
+  "code_revision": "b656ea34eee988c269937030c15ac0c9af95dac24d8181361a3ccc929180e1d2",
+  "configuration": {
+    "architecture": "torchvision_mobilenet_v3_small",
+    "batch_size": 32,
+    "epochs": 20,
+    "image_size": 224,
+    "learning_rate": 0.0003,
+    "normalization_mean": [0.485, 0.456, 0.406],
+    "normalization_std": [0.229, 0.224, 0.225],
+    "pretrained_imagenet": true,
+    "seed": 20260728
+  },
+  "data_root_persisted": false,
+  "dataset_manifest_sha256": "cdaa26a92e48ba376b1331c63bf5e64f7645b9a17211e6e7f07b16e1428b9f9f",
+  "disclaimer": "This result is not a diagnosis and does not establish clinical validity.",
+  "disease_release_gate": {
+    "clinical_review_signed": false,
+    "enabled": false,
+    "expected_calibration_error": 0.08272122335369868,
+    "held_out_patients_per_class": {
+      "normal": 43,
+      "opmd": 9,
+      "oral_cancer": 2,
+      "variation": 17
+    },
+    "independent_held_out": true,
+    "independent_held_out_scope": "Locked patient-disjoint test split from the same published SMART-OM dataset.",
+    "limitations": [
+      "The oral-cancer test class contains far fewer than 100 held-out patients.",
+      "No signed clinical review is present.",
+      "This same-dataset held-out evaluation does not establish clinical validity."
+    ],
+    "macro_f1": 0.35963062320774836,
+    "patient_disjoint": true,
+    "per_class_sensitivity": {
+      "normal": 0.5611285266457681,
+      "opmd": 0.375,
+      "oral_cancer": 1.0,
+      "variation": 0.4230769230769231
+    },
+    "per_class_specificity": {
+      "normal": 0.9056603773584906,
+      "opmd": 0.9540229885057471,
+      "oral_cancer": 0.6883468834688347,
+      "variation": 0.9017341040462428
+    },
+    "provenance_complete": true
+  },
+  "evaluated_at": "2026-07-28T03:43:44.664381Z",
+  "evaluation_id": "smart-om-disease-locked-test-2026",
+  "interface": {
+    "abstention_threshold": 0.42,
+    "calibration_temperature": 0.6643711697626892,
+    "class_labels": ["normal", "variation", "opmd", "oral_cancer"],
+    "input_name": "image",
+    "output_kind": "class_logits",
+    "output_name": "logits"
+  },
+  "patient_disjoint": true,
+  "patient_overlap_count": 0,
+  "schema_version": "1.0",
+  "source_dataset": "SMART-OM figshare 31341790 v1",
+  "source_license": "CC BY 4.0",
+  "split_patient_counts": {
+    "test": 47,
+    "train": 235,
+    "validation": 47
+  },
+  "task": "disease",
+  "test": {
+    "abstention_threshold": 0.42,
+    "accepted_accuracy": 0.5718562602996826,
+    "accepted_fraction": 0.897849440574646,
+    "accuracy": 0.543010752688172,
+    "calibration_temperature": 0.6643711697626892,
+    "cross_entropy": 1.0771330018197336,
+    "expected_calibration_error": 0.08272122335369868,
+    "macro_f1": 0.35963062320774836,
+    "per_class_f1": {
+      "normal": 0.7117296222664016,
+      "opmd": 0.3673469387755102,
+      "oral_cancer": 0.04958677685950414,
+      "variation": 0.30985915492957744
+    },
+    "per_class_precision": {
+      "normal": 0.9728260869565217,
+      "opmd": 0.36,
+      "oral_cancer": 0.025423728813559324,
+      "variation": 0.24444444444444444
+    },
+    "per_class_recall": {
+      "normal": 0.5611285266457681,
+      "opmd": 0.375,
+      "oral_cancer": 1.0,
+      "variation": 0.4230769230769231
+    },
+    "per_class_specificity": {
+      "normal": 0.9056603773584906,
+      "opmd": 0.9540229885057471,
+      "oral_cancer": 0.6883468834688347,
+      "variation": 0.9017341040462428
+    },
+    "per_class_support": {
+      "normal": 319,
+      "opmd": 24,
+      "oral_cancer": 3,
+      "variation": 26
+    },
+    "sample_count": 372
+  }
+}

@@ -1,0 +1,109 @@
+{
+  "artifact_sha256": "335cacfa5ceab8d32d6b903c65d482c246ac6ac2a7e7a831f6ede27d62a553a9",
+  "code_revision": "7bc680a2cff4f4c6a6014174e9a192fa99d26ef3877dd5bb9cd5edca95d73952",
+  "configuration": {
+    "architecture": "torchvision_mobilenet_v3_small",
+    "batch_size": 32,
+    "epochs": 12,
+    "image_size": 224,
+    "learning_rate": 0.0003,
+    "normalization_mean": [0.485, 0.456, 0.406],
+    "normalization_std": [0.229, 0.224, 0.225],
+    "pretrained_imagenet": true,
+    "seed": 2026
+  },
+  "data_root_persisted": false,
+  "dataset_manifest_sha256": "4ff735f5f667c716dd4524a537e4efd48f2ff826f5d0c78abc460bcc9f3cee96",
+  "disclaimer": "This result is not a diagnosis and does not establish clinical validity.",
+  "evaluated_at": "2026-07-27T21:46:04.790222Z",
+  "evaluation_id": "smart-om-anatomy-locked-test-2026",
+  "interface": {
+    "abstention_threshold": 0.77,
+    "calibration_temperature": 0.5038993705269597,
+    "class_labels": [
+      "dorsal_tongue",
+      "ventral_tongue",
+      "left_buccal_mucosa",
+      "right_buccal_mucosa",
+      "upper_lip",
+      "lower_lip",
+      "upper_dental_arch",
+      "lower_dental_arch"
+    ],
+    "input_name": "image",
+    "output_kind": "class_logits",
+    "output_name": "logits"
+  },
+  "patient_disjoint": true,
+  "patient_overlap_count": 0,
+  "schema_version": "1.0",
+  "source_dataset": "SMART-OM figshare 31341790 v1",
+  "source_license": "CC BY 4.0",
+  "split_patient_counts": {
+    "test": 47,
+    "train": 235,
+    "validation": 47
+  },
+  "task": "anatomy",
+  "test": {
+    "abstention_threshold": 0.77,
+    "accepted_accuracy": 0.9891892075538635,
+    "accepted_fraction": 0.9840425252914429,
+    "accuracy": 0.9840425531914894,
+    "calibration_temperature": 0.5038993705269597,
+    "cross_entropy": 0.13712147702562047,
+    "expected_calibration_error": 0.012301731379108227,
+    "macro_f1": 0.9841741469632312,
+    "per_class_f1": {
+      "dorsal_tongue": 1.0,
+      "left_buccal_mucosa": 0.968421052631579,
+      "lower_dental_arch": 1.0,
+      "lower_lip": 0.9807692307692307,
+      "right_buccal_mucosa": 0.970873786407767,
+      "upper_dental_arch": 1.0,
+      "upper_lip": 0.963855421686747,
+      "ventral_tongue": 0.9894736842105264
+    },
+    "per_class_precision": {
+      "dorsal_tongue": 1.0,
+      "left_buccal_mucosa": 0.9583333333333334,
+      "lower_dental_arch": 1.0,
+      "lower_lip": 0.9807692307692307,
+      "right_buccal_mucosa": 0.9433962264150944,
+      "upper_dental_arch": 1.0,
+      "upper_lip": 1.0,
+      "ventral_tongue": 1.0
+    },
+    "per_class_recall": {
+      "dorsal_tongue": 1.0,
+      "left_buccal_mucosa": 0.9787234042553191,
+      "lower_dental_arch": 1.0,
+      "lower_lip": 0.9807692307692307,
+      "right_buccal_mucosa": 1.0,
+      "upper_dental_arch": 1.0,
+      "upper_lip": 0.9302325581395349,
+      "ventral_tongue": 0.9791666666666666
+    },
+    "per_class_specificity": {
+      "dorsal_tongue": 1.0,
+      "left_buccal_mucosa": 0.993920972644377,
+      "lower_dental_arch": 1.0,
+      "lower_lip": 0.9969135802469136,
+      "right_buccal_mucosa": 0.99079754601227,
+      "upper_dental_arch": 1.0,
+      "upper_lip": 1.0,
+      "ventral_tongue": 1.0
+    },
+    "per_class_support": {
+      "dorsal_tongue": 50,
+      "left_buccal_mucosa": 47,
+      "lower_dental_arch": 44,
+      "lower_lip": 52,
+      "right_buccal_mucosa": 50,
+      "upper_dental_arch": 42,
+      "upper_lip": 43,
+      "ventral_tongue": 48
+    },
+    "sample_count": 376
+  }
+}

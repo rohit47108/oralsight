@@ -1,0 +1,6 @@
+# DVC should not scan local experiment products as source data.
+artifacts/
+mlruns/
+__pycache__/
+.pytest_cache/
+

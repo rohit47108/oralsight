@@ -1,0 +1,11 @@
+{
+  "schema_version": "1.1",
+  "rules_version": "not-installed",
+  "enabled": false,
+  "intended_use": "Non-diagnostic review-priority messaging from clinician-approved deterministic rules.",
+  "disclaimer": "This result is not a diagnosis.",
+  "neutral_message": "If an area persists, changes, or worries you, arrange an examination with a dentist or medical professional. Seek urgent care for trouble breathing, severe bleeding, or an inability to swallow.",
+  "messages": {},
+  "approval": null,
+  "rules": []
+}

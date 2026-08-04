@@ -1,0 +1,61 @@
+# OralSight current model release state
+
+Last updated: 2026-07-28  
+Threshold version: `2026.1`
+
+> **This result is not a diagnosis.** A passed engineering release gate does
+> not establish clinical validity.
+
+The deployed `GET /v1/model-card` response is authoritative for runtime
+versions, hashes, enabled heads, limitations, and gate state.
+
+| Head                         | Release state                    | Locked result                                                                                                           |
+| ---------------------------- | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Anatomy validation           | Enabled for region matching only | Macro F1 `0.9842`; lowest region recall `0.9302`; calibration error `0.0123`; 376 test images from 47 held-out patients |
+| Segmentation                 | Enabled for candidate masks only | Dice `0.7192`; boundary F1 `0.6256`; 106 test images from 39 held-out patients                                          |
+| Appearance                   | Disabled                         | SMART-OM does not provide the fixed seven-class appearance labels or 50 held-out patients per class                     |
+| Disease-category research    | Disabled / hidden                | Macro F1 `0.3596`; calibration error `0.0827`; inadequate held-out support; no signed clinical review                   |
+| Re-identification suggestion | Disabled                         | SMART-OM is cross-sectional and does not provide the required matched longitudinal and hard-negative pairs              |
+
+## Enabled artifacts
+
+Anatomy:
+
+- Version `smart-om-mobilenetv3-2026.07.27`; SHA-256
+  `335cacfa5ceab8d32d6b903c65d482c246ac6ac2a7e7a831f6ede27d62a553a9`.
+- Confirms or rejects whether a photo matches the selected one of eight mouth
+  regions.
+
+Segmentation:
+
+- Version `smart-om-autooral-unetplusplus-b4-2026.07.28`; SHA-256
+  `6e0d74557960001b60a181e1fd7444c21c50ca4a30175c8c4449b40298352ac5`.
+- Draws one approximate candidate mask and supplies visual descriptors after
+  quality and anatomy checks pass.
+- The exact frozen artifact passed aggregate Dice `0.7192` and boundary F1
+  `0.6256`. Positive-image Dice was `0.5138` and positive-image boundary F1 was
+  `0.3266`, so the limitations must remain visible.
+- The test patients were never used for training or threshold selection, but
+  earlier failed candidates had already been evaluated on this same split. It
+  is patient-disjoint, not a pristine project-wide test set.
+- SMART-OM is CC BY 4.0. The optional Autooral training supplement is subject
+  to its authors' academic-research and non-commercial terms.
+
+Both artifacts use patient-disjoint SMART-OM evaluation with zero
+train/validation/test patient overlap. OpenCV DNN verifies each pinned hash,
+tensor interface, preprocessing contract, and startup inference. Neither
+artifact may be used for diagnosis, disease classification, harmlessness
+claims, or care guidance.
+
+## Release evidence
+
+- `SEGMENTATION_LOCKED_EVALUATION.json`
+- `DISEASE_RESEARCH_LOCKED_EVALUATION.json`
+- `ANATOMY_RELEASE_REVIEW.md`
+- `SEGMENTATION_RELEASE_REVIEW.md`
+- `services/inference/release/locked-test-anatomy-evaluation.json`
+- `services/inference/release/locked-test-segmentation-evaluation.json`
+
+The service fails closed. A missing file, changed hash, invalid tensor contract,
+failed startup inference, or failed gate disables that head instead of exposing
+an output.

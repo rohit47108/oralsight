@@ -1,0 +1,197 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://oralsight.local/schemas/guidance-rules.schema.json",
+  "title": "OralSight clinician-reviewed deterministic guidance rules",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "rules_version",
+    "enabled",
+    "intended_use",
+    "disclaimer",
+    "neutral_message",
+    "messages",
+    "approval",
+    "rules"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.1"
+    },
+    "rules_version": {
+      "type": "string",
+      "pattern": "^[0-9]{4}\\.[0-9]+$"
+    },
+    "enabled": {
+      "type": "boolean",
+      "default": false
+    },
+    "intended_use": {
+      "const": "Non-diagnostic review-priority messaging from clinician-approved deterministic rules."
+    },
+    "disclaimer": {
+      "const": "This result is not a diagnosis."
+    },
+    "neutral_message": {
+      "type": "string",
+      "minLength": 1
+    },
+    "messages": {
+      "type": "object",
+      "propertyNames": {
+        "pattern": "^[a-z0-9_.-]+$"
+      },
+      "additionalProperties": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "approval": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "reviewer_name",
+            "credentials",
+            "signed_at",
+            "expires_at",
+            "reviewed_payload_sha256",
+            "scope"
+          ],
+          "properties": {
+            "reviewer_name": {
+              "type": "string",
+              "minLength": 1
+            },
+            "credentials": {
+              "type": "string",
+              "minLength": 1
+            },
+            "signed_at": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "expires_at": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "reviewed_payload_sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "scope": {
+              "const": "Exact wording, conditions, priorities, neutral fallback, and demo cases reviewed."
+            }
+          }
+        }
+      ]
+    },
+    "rules": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/rule"
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "enabled": {
+            "const": true
+          }
+        },
+        "required": ["enabled"]
+      },
+      "then": {
+        "properties": {
+          "approval": {
+            "type": "object"
+          },
+          "rules": {
+            "minItems": 1
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "condition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["field", "operator", "value"],
+      "properties": {
+        "field": {
+          "enum": [
+            "pain",
+            "bleeding",
+            "numbness",
+            "difficulty_swallowing",
+            "duration_days",
+            "rapidly_changing",
+            "progression",
+            "image_quality_score",
+            "analysis_uncertainty"
+          ]
+        },
+        "operator": {
+          "enum": ["equals", "gte", "lte", "in"]
+        },
+        "value": {
+          "type": ["boolean", "number", "string", "array"]
+        }
+      }
+    },
+    "rule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "priority",
+        "description",
+        "all_conditions",
+        "outcome"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9_]+$"
+        },
+        "priority": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "all_conditions": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/condition"
+          }
+        },
+        "outcome": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["review_priority", "message_key"],
+          "properties": {
+            "review_priority": {
+              "enum": ["neutral", "professional_review_suggested"]
+            },
+            "message_key": {
+              "type": "string",
+              "pattern": "^[a-z0-9_.-]+$"
+            }
+          }
+        }
+      }
+    }
+  }
+}

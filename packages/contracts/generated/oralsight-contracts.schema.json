@@ -1,0 +1,1086 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://oralsight.local/contracts/v1/oralsight-contracts.schema.json",
+  "title": "OralSight public API contracts",
+  "description": "Generated from the canonical Zod schemas. This result is not a diagnosis.",
+  "$defs": {
+    "MouthRegion": {
+      "type": "string",
+      "enum": [
+        "dorsal_tongue",
+        "ventral_tongue",
+        "left_buccal_mucosa",
+        "right_buccal_mucosa",
+        "upper_lip",
+        "lower_lip",
+        "upper_dental_arch",
+        "lower_dental_arch"
+      ]
+    },
+    "AnalyzeMetadata": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "contractVersion": {
+              "type": "string",
+              "const": "1.1.0"
+            },
+            "captureId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "selectedRegion": {
+              "type": "string",
+              "enum": [
+                "dorsal_tongue",
+                "ventral_tongue",
+                "left_buccal_mucosa",
+                "right_buccal_mucosa",
+                "upper_lip",
+                "lower_lip",
+                "upper_dental_arch",
+                "lower_dental_arch"
+              ]
+            },
+            "requestedHeads": {
+              "default": ["segmentation", "anatomy"],
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "segmentation",
+                  "anatomy",
+                  "appearance",
+                  "disease_research",
+                  "lesion_reidentification"
+                ]
+              }
+            },
+            "inputOrigin": {
+              "type": "string",
+              "const": "live_capture"
+            }
+          },
+          "required": [
+            "contractVersion",
+            "captureId",
+            "selectedRegion",
+            "requestedHeads",
+            "inputOrigin"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "contractVersion": {
+              "type": "string",
+              "const": "1.1.0"
+            },
+            "captureId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "selectedRegion": {
+              "type": "string",
+              "enum": [
+                "dorsal_tongue",
+                "ventral_tongue",
+                "left_buccal_mucosa",
+                "right_buccal_mucosa",
+                "upper_lip",
+                "lower_lip",
+                "upper_dental_arch",
+                "lower_dental_arch"
+              ]
+            },
+            "requestedHeads": {
+              "default": ["segmentation", "anatomy"],
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "segmentation",
+                  "anatomy",
+                  "appearance",
+                  "disease_research",
+                  "lesion_reidentification"
+                ]
+              }
+            },
+            "inputOrigin": {
+              "type": "string",
+              "const": "bundled_demo"
+            },
+            "fixtureSha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            }
+          },
+          "required": [
+            "contractVersion",
+            "captureId",
+            "selectedRegion",
+            "requestedHeads",
+            "inputOrigin",
+            "fixtureSha256"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "AnalysisResult": {
+      "type": "object",
+      "properties": {
+        "contractVersion": {
+          "type": "string",
+          "const": "1.1.0"
+        },
+        "captureId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "region": {
+          "type": "string",
+          "enum": [
+            "dorsal_tongue",
+            "ventral_tongue",
+            "left_buccal_mucosa",
+            "right_buccal_mucosa",
+            "upper_lip",
+            "lower_lip",
+            "upper_dental_arch",
+            "lower_dental_arch"
+          ]
+        },
+        "quality": {
+          "type": "object",
+          "properties": {
+            "accepted": {
+              "type": "boolean"
+            },
+            "blurScore": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "description": "Pass score; higher is better."
+            },
+            "exposureScore": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "description": "Pass score; higher is better."
+            },
+            "glareScore": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "description": "Glare severity; lower is better."
+            },
+            "obstructionScore": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "description": "Obstruction severity; lower is better."
+            },
+            "faceDetected": {
+              "type": "boolean"
+            },
+            "reasons": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "accepted",
+            "blurScore",
+            "exposureScore",
+            "glareScore",
+            "obstructionScore",
+            "faceDetected",
+            "reasons"
+          ],
+          "additionalProperties": false
+        },
+        "anatomyPrediction": {
+          "type": "object",
+          "properties": {
+            "region": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "dorsal_tongue",
+                    "ventral_tongue",
+                    "left_buccal_mucosa",
+                    "right_buccal_mucosa",
+                    "upper_lip",
+                    "lower_lip",
+                    "upper_dental_arch",
+                    "lower_dental_arch"
+                  ]
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "confidence": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "supported": {
+              "type": "boolean"
+            },
+            "selectedRegionMatches": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "region",
+            "confidence",
+            "supported",
+            "selectedRegionMatches"
+          ],
+          "additionalProperties": false
+        },
+        "candidateMask": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "polygon": {
+                  "minItems": 3,
+                  "type": "array",
+                  "items": {
+                    "type": "array",
+                    "prefixItems": [
+                      {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      },
+                      {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      }
+                    ]
+                  }
+                },
+                "boundingBox": {
+                  "type": "array",
+                  "prefixItems": [
+                    {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1
+                    },
+                    {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1
+                    },
+                    {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1
+                    },
+                    {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1
+                    }
+                  ]
+                },
+                "normalizedArea": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              },
+              "required": ["polygon", "boundingBox", "normalizedArea"],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "descriptors": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "normalizedArea": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "perimeter": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "borderIrregularity": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "meanRedness": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "meanBrightness": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "textureContrast": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "measurementLabel": {
+                  "type": "string",
+                  "const": "approximate"
+                }
+              },
+              "required": [
+                "normalizedArea",
+                "perimeter",
+                "borderIrregularity",
+                "meanRedness",
+                "meanBrightness",
+                "textureContrast",
+                "measurementLabel"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "appearanceOutput": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "enabled": {
+                  "type": "boolean"
+                },
+                "gatePassed": {
+                  "type": "boolean"
+                },
+                "topLabel": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "confidence": {
+                  "anyOf": [
+                    {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "scores": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "label": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "probability": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      }
+                    },
+                    "required": ["label", "probability"],
+                    "additionalProperties": false
+                  }
+                },
+                "limitation": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "enabled",
+                "gatePassed",
+                "topLabel",
+                "confidence",
+                "scores",
+                "limitation"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "diseaseResearchOutput": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "enabled": {
+                  "type": "boolean"
+                },
+                "gatePassed": {
+                  "type": "boolean"
+                },
+                "topLabel": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "confidence": {
+                  "anyOf": [
+                    {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "scores": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "label": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "probability": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      }
+                    },
+                    "required": ["label", "probability"],
+                    "additionalProperties": false
+                  }
+                },
+                "limitation": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "enabled",
+                "gatePassed",
+                "topLabel",
+                "confidence",
+                "scores",
+                "limitation"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "uncertainty": {
+          "type": "object",
+          "properties": {
+            "overallConfidence": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "imageQualityConfidence": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "datasetSimilarity": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "modelAgreement": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "limitations": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "overallConfidence",
+            "imageQualityConfidence",
+            "datasetSimilarity",
+            "modelAgreement",
+            "limitations"
+          ],
+          "additionalProperties": false
+        },
+        "abstentionReasons": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "modelVersions": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "inputOrigin": {
+          "type": "string",
+          "enum": ["live_capture", "bundled_demo"]
+        },
+        "analysisOrigin": {
+          "type": "string",
+          "enum": [
+            "live_model",
+            "cached_model_result",
+            "manual_fixture",
+            "unavailable"
+          ]
+        },
+        "status": {
+          "type": "string",
+          "enum": ["complete", "abstained", "unsupported", "failed"]
+        },
+        "disclaimer": {
+          "type": "string",
+          "const": "This result is not a diagnosis."
+        }
+      },
+      "required": [
+        "contractVersion",
+        "captureId",
+        "region",
+        "quality",
+        "anatomyPrediction",
+        "candidateMask",
+        "descriptors",
+        "appearanceOutput",
+        "diseaseResearchOutput",
+        "uncertainty",
+        "abstentionReasons",
+        "modelVersions",
+        "inputOrigin",
+        "analysisOrigin",
+        "status",
+        "disclaimer"
+      ],
+      "additionalProperties": false
+    },
+    "CompareMetadata": {
+      "type": "object",
+      "properties": {
+        "contractVersion": {
+          "type": "string",
+          "const": "1.1.0"
+        },
+        "baselineCaptureId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "currentCaptureId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "region": {
+          "type": "string",
+          "enum": [
+            "dorsal_tongue",
+            "ventral_tongue",
+            "left_buccal_mucosa",
+            "right_buccal_mucosa",
+            "upper_lip",
+            "lower_lip",
+            "upper_dental_arch",
+            "lower_dental_arch"
+          ]
+        },
+        "userConfirmedMatch": {
+          "type": "boolean"
+        },
+        "inputOrigin": {
+          "type": "string",
+          "enum": ["live_capture", "bundled_demo"]
+        },
+        "baselineAnalysis": {
+          "type": "object",
+          "properties": {
+            "captureId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "region": {
+              "type": "string",
+              "enum": [
+                "dorsal_tongue",
+                "ventral_tongue",
+                "left_buccal_mucosa",
+                "right_buccal_mucosa",
+                "upper_lip",
+                "lower_lip",
+                "upper_dental_arch",
+                "lower_dental_arch"
+              ]
+            },
+            "status": {
+              "type": "string",
+              "enum": ["complete", "abstained", "unsupported", "failed"]
+            },
+            "analysisOrigin": {
+              "type": "string",
+              "enum": [
+                "live_model",
+                "cached_model_result",
+                "manual_fixture",
+                "unavailable"
+              ]
+            },
+            "qualityAccepted": {
+              "type": "boolean"
+            },
+            "candidateNormalizedArea": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "modelVersions": {
+              "type": "object",
+              "propertyNames": {
+                "type": "string"
+              },
+              "additionalProperties": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "captureId",
+            "region",
+            "status",
+            "analysisOrigin",
+            "qualityAccepted",
+            "candidateNormalizedArea",
+            "modelVersions"
+          ],
+          "additionalProperties": false
+        },
+        "currentAnalysis": {
+          "type": "object",
+          "properties": {
+            "captureId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "region": {
+              "type": "string",
+              "enum": [
+                "dorsal_tongue",
+                "ventral_tongue",
+                "left_buccal_mucosa",
+                "right_buccal_mucosa",
+                "upper_lip",
+                "lower_lip",
+                "upper_dental_arch",
+                "lower_dental_arch"
+              ]
+            },
+            "status": {
+              "type": "string",
+              "enum": ["complete", "abstained", "unsupported", "failed"]
+            },
+            "analysisOrigin": {
+              "type": "string",
+              "enum": [
+                "live_model",
+                "cached_model_result",
+                "manual_fixture",
+                "unavailable"
+              ]
+            },
+            "qualityAccepted": {
+              "type": "boolean"
+            },
+            "candidateNormalizedArea": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "modelVersions": {
+              "type": "object",
+              "propertyNames": {
+                "type": "string"
+              },
+              "additionalProperties": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "captureId",
+            "region",
+            "status",
+            "analysisOrigin",
+            "qualityAccepted",
+            "candidateNormalizedArea",
+            "modelVersions"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "contractVersion",
+        "baselineCaptureId",
+        "currentCaptureId",
+        "region",
+        "userConfirmedMatch",
+        "inputOrigin",
+        "baselineAnalysis",
+        "currentAnalysis"
+      ],
+      "additionalProperties": false
+    },
+    "ComparisonResult": {
+      "type": "object",
+      "properties": {
+        "contractVersion": {
+          "type": "string",
+          "const": "1.1.0"
+        },
+        "baselineCaptureId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "currentCaptureId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "region": {
+          "type": "string",
+          "enum": [
+            "dorsal_tongue",
+            "ventral_tongue",
+            "left_buccal_mucosa",
+            "right_buccal_mucosa",
+            "upper_lip",
+            "lower_lip",
+            "upper_dental_arch",
+            "lower_dental_arch"
+          ]
+        },
+        "candidateMatchScore": {
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "userConfirmedMatch": {
+          "type": "boolean"
+        },
+        "registrationConfidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "inlierRatio": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "reprojectionErrorRatio": {
+          "type": "number",
+          "minimum": 0
+        },
+        "normalizedChange": {
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": -1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "comparable": {
+          "type": "boolean"
+        },
+        "suppressionReasons": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "modelVersions": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "inputOrigin": {
+          "type": "string",
+          "enum": ["live_capture", "bundled_demo"]
+        },
+        "analysisOrigin": {
+          "type": "string",
+          "enum": [
+            "live_model",
+            "cached_model_result",
+            "manual_fixture",
+            "unavailable"
+          ]
+        },
+        "disclaimer": {
+          "type": "string",
+          "const": "This result is not a diagnosis."
+        }
+      },
+      "required": [
+        "contractVersion",
+        "baselineCaptureId",
+        "currentCaptureId",
+        "region",
+        "candidateMatchScore",
+        "userConfirmedMatch",
+        "registrationConfidence",
+        "inlierRatio",
+        "reprojectionErrorRatio",
+        "normalizedChange",
+        "comparable",
+        "suppressionReasons",
+        "modelVersions",
+        "inputOrigin",
+        "analysisOrigin",
+        "disclaimer"
+      ],
+      "additionalProperties": false
+    },
+    "ModelCard": {
+      "type": "object",
+      "properties": {
+        "contractVersion": {
+          "type": "string",
+          "const": "1.1.0"
+        },
+        "serviceVersion": {
+          "type": "string",
+          "minLength": 1
+        },
+        "intendedUse": {
+          "type": "string",
+          "minLength": 1
+        },
+        "forbiddenClaims": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "modelVersions": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "artifactHashes": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "enabledHeads": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "segmentation",
+              "anatomy",
+              "appearance",
+              "disease_research",
+              "lesion_reidentification"
+            ]
+          }
+        },
+        "releaseGates": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "head": {
+                "type": "string",
+                "enum": [
+                  "segmentation",
+                  "anatomy",
+                  "appearance",
+                  "disease_research",
+                  "lesion_reidentification"
+                ]
+              },
+              "passed": {
+                "type": "boolean"
+              },
+              "evaluatedAt": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "metrics": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "type": "number"
+                }
+              },
+              "unmetRequirements": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "reviewerApproved": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "head",
+              "passed",
+              "evaluatedAt",
+              "metrics",
+              "unmetRequirements",
+              "reviewerApproved"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "limitations": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "disclaimer": {
+          "type": "string",
+          "const": "This result is not a diagnosis."
+        }
+      },
+      "required": [
+        "contractVersion",
+        "serviceVersion",
+        "intendedUse",
+        "forbiddenClaims",
+        "modelVersions",
+        "artifactHashes",
+        "enabledHeads",
+        "releaseGates",
+        "limitations",
+        "disclaimer"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

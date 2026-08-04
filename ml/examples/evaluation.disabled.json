@@ -1,0 +1,12 @@
+{
+  "evaluation_id": "no-audited-evaluation",
+  "artifact_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "dataset_manifest_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "code_revision": "0000000000000000000000000000000000000000",
+  "evaluated_at": "2026-07-21T00:00:00Z",
+  "segmentation": {},
+  "anatomy": {},
+  "appearance": {},
+  "disease": {},
+  "reidentification": {}
+}
