@@ -38,7 +38,7 @@ async def test_runtime_composes_every_processor_without_network_access() -> None
     runtime = Runtime.build(Settings(environment="test"))
     assert runtime.runner.concurrency == 2
     assert await runtime.ready() is False
-    assert len(runtime.runner.engine.registry.processors) == 6
+    assert len(runtime.runner.engine.registry.processors) == 7
     await runtime.close()
 
 

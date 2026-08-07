@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from base64 import b64encode
 from datetime import timedelta
 from uuid import UUID
 
@@ -24,6 +25,8 @@ from oralsight_worker.models import (
     AnalysisStatus,
     CalibrationRequest,
     ComparePayload,
+    DataExportEncryption,
+    DataExportPayload,
     DeleteAllPayload,
     JobEnvelope,
     JobOutcome,
@@ -68,7 +71,7 @@ def prior(capture_id: UUID) -> PriorAnalysisMetadata:
     )
 
 
-def test_all_six_job_payloads_validate() -> None:
+def test_all_seven_job_payloads_validate() -> None:
     current = UUID("00000000-0000-4000-8000-000000000007")
     second_asset = asset_pointer(IMAGE_BYTES)
     second_asset.asset_id = UUID("00000000-0000-4000-8000-000000000008")
@@ -119,6 +122,12 @@ def test_all_six_job_payloads_validate() -> None:
                 code="neutral_seek_care_information", source="neutral"
             ),
         ),
+        JobType.DATA_EXPORT: DataExportPayload(
+            export_request_id=UUID("00000000-0000-4000-8000-000000000036"),
+            encryption=DataExportEncryption(
+                recipient_public_key_b64=b64encode(b"x" * 32).decode("ascii")
+            ),
+        ),
         JobType.DELETE_ALL: DeleteAllPayload(
             deletion_request_id=UUID("00000000-0000-4000-8000-000000000034"),
             subject_account_id=ACCOUNT_ID,
@@ -127,6 +136,11 @@ def test_all_six_job_payloads_validate() -> None:
     assert analysis_envelope().payload.kind is JobType.ANALYSIS
     for kind, payload in payloads.items():
         assert wrap(kind, payload).payload.kind is kind
+
+
+def test_export_requires_a_raw_x25519_recipient_key() -> None:
+    with pytest.raises(ValidationError):
+        DataExportEncryption(recipient_public_key_b64="not-a-key")
 
 
 def test_summary_video_rejects_unapproved_clinical_guidance() -> None:

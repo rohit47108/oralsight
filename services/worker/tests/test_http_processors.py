@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from base64 import b64encode
 from io import BytesIO
 from uuid import UUID
 
@@ -22,6 +23,8 @@ from oralsight_worker.models import (
     AnalysisStatus,
     CalibrationRequest,
     ComparePayload,
+    DataExportEncryption,
+    DataExportPayload,
     DeleteAllPayload,
     JobOutcome,
     JobType,
@@ -37,6 +40,7 @@ from oralsight_worker.models import (
 from oralsight_worker.processors import (
     AnalysisProcessor,
     ComparisonProcessor,
+    DataExportProcessor,
     DeleteAllProcessor,
     JobCancelled,
     JobContext,
@@ -529,6 +533,55 @@ async def test_delete_all_and_platform_callbacks_are_real_internal_calls(
         f"/internal/v2/jobs/{job.job_id}/result",
         f"/internal/v2/jobs/{job.job_id}/retention",
     ]
+
+
+async def test_portable_data_export_is_public_key_encrypted(envelope) -> None:
+    export_request_id = UUID("00000000-0000-4000-8000-000000000098")
+    payload = DataExportPayload(
+        export_request_id=export_request_id,
+        encryption=DataExportEncryption(
+            recipient_public_key_b64=b64encode(b"r" * 32).decode("ascii")
+        ),
+    )
+    job = envelope.model_copy(
+        update={"job_type": JobType.DATA_EXPORT, "payload": payload}
+    )
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/internal/v2/exports/render"
+        body = await request.aread()
+        assert b'"scope":"all_portable_data"' in body
+        assert b'"includeFiles":true' in body
+        return httpx.Response(
+            200,
+            json={
+                "exportRequestId": str(export_request_id),
+                "status": "complete",
+                "artifactId": "00000000-0000-4000-8000-000000000099",
+                "mediaType": "application/vnd.oralsight.export",
+                "sha256": "a" * 64,
+                "byteSize": 4_096,
+                "encryption": {
+                    "scheme": "x25519-hkdf-sha256-aes-256-gcm",
+                    "ephemeralPublicKeyB64": b64encode(b"e" * 32).decode("ascii"),
+                    "saltB64": b64encode(b"s" * 16).decode("ascii"),
+                    "nonceB64": b64encode(b"n" * 12).decode("ascii"),
+                },
+            },
+        )
+
+    internal, raw = internal_client(handler)
+    try:
+        result = await DataExportProcessor(internal).process(job, context(job))
+    finally:
+        await raw.aclose()
+
+    assert result.outcome is JobOutcome.COMPLETE
+    assert result.result["dataExport"]["artifactId"].endswith("99")
+    assert (
+        result.result["dataExport"]["encryption"]["scheme"]
+        == "x25519-hkdf-sha256-aes-256-gcm"
+    )
 
 
 async def test_cancellation_checkpoint_and_missing_registry_entry(envelope) -> None:
