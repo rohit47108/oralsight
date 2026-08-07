@@ -16,6 +16,7 @@ from .models import JobType
 from .processors import (
     AnalysisProcessor,
     ComparisonProcessor,
+    DataExportProcessor,
     DeleteAllProcessor,
     PlatformReporter,
     ProcessorRegistry,
@@ -73,6 +74,7 @@ class Runtime:
                 JobType.RECONSTRUCTION: ReconstructionProcessor(internal_http),
                 JobType.REPORT: ReportProcessor(internal_http),
                 JobType.SUMMARY_VIDEO: SummaryVideoProcessor(internal_http),
+                JobType.DATA_EXPORT: DataExportProcessor(internal_http),
                 JobType.DELETE_ALL: DeleteAllProcessor(internal_http),
             }
         )

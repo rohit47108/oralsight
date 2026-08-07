@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import re
+from base64 import b64decode
+from binascii import Error as Base64Error
 from datetime import datetime, timedelta
 from enum import StrEnum
 from typing import Annotated, Literal
@@ -77,6 +79,7 @@ class JobType(StrEnum):
     RECONSTRUCTION = "reconstruction"
     REPORT = "report"
     SUMMARY_VIDEO = "summary_video"
+    DATA_EXPORT = "data_export"
     DELETE_ALL = "delete_all"
 
 
@@ -375,6 +378,34 @@ class SummaryVideoPayload(StrictModel):
         return value
 
 
+class DataExportEncryption(StrictModel):
+    scheme: Literal["x25519-hkdf-sha256-aes-256-gcm"] = "x25519-hkdf-sha256-aes-256-gcm"
+    recipient_public_key_b64: str = Field(pattern=r"^[A-Za-z0-9+/]{43}=$")
+
+    @field_validator("recipient_public_key_b64")
+    @classmethod
+    def recipient_key_is_raw_x25519(cls, value: str) -> str:
+        try:
+            decoded = b64decode(value, validate=True)
+        except (ValueError, Base64Error) as exc:
+            raise ValueError("The export recipient key is not valid base64.") from exc
+        if len(decoded) != 32:
+            raise ValueError("The export recipient key must contain 32 raw bytes.")
+        return value
+
+
+class DataExportPayload(StrictModel):
+    kind: Literal[JobType.DATA_EXPORT] = JobType.DATA_EXPORT
+    export_request_id: UUID
+    scope: Literal["all_portable_data"] = "all_portable_data"
+    format: Literal["zip"] = "zip"
+    encryption: DataExportEncryption
+    include_files: bool = True
+    disclaimer: Literal["This result is not a diagnosis."] = (
+        "This result is not a diagnosis."
+    )
+
+
 class DeleteAllPayload(StrictModel):
     kind: Literal[JobType.DELETE_ALL] = JobType.DELETE_ALL
     deletion_request_id: UUID
@@ -389,6 +420,7 @@ JobPayload = Annotated[
     | ReconstructionPayload
     | ReportPayload
     | SummaryVideoPayload
+    | DataExportPayload
     | DeleteAllPayload,
     Field(discriminator="kind"),
 ]

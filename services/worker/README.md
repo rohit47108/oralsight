@@ -11,7 +11,8 @@ invented model output.
 - deterministic multi-view oral observation-surface rendering inside the
   worker;
 - PDF report rendering through the platform service;
-- captioned H.264 scan-summary video rendering inside the worker; and
+- captioned H.264 scan-summary video rendering inside the worker;
+- public-key-encrypted portable account exports through the platform service;
 - complete account deletion through the platform service.
 
 Reconstruction and summary-video rendering do not require separate services.
@@ -109,6 +110,17 @@ policy after each terminal outcome so its blob/database cleanup can run. The
 worker removes expired dead-letter entries from Redis. Deployments may delete
 sooner.
 
+## Portable data export
+
+An export job never places a password, private key, record payload, or file byte
+in Redis. It carries only a raw X25519 recipient public key and fixed options.
+The platform creates a normal ZIP, encrypts the complete archive with a fresh
+ephemeral X25519 key, HKDF-SHA-256, and AES-256-GCM, publishes the encrypted
+artifact, and deletes plaintext work in `finally`. The worker accepts completion
+only when the response includes the expected request, private artifact metadata,
+SHA-256, byte size, and the ephemeral public key, salt, and nonce needed by the
+recipient. The matching private key remains in protected device storage.
+
 ## Internal authentication
 
 Outbound calls can be signed with a short-lived HMAC proof over the HTTP method,
@@ -154,6 +166,7 @@ The worker expects these authenticated internal endpoints:
 - Platform: `POST /internal/v2/jobs/{jobId}/result`
 - Platform: `POST /internal/v2/jobs/{jobId}/retention`
 - Platform: `POST /internal/v2/reports/render`
+- Platform: `POST /internal/v2/exports/render`
 - Platform: `POST /internal/v2/deletion-requests/{requestId}/execute`
 - Inference: `POST /v1/analyze` and `POST /v1/compare`
 

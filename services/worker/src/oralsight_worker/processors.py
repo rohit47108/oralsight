@@ -29,6 +29,7 @@ from .local_artifacts import (
 from .models import (
     AnalyzePayload,
     ComparePayload,
+    DataExportPayload,
     DeleteAllPayload,
     JobEnvelope,
     JobOutcome,
@@ -452,6 +453,57 @@ class SummaryVideoProcessor:
                     "manifest": artifact.manifest,
                 }
             },
+        )
+
+
+@dataclass(slots=True)
+class DataExportProcessor:
+    http: InternalHttpClient
+
+    async def process(
+        self, envelope: JobEnvelope, context: JobContext
+    ) -> ProcessorResult:
+        payload = cast(DataExportPayload, envelope.payload)
+        await context.checkpoint()
+        result = await self.http.post_json(
+            self.http.platform_api_url,
+            "/internal/v2/exports/render",
+            {
+                "jobId": str(envelope.job_id),
+                **payload.model_dump(mode="json", by_alias=True, exclude={"kind"}),
+            },
+            max_response_bytes=32_768,
+        )
+        await context.checkpoint()
+        if unavailable := _upstream_unavailable(result):
+            return unavailable
+        encryption = result.get("encryption")
+        base64_value = re.compile(r"^[A-Za-z0-9+/]+={0,2}$")
+        if (
+            result.get("exportRequestId") != str(payload.export_request_id)
+            or result.get("status") != "complete"
+            or not isinstance(result.get("artifactId"), str)
+            or result.get("mediaType") != "application/vnd.oralsight.export"
+            or not isinstance(result.get("sha256"), str)
+            or re.fullmatch(r"[a-f0-9]{64}", result["sha256"]) is None
+            or not isinstance(result.get("byteSize"), int)
+            or not 0 < result["byteSize"] <= 2_147_483_647
+            or not isinstance(encryption, dict)
+            or encryption.get("scheme") != payload.encryption.scheme
+            or any(
+                not isinstance(encryption.get(field), str)
+                or base64_value.fullmatch(encryption[field]) is None
+                for field in (
+                    "ephemeralPublicKeyB64",
+                    "saltB64",
+                    "nonceB64",
+                )
+            )
+        ):
+            raise PermanentJobError("invalid_data_export_response")
+        return ProcessorResult(
+            outcome=JobOutcome.COMPLETE,
+            result={"dataExport": result},
         )
 
 
