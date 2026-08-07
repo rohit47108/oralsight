@@ -23,6 +23,7 @@ from PIL import Image, ImageDraw, ImageFont, ImageOps, UnidentifiedImageError
 
 from .models import (
     MouthRegion,
+    ReconstructionPin,
     ReconstructionView,
     SummaryVideoObservation,
     SummaryVideoPayload,
@@ -30,7 +31,7 @@ from .models import (
 )
 
 DISCLAIMER = "This result is not a diagnosis."
-SURFACE_ALGORITHM_VERSION = "oralsight-observation-surface/1.0.0"
+SURFACE_ALGORITHM_VERSION = "oralsight-observation-surface/2.0.0"
 VIDEO_RENDERER_VERSION = "oralsight-summary-video/2.0.0"
 MAX_IMAGE_PIXELS = 20_000_000
 Image.MAX_IMAGE_PIXELS = MAX_IMAGE_PIXELS
@@ -271,6 +272,67 @@ def _build_glb(manifest: dict[str, Any]) -> bytes:
             }
         )
 
+    pin_colors = {
+        "tracking": [0.98, 0.64, 0.24],
+        "retake_required": [0.54, 0.64, 0.7],
+        "stable": [0.18, 0.72, 0.58],
+        "visually_changed": [0.96, 0.43, 0.35],
+        "review_unavailable": [0.54, 0.64, 0.7],
+        "professional_review_suggested": [0.96, 0.43, 0.35],
+        "clinician_reviewed": [0.26, 0.52, 0.86],
+    }
+    for pin in manifest["pins"]:
+        layout = REGION_LAYOUT[MouthRegion(pin["region"])]
+        uv_x, uv_y = pin["uvCoordinates"]
+        region_scale = layout["scale"]
+        position = [
+            layout["translation"][0] + (uv_x - 0.5) * region_scale[0] * 0.65,
+            layout["translation"][1] + (0.5 - uv_y) * region_scale[1] * 0.65,
+            layout["translation"][2] + 0.35 + region_scale[2] * 0.25,
+        ]
+        material_index = len(materials)
+        materials.append(
+            {
+                "name": f"confirmed_pin_{pin['status']}",
+                "pbrMetallicRoughness": {
+                    "baseColorFactor": [*pin_colors[pin["status"]], 1.0],
+                    "metallicFactor": 0.0,
+                    "roughnessFactor": 0.46,
+                },
+                "emissiveFactor": [0.14, 0.08, 0.02],
+                "extras": {
+                    "confirmedObservationPin": True,
+                    "notDiseaseRisk": True,
+                },
+            }
+        )
+        mesh_index = len(meshes)
+        meshes.append(
+            {
+                "name": f"observation_pin_{pin['observationId']}",
+                "primitives": [
+                    {
+                        "attributes": {"POSITION": 0, "NORMAL": 1},
+                        "indices": 2,
+                        "material": material_index,
+                    }
+                ],
+            }
+        )
+        nodes.append(
+            {
+                "name": f"pin_{pin['observationId']}",
+                "mesh": mesh_index,
+                "translation": [_round(value) for value in position],
+                "scale": [0.19, 0.19, 0.19],
+                "extras": {
+                    **pin,
+                    "worldPositionDerivedAtRender": True,
+                    "notDiagnosticMarker": True,
+                },
+            }
+        )
+
     gltf = {
         "asset": {
             "version": "2.0",
@@ -278,7 +340,9 @@ def _build_glb(manifest: dict[str, Any]) -> bytes:
             "extras": manifest,
         },
         "scene": 0,
-        "scenes": [{"name": "Oral observation surface", "nodes": list(range(8))}],
+        "scenes": [
+            {"name": "Oral observation surface", "nodes": list(range(len(nodes)))}
+        ],
         "nodes": nodes,
         "meshes": meshes,
         "materials": materials,
@@ -349,7 +413,9 @@ def build_observation_surface_from_evidence(
     capture_set_id: str,
     calibration_id: str | None,
     generated_at: str,
+    pins: list[ReconstructionPin] | None = None,
 ) -> LocalArtifact | SurfaceAbstention:
+    confirmed_pins = sorted(pins or [], key=lambda pin: str(pin.observation_id))
     accepted = [view for view in views if view["accepted"]]
     unique_angles = {view["angleLabel"] for view in accepted}
     regions: list[dict[str, Any]] = []
@@ -396,7 +462,7 @@ def build_observation_surface_from_evidence(
         else 0.0
     )
     manifest: dict[str, Any] = {
-        "schemaVersion": "oralsight.observation-surface.v1",
+        "schemaVersion": "oralsight.observation-surface.v2",
         "label": "personalized oral observation surface",
         "approximationLabel": "oral observation surface",
         "notAnatomicalDigitalTwin": True,
@@ -418,6 +484,23 @@ def build_observation_surface_from_evidence(
         },
         "views": views,
         "regions": regions,
+        "pinCount": len(confirmed_pins),
+        "pins": [
+            {
+                "observationId": str(pin.observation_id),
+                "region": pin.region.value,
+                "meshName": pin.mesh_name,
+                "uvCoordinates": list(pin.uv_coordinates),
+                "assetVersion": pin.asset_version,
+                "observedAt": pin.observed_at.isoformat().replace("+00:00", "Z"),
+                "status": pin.status,
+                "userConfirmed": True,
+                "estimatedAreaMm2": pin.estimated_area_mm2,
+                "measurementLabel": pin.measurement_label,
+                "guidanceRuleVersion": pin.guidance_rule_version,
+            }
+            for pin in confirmed_pins
+        ],
         "calibrationEvidence": {
             "calibrationId": calibration_id,
             "status": (
@@ -436,7 +519,9 @@ def build_observation_surface_from_evidence(
             "The geometry is a standard region map; captures change coverage "
             "and color summaries, not anatomy.",
             "Image color varies with lighting and camera processing.",
-            "No physical-size or millimeter measurement is produced.",
+            "Pin positions use named-region UV coordinates and are approximate.",
+            "The surface does not derive physical scale; any millimeter area "
+            "is copied from separately valid calibration evidence.",
         ],
     }
     if len(accepted) < 3:
@@ -471,12 +556,14 @@ def build_observation_surface(
     capture_set_id: str,
     calibration_id: str | None,
     generated_at: str,
+    pins: list[ReconstructionPin] | None = None,
 ) -> LocalArtifact | SurfaceAbstention:
     return build_observation_surface_from_evidence(
         [inspect_source_view(source) for source in sources],
         capture_set_id=capture_set_id,
         calibration_id=calibration_id,
         generated_at=generated_at,
+        pins=pins,
     )
 
 

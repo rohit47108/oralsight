@@ -291,6 +291,7 @@ class ReconstructionProcessor:
                 str(payload.calibration_id) if payload.calibration_id else None
             ),
             generated_at=generated_at,
+            pins=payload.pins,
         )
         await context.checkpoint()
         if isinstance(rendered, SurfaceAbstention):

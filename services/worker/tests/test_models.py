@@ -34,6 +34,7 @@ from oralsight_worker.models import (
     MouthRegion,
     PriorAnalysisMetadata,
     ReconstructionPayload,
+    ReconstructionPin,
     ReconstructionView,
     ReportPayload,
     ResultNotification,
@@ -205,6 +206,33 @@ def test_reconstruction_needs_three_unique_views() -> None:
         ReconstructionPayload(
             capture_set_id=ASSET_ID,
             views=[view, view, view],
+        )
+
+
+def test_reconstruction_pin_requires_canonical_mesh_and_approved_rule() -> None:
+    values = {
+        "observation_id": UUID("00000000-0000-4000-8000-000000000040"),
+        "region": MouthRegion.DORSAL_TONGUE,
+        "mesh_name": "tongue_dorsal",
+        "uv_coordinates": (0.4, 0.6),
+        "asset_version": "mouth-map-v1",
+        "observed_at": NOW,
+        "status": "stable",
+        "user_confirmed": True,
+    }
+    pin = ReconstructionPin(**values)
+    assert pin.mesh_name == "tongue_dorsal"
+
+    with pytest.raises(ValidationError, match="canonical mesh"):
+        ReconstructionPin(**{**values, "mesh_name": "wrong_mesh"})
+    with pytest.raises(ValidationError, match="normalized"):
+        ReconstructionPin(**{**values, "uv_coordinates": (float("nan"), 0.5)})
+    with pytest.raises(ValidationError, match="clinician-approved"):
+        ReconstructionPin(
+            **{
+                **values,
+                "status": "professional_review_suggested",
+            }
         )
 
 

@@ -35,6 +35,8 @@ the anatomy. The GLB and result manifest contain:
 - source capture, asset, and SHA-256 provenance;
 - per-view quality evidence and rejection reasons;
 - region coverage and named-mesh mappings;
+- confirmed observation pins with region, named mesh, normalized UV location,
+  date, status, asset version, and measurement provenance;
 - the exact renderer version and deterministic generation time;
 - abstention thresholds and limitations; and
 - calibration status.
@@ -55,7 +57,8 @@ The worker returns estimated width, height, and area only when:
 Any failed gate returns null physical values plus specific reasons. Passing
 values remain labeled "calibrated estimate," not exact clinical measurements.
 The generated GLB is labeled a "personalized oral observation surface," never
-an anatomical digital twin.
+an anatomical digital twin. Only observations the user confirmed are embedded
+as pin geometry. Unconfirmed automated match suggestions are never added.
 
 ## Local summary-video renderer
 
