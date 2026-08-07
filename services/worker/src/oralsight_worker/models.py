@@ -7,6 +7,7 @@ from base64 import b64decode
 from binascii import Error as Base64Error
 from datetime import datetime, timedelta
 from enum import StrEnum
+from math import isfinite
 from typing import Annotated, Literal
 from uuid import UUID
 
@@ -50,6 +51,18 @@ class MouthRegion(StrEnum):
     LOWER_LIP = "lower_lip"
     UPPER_DENTAL_ARCH = "upper_dental_arch"
     LOWER_DENTAL_ARCH = "lower_dental_arch"
+
+
+MESH_BY_REGION: dict[MouthRegion, str] = {
+    MouthRegion.DORSAL_TONGUE: "tongue_dorsal",
+    MouthRegion.VENTRAL_TONGUE: "tongue_ventral",
+    MouthRegion.LEFT_BUCCAL_MUCOSA: "buccal_left",
+    MouthRegion.RIGHT_BUCCAL_MUCOSA: "buccal_right",
+    MouthRegion.UPPER_LIP: "lip_upper",
+    MouthRegion.LOWER_LIP: "lip_lower",
+    MouthRegion.UPPER_DENTAL_ARCH: "arch_upper",
+    MouthRegion.LOWER_DENTAL_ARCH: "arch_lower",
+}
 
 
 class ModelHead(StrEnum):
@@ -204,10 +217,60 @@ class ReconstructionView(StrictModel):
     camera_pose_id: UUID | None = None
 
 
+class ReconstructionPin(StrictModel):
+    observation_id: UUID
+    region: MouthRegion
+    mesh_name: str = Field(pattern=r"^[A-Za-z0-9._-]{1,128}$")
+    uv_coordinates: tuple[float, float]
+    asset_version: str = Field(pattern=r"^[A-Za-z0-9._-]{1,128}$")
+    observed_at: AwareDatetime
+    status: Literal[
+        "tracking",
+        "retake_required",
+        "stable",
+        "visually_changed",
+        "review_unavailable",
+        "professional_review_suggested",
+        "clinician_reviewed",
+    ]
+    user_confirmed: Literal[True] = True
+    estimated_area_mm2: float | None = Field(default=None, ge=0, le=100_000)
+    measurement_label: Literal["approximate", "calibrated estimate"] = "approximate"
+    guidance_rule_version: str | None = Field(
+        default=None, pattern=r"^[A-Za-z0-9._:/-]{1,128}$"
+    )
+
+    @model_validator(mode="after")
+    def map_identity_and_measurement_are_coherent(self) -> ReconstructionPin:
+        if self.mesh_name != MESH_BY_REGION[self.region]:
+            raise ValueError("A reconstruction pin must use its canonical mesh name.")
+        if any(
+            not isfinite(value) or value < 0 or value > 1
+            for value in self.uv_coordinates
+        ):
+            raise ValueError("Reconstruction pin UV coordinates must be normalized.")
+        if self.estimated_area_mm2 is not None and (
+            self.measurement_label != "calibrated estimate"
+        ):
+            raise ValueError("Millimeter pin area requires valid calibration evidence.")
+        if self.status == "professional_review_suggested" and (
+            self.guidance_rule_version is None
+        ):
+            raise ValueError(
+                "Review status requires a clinician-approved rule version."
+            )
+        if self.status != "professional_review_suggested" and (
+            self.guidance_rule_version is not None
+        ):
+            raise ValueError("Only approved review status may name a guidance rule.")
+        return self
+
+
 class ReconstructionPayload(StrictModel):
     kind: Literal[JobType.RECONSTRUCTION] = JobType.RECONSTRUCTION
     capture_set_id: UUID
     views: list[ReconstructionView] = Field(min_length=3, max_length=64)
+    pins: list[ReconstructionPin] = Field(default_factory=list, max_length=256)
     calibration_id: UUID | None = None
     requested_format: Literal["glb"] = "glb"
     approximation_label: Literal["oral observation surface"] = (
@@ -222,6 +285,16 @@ class ReconstructionPayload(StrictModel):
         identifiers = [view.capture_id for view in value]
         if len(identifiers) != len(set(identifiers)):
             raise ValueError("Reconstruction views must use unique capture IDs.")
+        return value
+
+    @field_validator("pins")
+    @classmethod
+    def pin_observations_are_unique(
+        cls, value: list[ReconstructionPin]
+    ) -> list[ReconstructionPin]:
+        identifiers = [pin.observation_id for pin in value]
+        if len(identifiers) != len(set(identifiers)):
+            raise ValueError("Reconstruction pins must use unique observations.")
         return value
 
 

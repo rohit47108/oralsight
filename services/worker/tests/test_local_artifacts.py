@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import struct
+from datetime import UTC, datetime
 from io import BytesIO
 from uuid import UUID
 
@@ -14,7 +15,7 @@ from oralsight_worker.local_artifacts import (
     SurfaceAbstention,
     build_observation_surface,
 )
-from oralsight_worker.models import AssetPointer, ReconstructionView
+from oralsight_worker.models import AssetPointer, ReconstructionPin, ReconstructionView
 
 
 def source_image() -> bytes:
@@ -90,6 +91,36 @@ def test_surface_is_deterministic_valid_glb_with_embedded_provenance() -> None:
         "upper_dental_arch",
         "lower_dental_arch",
     }
+
+
+def test_surface_embeds_only_confirmed_observation_pins_as_geometry() -> None:
+    pin = ReconstructionPin(
+        observation_id=UUID("50000000-0000-4000-8000-000000000001"),
+        region="dorsal_tongue",
+        mesh_name="tongue_dorsal",
+        uv_coordinates=(0.35, 0.62),
+        asset_version="mouth-map-v1",
+        observed_at=datetime(2026, 8, 4, 12, tzinfo=UTC),
+        status="stable",
+        user_confirmed=True,
+    )
+
+    result = build_observation_surface(
+        sources(),
+        capture_set_id="30000000-0000-4000-8000-000000000001",
+        calibration_id=None,
+        generated_at="2026-08-04T12:00:00Z",
+        pins=[pin],
+    )
+
+    assert isinstance(result, LocalArtifact)
+    document = glb_json(result.data)
+    assert len(document["nodes"]) == 9
+    pin_node = document["nodes"][-1]
+    assert pin_node["extras"]["observationId"] == str(pin.observation_id)
+    assert pin_node["extras"]["userConfirmed"] is True
+    assert pin_node["extras"]["notDiagnosticMarker"] is True
+    assert document["asset"]["extras"]["pinCount"] == 1
 
 
 def test_surface_abstains_without_three_unique_usable_angles() -> None:
