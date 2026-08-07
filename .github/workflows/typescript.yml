@@ -52,8 +52,14 @@ jobs:
         run: pnpm test
       - name: Typecheck
         run: pnpm typecheck
+      - name: Lint and build the web product
+        run: |
+          pnpm --filter @oralsight/web lint
+          pnpm --filter @oralsight/web build
       - name: Audit JavaScript dependencies
         run: pnpm audit --audit-level high
+      - name: Validate Expo public configuration
+        run: pnpm --filter @oralsight/mobile config:public
       - name: Build production Expo bundles
         run: |
           pnpm --filter @oralsight/mobile exec expo export --platform android --output-dir /tmp/oralsight-android
