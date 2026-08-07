@@ -28,9 +28,10 @@ image bytes. It requires at least three usable captures from three named angles.
 If those checks fail, the job returns a documented abstention and no GLB.
 
 A passing job creates a valid GLB containing the eight fixed named regions. The
-geometry is a standard region map. Saved capture coverage and conservative
-image-color summaries personalize its observation layer; they do not reshape
-the anatomy. The GLB and result manifest contain:
+geometry is a standard region map. A coarse, deterministic multi-view color
+projection is baked into the observed region meshes from the verified captures;
+the source pixels are not embedded and the projection does not reshape anatomy.
+The GLB and result manifest contain:
 
 - source capture, asset, and SHA-256 provenance;
 - per-view quality evidence and rejection reasons;

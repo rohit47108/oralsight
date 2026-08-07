@@ -80,6 +80,15 @@ def test_surface_is_deterministic_valid_glb_with_embedded_provenance() -> None:
     assert extras["notAnatomicalDigitalTwin"] is True
     assert extras["calibrationEvidence"]["status"] == "reference_received_unverified"
     assert extras["calibrationEvidence"]["physicalScaleUsed"] is False
+    assert extras["personalization"] == {
+        "changesAnatomicalGeometry": False,
+        "gridHeight": 11,
+        "gridWidth": 17,
+        "method": "multi_view_vertex_color_projection",
+        "projectedRegionCount": 1,
+        "sourcePixelsEmbedded": False,
+    }
+    assert all("_surfaceColorGrid" not in view for view in extras["views"])
     assert len(document["nodes"]) == 8
     assert {node["extras"]["regionId"] for node in document["nodes"]} == {
         "dorsal_tongue",
@@ -91,6 +100,12 @@ def test_surface_is_deterministic_valid_glb_with_embedded_provenance() -> None:
         "upper_dental_arch",
         "lower_dental_arch",
     }
+    dorsal_mesh = document["meshes"][0]
+    assert "COLOR_0" in dorsal_mesh["primitives"][0]["attributes"]
+    assert document["materials"][0]["extras"]["projectionMethod"] == (
+        "multi_view_vertex_color_projection"
+    )
+    assert "COLOR_0" not in document["meshes"][1]["primitives"][0]["attributes"]
 
 
 def test_surface_embeds_only_confirmed_observation_pins_as_geometry() -> None:

@@ -31,9 +31,14 @@ from .models import (
 )
 
 DISCLAIMER = "This result is not a diagnosis."
-SURFACE_ALGORITHM_VERSION = "oralsight-observation-surface/2.0.0"
+SURFACE_ALGORITHM_VERSION = "oralsight-observation-surface/2.1.0"
 VIDEO_RENDERER_VERSION = "oralsight-summary-video/2.0.0"
 MAX_IMAGE_PIXELS = 20_000_000
+SURFACE_LATITUDE_SEGMENTS = 10
+SURFACE_LONGITUDE_SEGMENTS = 16
+SURFACE_COLOR_VERTEX_COUNT = (SURFACE_LATITUDE_SEGMENTS + 1) * (
+    SURFACE_LONGITUDE_SEGMENTS + 1
+)
 Image.MAX_IMAGE_PIXELS = MAX_IMAGE_PIXELS
 
 
@@ -131,6 +136,17 @@ def inspect_source_view(source: SourceView) -> dict[str, Any]:
             width, height = image.size
             image.thumbnail((1024, 1024), Image.Resampling.LANCZOS)
             rgb = np.asarray(image, dtype=np.uint8)
+            surface_grid = np.asarray(
+                ImageOps.fit(
+                    image,
+                    (
+                        SURFACE_LONGITUDE_SEGMENTS + 1,
+                        SURFACE_LATITUDE_SEGMENTS + 1,
+                    ),
+                    method=Image.Resampling.LANCZOS,
+                ),
+                dtype=np.uint8,
+            )
     except (Image.DecompressionBombError, UnidentifiedImageError, OSError, ValueError):
         evidence["reasons"] = ["image_decode_failed"]
         return evidence
@@ -161,6 +177,9 @@ def inspect_source_view(source: SourceView) -> dict[str, Any]:
             "contrastScore": _round(contrast_score),
             "sharpnessScore": _round(sharpness_score),
             "meanRgb": [_round(channel / 255.0) for channel in mean_rgb],
+            # This compact grid is used only while building the protected GLB.
+            # It is removed before provenance is serialized into the artifact.
+            "_surfaceColorGrid": surface_grid.reshape(-1, 3).tolist(),
             "accepted": not reasons,
             "reasons": reasons,
         }
@@ -169,7 +188,8 @@ def inspect_source_view(source: SourceView) -> dict[str, Any]:
 
 
 def _sphere_geometry(
-    latitude_segments: int = 10, longitude_segments: int = 16
+    latitude_segments: int = SURFACE_LATITUDE_SEGMENTS,
+    longitude_segments: int = SURFACE_LONGITUDE_SEGMENTS,
 ) -> tuple[bytes, bytes, bytes, int, int]:
     positions: list[float] = []
     normals: list[float] = []
@@ -204,14 +224,107 @@ def _pad4(value: bytes, pad: bytes = b"\x00") -> bytes:
     return value + pad * ((-len(value)) % 4)
 
 
-def _build_glb(manifest: dict[str, Any]) -> bytes:
+def _projected_vertex_colors(region_views: list[dict[str, Any]]) -> bytes | None:
+    grids = [
+        np.asarray(view["_surfaceColorGrid"], dtype=np.float32)
+        for view in region_views
+        if view.get("accepted") and "_surfaceColorGrid" in view
+    ]
+    if not grids or any(
+        grid.shape != (SURFACE_COLOR_VERTEX_COUNT, 3) for grid in grids
+    ):
+        return None
+    averaged = np.mean(np.stack(grids, axis=0), axis=0) / 255.0
+    # Keep a small material tint so camera white balance does not make the
+    # observation surface look like calibrated clinical colorimetry.
+    neutral_tissue = np.asarray([0.72, 0.34, 0.38], dtype=np.float32)
+    projected = np.clip(averaged * 0.78 + neutral_tissue * 0.22, 0.0, 1.0)
+    return struct.pack(
+        f"<{projected.size}f",
+        *(_round(value) for value in projected.reshape(-1)),
+    )
+
+
+def _build_glb(
+    manifest: dict[str, Any], region_vertex_colors: dict[str, bytes]
+) -> bytes:
     position_bytes, normal_bytes, index_bytes, vertex_count, index_count = (
         _sphere_geometry()
     )
     position_offset = 0
     normal_offset = len(position_bytes)
     index_offset = normal_offset + len(normal_bytes)
-    binary = _pad4(position_bytes + normal_bytes + index_bytes)
+    binary = bytearray(_pad4(position_bytes + normal_bytes + index_bytes))
+
+    buffer_views: list[dict[str, Any]] = [
+        {
+            "buffer": 0,
+            "byteOffset": position_offset,
+            "byteLength": len(position_bytes),
+            "target": 34962,
+        },
+        {
+            "buffer": 0,
+            "byteOffset": normal_offset,
+            "byteLength": len(normal_bytes),
+            "target": 34962,
+        },
+        {
+            "buffer": 0,
+            "byteOffset": index_offset,
+            "byteLength": len(index_bytes),
+            "target": 34963,
+        },
+    ]
+    accessors: list[dict[str, Any]] = [
+        {
+            "bufferView": 0,
+            "componentType": 5126,
+            "count": vertex_count,
+            "type": "VEC3",
+            "min": [-0.55, -0.55, -0.55],
+            "max": [0.55, 0.55, 0.55],
+        },
+        {
+            "bufferView": 1,
+            "componentType": 5126,
+            "count": vertex_count,
+            "type": "VEC3",
+        },
+        {
+            "bufferView": 2,
+            "componentType": 5123,
+            "count": index_count,
+            "type": "SCALAR",
+            "min": [0],
+            "max": [vertex_count - 1],
+        },
+    ]
+    color_accessors: dict[str, int] = {}
+    for region in MouthRegion:
+        color_bytes = region_vertex_colors.get(region.value)
+        if color_bytes is None:
+            continue
+        color_offset = len(binary)
+        binary.extend(_pad4(color_bytes))
+        buffer_view_index = len(buffer_views)
+        buffer_views.append(
+            {
+                "buffer": 0,
+                "byteOffset": color_offset,
+                "byteLength": len(color_bytes),
+                "target": 34962,
+            }
+        )
+        color_accessors[region.value] = len(accessors)
+        accessors.append(
+            {
+                "bufferView": buffer_view_index,
+                "componentType": 5126,
+                "count": vertex_count,
+                "type": "VEC3",
+            }
+        )
 
     region_evidence = {item["region"]: item for item in manifest["regions"]}
     materials: list[dict[str, Any]] = []
@@ -219,15 +332,8 @@ def _build_glb(manifest: dict[str, Any]) -> bytes:
     nodes: list[dict[str, Any]] = []
     for region, layout in REGION_LAYOUT.items():
         evidence = region_evidence[region.value]
-        mean_rgb = evidence["meanRgb"]
-        if evidence["acceptedViewCount"]:
-            base = [0.72, 0.34, 0.38]
-            color = [
-                _round(base[index] * 0.72 + mean_rgb[index] * 0.28)
-                for index in range(3)
-            ]
-        else:
-            color = [0.51, 0.62, 0.64]
+        has_projected_color = region.value in color_accessors
+        color = [1.0, 1.0, 1.0] if has_projected_color else [0.51, 0.62, 0.64]
         material_index = len(materials)
         materials.append(
             {
@@ -238,18 +344,26 @@ def _build_glb(manifest: dict[str, Any]) -> bytes:
                     "roughnessFactor": 0.78,
                 },
                 "extras": {
-                    "derivedFromImageColor": bool(evidence["acceptedViewCount"]),
+                    "derivedFromImageColor": has_projected_color,
+                    "projectionMethod": (
+                        "multi_view_vertex_color_projection"
+                        if has_projected_color
+                        else "none"
+                    ),
                     "notDiagnosticColor": True,
                 },
             }
         )
+        attributes = {"POSITION": 0, "NORMAL": 1}
+        if has_projected_color:
+            attributes["COLOR_0"] = color_accessors[region.value]
         mesh_index = len(meshes)
         meshes.append(
             {
                 "name": layout["mesh"],
                 "primitives": [
                     {
-                        "attributes": {"POSITION": 0, "NORMAL": 1},
+                        "attributes": attributes,
                         "indices": 2,
                         "material": material_index,
                     }
@@ -347,50 +461,8 @@ def _build_glb(manifest: dict[str, Any]) -> bytes:
         "meshes": meshes,
         "materials": materials,
         "buffers": [{"byteLength": len(binary)}],
-        "bufferViews": [
-            {
-                "buffer": 0,
-                "byteOffset": position_offset,
-                "byteLength": len(position_bytes),
-                "target": 34962,
-            },
-            {
-                "buffer": 0,
-                "byteOffset": normal_offset,
-                "byteLength": len(normal_bytes),
-                "target": 34962,
-            },
-            {
-                "buffer": 0,
-                "byteOffset": index_offset,
-                "byteLength": len(index_bytes),
-                "target": 34963,
-            },
-        ],
-        "accessors": [
-            {
-                "bufferView": 0,
-                "componentType": 5126,
-                "count": vertex_count,
-                "type": "VEC3",
-                "min": [-0.55, -0.55, -0.55],
-                "max": [0.55, 0.55, 0.55],
-            },
-            {
-                "bufferView": 1,
-                "componentType": 5126,
-                "count": vertex_count,
-                "type": "VEC3",
-            },
-            {
-                "bufferView": 2,
-                "componentType": 5123,
-                "count": index_count,
-                "type": "SCALAR",
-                "min": [0],
-                "max": [vertex_count - 1],
-            },
-        ],
+        "bufferViews": buffer_views,
+        "accessors": accessors,
     }
     json_chunk = _pad4(
         json.dumps(gltf, sort_keys=True, separators=(",", ":")).encode(), b" "
@@ -402,7 +474,7 @@ def _build_glb(manifest: dict[str, Any]) -> bytes:
             struct.pack("<I4s", len(json_chunk), b"JSON"),
             json_chunk,
             struct.pack("<I4s", len(binary), b"BIN\x00"),
-            binary,
+            bytes(binary),
         )
     )
 
@@ -422,6 +494,11 @@ def build_observation_surface_from_evidence(
     grouped: defaultdict[str, list[dict[str, Any]]] = defaultdict(list)
     for view in accepted:
         grouped[view["region"]].append(view)
+    region_vertex_colors = {
+        region.value: colors
+        for region in MouthRegion
+        if (colors := _projected_vertex_colors(grouped[region.value])) is not None
+    }
     for region in MouthRegion:
         region_views = grouped[region.value]
         mean_rgb = (
@@ -482,7 +559,10 @@ def build_observation_surface_from_evidence(
             "minimumContrastScore": 0.05,
             "minimumSharpnessScore": 0.08,
         },
-        "views": views,
+        "views": [
+            {key: value for key, value in view.items() if not key.startswith("_")}
+            for view in views
+        ],
         "regions": regions,
         "pinCount": len(confirmed_pins),
         "pins": [
@@ -515,9 +595,17 @@ def build_observation_surface_from_evidence(
                 else "No calibration reference was provided."
             ),
         },
+        "personalization": {
+            "method": "multi_view_vertex_color_projection",
+            "projectedRegionCount": len(region_vertex_colors),
+            "gridWidth": SURFACE_LONGITUDE_SEGMENTS + 1,
+            "gridHeight": SURFACE_LATITUDE_SEGMENTS + 1,
+            "changesAnatomicalGeometry": False,
+            "sourcePixelsEmbedded": False,
+        },
         "limitations": [
-            "The geometry is a standard region map; captures change coverage "
-            "and color summaries, not anatomy.",
+            "The geometry is a standard region map; captures add a coarse "
+            "multi-view color projection but do not reshape anatomy.",
             "Image color varies with lighting and camera processing.",
             "Pin positions use named-region UV coordinates and are approximate.",
             "The surface does not derive physical scale; any millimeter area "
@@ -540,7 +628,7 @@ def build_observation_surface_from_evidence(
         )
     manifest["status"] = "complete"
     manifest["abstentionReasons"] = []
-    artifact = _build_glb(manifest)
+    artifact = _build_glb(manifest, region_vertex_colors)
     return LocalArtifact(
         data=artifact,
         filename=f"oral-observation-surface-{capture_set_id}.glb",
