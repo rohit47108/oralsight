@@ -21,6 +21,12 @@ def test_valid_same_plane_marker_returns_calibrated_estimates() -> None:
     result = estimate_calibration(
         calibration_image(),
         bounding_box=(360 / 800, 230 / 600, 100 / 800, 50 / 600),
+        candidate_polygon=(
+            (360 / 800, 230 / 600),
+            (460 / 800, 230 / 600),
+            (460 / 800, 280 / 600),
+            (360 / 800, 280 / 600),
+        ),
         normalized_area=5_000 / (800 * 600),
         plane_confirmed=True,
     )
@@ -64,6 +70,12 @@ def test_failed_gates_never_return_physical_values(
     result = estimate_calibration(
         image,
         bounding_box=box,
+        candidate_polygon=(
+            (0.45, 0.38),
+            (0.57, 0.38),
+            (0.57, 0.46),
+            (0.45, 0.46),
+        ),
         normalized_area=area,
         plane_confirmed=plane,
     )

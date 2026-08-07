@@ -74,10 +74,34 @@ def _candidate_points(
     )
 
 
+def _candidate_polygon_points(
+    polygon: tuple[tuple[float, float], ...],
+    *,
+    width: int,
+    height: int,
+) -> np.ndarray:
+    if len(polygon) < 3:
+        raise ValueError("invalid_candidate_polygon")
+    points = np.asarray(polygon, dtype=np.float32)
+    if (
+        points.shape != (len(polygon), 2)
+        or not np.all(np.isfinite(points))
+        or np.any(points < 0)
+        or np.any(points > 1)
+    ):
+        raise ValueError("invalid_candidate_polygon")
+    points[:, 0] *= width
+    points[:, 1] *= height
+    if cv2.contourArea(points) <= 0:
+        raise ValueError("invalid_candidate_polygon")
+    return points
+
+
 def estimate_calibration(
     encoded_image: bytes,
     *,
     bounding_box: tuple[float, float, float, float] | None,
+    candidate_polygon: tuple[tuple[float, float], ...] | None,
     normalized_area: float | None,
     plane_confirmed: bool,
 ) -> CalibrationEstimate:
@@ -85,7 +109,7 @@ def estimate_calibration(
 
     if not plane_confirmed:
         return _invalid("target_plane_not_confirmed")
-    if bounding_box is None or normalized_area is None:
+    if bounding_box is None or candidate_polygon is None or normalized_area is None:
         return _invalid("candidate_boundary_unavailable")
     if not 0 <= normalized_area <= 1:
         return _invalid("invalid_candidate_area")
@@ -96,6 +120,9 @@ def estimate_calibration(
     height, width = image.shape[:2]
     try:
         target = _candidate_points(bounding_box, width=width, height=height)
+        polygon = _candidate_polygon_points(
+            candidate_polygon, width=width, height=height
+        )
     except ValueError as exc:
         return _invalid(str(exc))
 
@@ -153,6 +180,9 @@ def estimate_calibration(
     )
     homography = cv2.getPerspectiveTransform(marker, canonical)
     projected = cv2.perspectiveTransform(target.reshape(1, 4, 2), homography)[0]
+    projected_polygon = cv2.perspectiveTransform(
+        polygon.reshape(1, len(polygon), 2), homography
+    )[0]
     estimated_width = float(
         (
             np.linalg.norm(projected[1] - projected[0])
@@ -168,7 +198,7 @@ def estimate_calibration(
         / 2
     )
     millimeters_per_pixel = MARKER_SIDE_MM / mean_edge
-    estimated_area = normalized_area * width * height * millimeters_per_pixel**2
+    estimated_area = float(abs(cv2.contourArea(projected_polygon)))
     positive_values = (estimated_width, estimated_height, millimeters_per_pixel)
     if (
         not all(np.isfinite(value) and value > 0 for value in positive_values)

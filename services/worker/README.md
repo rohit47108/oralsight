@@ -42,7 +42,8 @@ A calibration ID on a reconstruction remains a provenance reference only; it
 does not rescale or reshape the observation surface. Physical estimates are
 computed separately during analysis from the same hash-verified sanitized
 capture. The versioned card uses a 20 mm ArUco marker (dictionary 4x4_50,
-marker 17). The worker returns estimated width, height, and area only when:
+marker 17). A marker-plane transform is applied to the saved candidate polygon.
+The worker returns estimated width, height, and area only when:
 
 - the user confirmed that the marker and observation are on the same plane;
 - the expected marker is found and is at least 40 pixels wide;

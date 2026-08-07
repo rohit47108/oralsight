@@ -110,9 +110,11 @@ class AnalysisProcessor:
             if payload.calibration is not None:
                 candidate = result.get("candidateMask")
                 bounding_box: tuple[float, float, float, float] | None = None
+                candidate_polygon: tuple[tuple[float, float], ...] | None = None
                 normalized_area: float | None = None
                 if isinstance(candidate, dict):
                     raw_box = candidate.get("boundingBox")
+                    raw_polygon = candidate.get("polygon")
                     raw_area = candidate.get("normalizedArea")
                     if (
                         isinstance(raw_box, list)
@@ -123,12 +125,26 @@ class AnalysisProcessor:
                             tuple[float, float, float, float],
                             tuple(float(value) for value in raw_box),
                         )
+                    if (
+                        isinstance(raw_polygon, list)
+                        and len(raw_polygon) >= 3
+                        and all(
+                            isinstance(point, list)
+                            and len(point) == 2
+                            and all(isinstance(value, int | float) for value in point)
+                            for point in raw_polygon
+                        )
+                    ):
+                        candidate_polygon = tuple(
+                            (float(point[0]), float(point[1])) for point in raw_polygon
+                        )
                     if isinstance(raw_area, int | float):
                         normalized_area = float(raw_area)
                 estimate = await asyncio.to_thread(
                     estimate_calibration,
                     image,
                     bounding_box=bounding_box,
+                    candidate_polygon=candidate_polygon,
                     normalized_area=normalized_area,
                     plane_confirmed=payload.calibration.plane_confirmed,
                 )
