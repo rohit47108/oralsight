@@ -158,6 +158,12 @@ async def test_analysis_returns_calibration_only_after_real_marker_gates(
                 "status": "complete",
                 "analysisOrigin": "live_model",
                 "candidateMask": {
+                    "polygon": [
+                        [0.45, 0.383333],
+                        [0.575, 0.383333],
+                        [0.575, 0.466666],
+                        [0.45, 0.466666],
+                    ],
                     "boundingBox": [0.45, 0.383333, 0.125, 0.083333],
                     "normalizedArea": 5_000 / (800 * 600),
                 },
