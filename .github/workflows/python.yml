@@ -5,6 +5,9 @@ on:
     paths:
       - "ml/**"
       - "services/inference/**"
+      - "services/platform-api/**"
+      - "services/worker/**"
+      - "compose.yaml"
       - "pyproject.toml"
       - "uv.lock"
       - ".python-version"
@@ -14,6 +17,9 @@ on:
     paths:
       - "ml/**"
       - "services/inference/**"
+      - "services/platform-api/**"
+      - "services/worker/**"
+      - "compose.yaml"
       - "pyproject.toml"
       - "uv.lock"
       - ".python-version"
@@ -34,7 +40,30 @@ env:
 jobs:
   workspace-tests:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:17.6-alpine
+        env:
+          POSTGRES_DB: oralsight
+          POSTGRES_USER: oralsight
+          POSTGRES_PASSWORD: local-development-only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U oralsight -d oralsight"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+      redis:
+        image: redis:7.4.3-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -54,14 +83,32 @@ jobs:
           mkdir /tmp/oralsight-inference-lock
           cp services/inference/pyproject.toml services/inference/README.md services/inference/uv.lock /tmp/oralsight-inference-lock/
           uv lock --directory /tmp/oralsight-inference-lock --check
-      - name: Run inference and synthetic-metadata ML tests
-        run: uv run --frozen --all-packages --no-sync pytest services/inference/tests ml/tests
+      - name: Run all Python tests
+        run: >-
+          uv run --frozen --all-packages --no-sync pytest
+          services/inference/tests services/platform-api/tests services/worker/tests ml/tests
+      - name: Apply and inspect PostgreSQL migrations
+        env:
+          ORALSIGHT_PLATFORM_DATABASE_URL: postgresql+asyncpg://oralsight:local-development-only@127.0.0.1:5432/oralsight
+          ORALSIGHT_PLATFORM_ENVIRONMENT: development
+          ORALSIGHT_PLATFORM_AUTH_MODE: local_test
+          ORALSIGHT_PLATFORM_LOCAL_TEST_SIGNING_SECRET: local-development-signing-secret-change-me
+          ORALSIGHT_PLATFORM_SHARE_SECRET_DERIVATION_KEY: local-development-share-secret-change-me-32-bytes
+          ORALSIGHT_PLATFORM_WORKER_SERVICE_HMAC_SECRET: local-development-worker-hmac-secret-change-me
+        run: |
+          uv run --frozen --package oralsight-platform-api --no-sync alembic -c services/platform-api/alembic.ini upgrade head
+          uv run --frozen --package oralsight-platform-api --no-sync alembic -c services/platform-api/alembic.ini check
       - name: Lint and format check
         run: |
-          uvx --from ruff==0.14.14 ruff check services/inference ml .github/scripts
-          uvx --from ruff==0.14.14 ruff format --check services/inference ml .github/scripts
+          uvx --from ruff==0.14.14 ruff check services/inference services/platform-api services/worker ml .github/scripts
+          uvx --from ruff==0.14.14 ruff format --check services/inference services/platform-api services/worker ml .github/scripts
       - name: Audit production Python dependencies
-        run: uvx --from pip-audit==2.10.0 pip-audit -r services/inference/requirements.lock.txt --disable-pip
+        run: |
+          uv export --frozen --package oralsight-platform-api --no-dev --no-emit-project --format requirements.txt --no-header --output-file /tmp/platform-requirements.txt
+          uv export --frozen --package oralsight-worker --no-dev --no-emit-project --format requirements.txt --no-header --output-file /tmp/worker-requirements.txt
+          uvx --from pip-audit==2.10.0 pip-audit -r services/inference/requirements.lock.txt --disable-pip
+          uvx --from pip-audit==2.10.0 pip-audit -r /tmp/platform-requirements.txt --disable-pip
+          uvx --from pip-audit==2.10.0 pip-audit -r /tmp/worker-requirements.txt --disable-pip
       - name: Confirm default model gates fail closed
         run: uv run --frozen --package oralsight-ml --no-sync python -m oralsight_ml.gates ml/examples/evaluation.disabled.json
       - name: Build and smoke-test production inference container
@@ -77,5 +124,10 @@ jobs:
           done
           docker logs "$container_id"
           exit 1
+      - name: Validate and build the complete container stack
+        run: |
+          docker compose config --quiet
+          docker build --tag oralsight-platform-api:ci services/platform-api
+          docker build --tag oralsight-worker:ci services/worker
 
 # Workflows upload no artifacts, reports, manifests, model weights, or medical data.
