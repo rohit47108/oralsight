@@ -61,6 +61,15 @@ interface MapRenderBoundaryProps {
   onError: () => void;
 }
 
+const TOOTH_POSITIONS = Array.from({ length: 11 }, (_, index) => {
+  const angle = Math.PI * (0.08 + (index / 10) * 0.84);
+  return {
+    x: Math.cos(angle) * 0.88,
+    curve: Math.sin(angle),
+    rotation: (Math.PI / 2 - angle) * 0.22,
+  };
+});
+
 class MapRenderBoundary extends Component<
   MapRenderBoundaryProps,
   { failed: boolean }
@@ -113,6 +122,111 @@ function RegionMesh({
           />
         </mesh>
       ) : null}
+    </group>
+  );
+}
+
+function MouthAnatomySupport({
+  exploded,
+  showTeeth,
+  translucent,
+}: {
+  exploded: boolean;
+  showTeeth: boolean;
+  translucent: boolean;
+}) {
+  const tissueOpacity = translucent ? 0.22 : 0.5;
+  const rearTissueOpacity = translucent ? 0.11 : 0.32;
+  const upperOffset = exploded ? 0.18 : 0;
+  const lowerOffset = exploded ? -0.18 : 0;
+
+  return (
+    <group name="supporting-oral-anatomy">
+      <mesh
+        name="palate"
+        position={[0, 0.24 + upperOffset, -0.48]}
+        scale={[1.22, 0.7, 0.18]}
+      >
+        <sphereGeometry args={[0.72, 30, 18]} />
+        <meshStandardMaterial
+          color="#9C525F"
+          roughness={0.74}
+          transparent
+          opacity={tissueOpacity}
+          depthWrite={!translucent}
+        />
+      </mesh>
+      <mesh
+        name="floor-of-mouth"
+        position={[0, -0.55 + lowerOffset, -0.4]}
+        scale={[1.2, 0.48, 0.16]}
+      >
+        <sphereGeometry args={[0.72, 30, 18]} />
+        <meshStandardMaterial
+          color="#A95F68"
+          roughness={0.78}
+          transparent
+          opacity={tissueOpacity}
+          depthWrite={!translucent}
+        />
+      </mesh>
+      <mesh
+        name="posterior-oral-wall"
+        position={[0, -0.02, -0.8]}
+        scale={[0.86, 1.08, 0.2]}
+      >
+        <sphereGeometry args={[0.72, 28, 18]} />
+        <meshStandardMaterial
+          color="#743A48"
+          roughness={0.82}
+          transparent
+          opacity={rearTissueOpacity}
+          depthWrite={!translucent}
+        />
+      </mesh>
+      {showTeeth
+        ? TOOTH_POSITIONS.flatMap((tooth, index) => {
+            const toothScale = 0.88 + tooth.curve * 0.18;
+            return [
+              <mesh
+                key={`upper-tooth-${index}`}
+                name={`upper-tooth-${index + 1}`}
+                position={[
+                  tooth.x,
+                  0.42 + upperOffset + tooth.curve * 0.17,
+                  0.22,
+                ]}
+                rotation={[0, 0, -tooth.rotation]}
+                scale={[0.11 * toothScale, 0.17, 0.09]}
+              >
+                <sphereGeometry args={[1, 14, 10]} />
+                <meshStandardMaterial
+                  color="#F4EBDD"
+                  roughness={0.38}
+                  metalness={0.01}
+                />
+              </mesh>,
+              <mesh
+                key={`lower-tooth-${index}`}
+                name={`lower-tooth-${index + 1}`}
+                position={[
+                  tooth.x,
+                  -0.48 + lowerOffset - tooth.curve * 0.14,
+                  0.2,
+                ]}
+                rotation={[0, 0, tooth.rotation]}
+                scale={[0.1 * toothScale, 0.15, 0.085]}
+              >
+                <sphereGeometry args={[1, 14, 10]} />
+                <meshStandardMaterial
+                  color="#F4EBDD"
+                  roughness={0.38}
+                  metalness={0.01}
+                />
+              </mesh>,
+            ];
+          })
+        : null}
     </group>
   );
 }
@@ -239,6 +353,8 @@ export function OralObservationMap({
   const [zoom, setZoom] = useState(4.5);
   const [layer, setLayer] = useState<ObservationMapLayer>("coverage");
   const [view, setView] = useState<ObservationMapView>("whole");
+  const [tissueTranslucent, setTissueTranslucent] = useState(false);
+  const [showTeeth, setShowTeeth] = useState(true);
   const [renderUnavailable, setRenderUnavailable] = useState(false);
   const [renderAttempt, setRenderAttempt] = useState(0);
   const isWide = width >= 700;
@@ -297,12 +413,15 @@ export function OralObservationMap({
   };
 
   const opacityFor = (region: MouthRegion): number => {
-    if (view === "focus") return selectedRegion === region ? 0.98 : 0.09;
-    if (view === "path") {
-      if (selectedRegion === region) return 0.98;
-      return completedRegions.includes(region) ? 0.48 : 0.2;
+    const tissueFactor = tissueTranslucent ? 0.46 : 1;
+    if (view === "focus") {
+      return (selectedRegion === region ? 0.98 : 0.09) * tissueFactor;
     }
-    return 0.92;
+    if (view === "path") {
+      if (selectedRegion === region) return 0.98 * tissueFactor;
+      return (completedRegions.includes(region) ? 0.48 : 0.2) * tissueFactor;
+    }
+    return 0.92 * tissueFactor;
   };
 
   const selectView = (nextView: ObservationMapView) => {
@@ -418,6 +537,26 @@ export function OralObservationMap({
         </View>
       </View>
 
+      <View style={styles.toolbarGroup}>
+        <Text style={[styles.toolbarLabel, { color: theme.secondaryText }]}>
+          Anatomy display
+        </Text>
+        <View style={styles.displayRow}>
+          <DisplayToggle
+            label="See through tissue"
+            icon="layers-outline"
+            checked={tissueTranslucent}
+            onPress={() => setTissueTranslucent((value) => !value)}
+          />
+          <DisplayToggle
+            label="Show teeth"
+            icon="eye-outline"
+            checked={showTeeth}
+            onPress={() => setShowTeeth((value) => !value)}
+          />
+        </View>
+      </View>
+
       <View
         accessible={false}
         style={[
@@ -503,6 +642,11 @@ export function OralObservationMap({
               <directionalLight position={[2, 3, 4]} intensity={2.25} />
               <directionalLight position={[-2, -1, 2]} intensity={0.55} />
               <group rotation={[0.06, rotation, 0]}>
+                <MouthAnatomySupport
+                  exploded={exploded}
+                  showTeeth={showTeeth}
+                  translucent={tissueTranslucent}
+                />
                 {MOUTH_REGION_DETAILS.map((detail) => (
                   <RegionMesh
                     key={detail.id}
@@ -798,6 +942,63 @@ export function OralObservationMap({
   );
 }
 
+function DisplayToggle({
+  label,
+  icon,
+  checked,
+  onPress,
+}: {
+  label: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  checked: boolean;
+  onPress: () => void;
+}) {
+  const theme = useAppTheme();
+  return (
+    <Pressable
+      accessibilityRole="switch"
+      accessibilityState={{ checked }}
+      accessibilityLabel={label}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.displayToggle,
+        {
+          backgroundColor: checked ? theme.mint : theme.surface,
+          borderColor: checked ? theme.primary : theme.border,
+        },
+        pressed && styles.controlPressed,
+      ]}
+    >
+      <Ionicons
+        accessible={false}
+        name={icon}
+        size={17}
+        color={checked ? theme.primary : theme.secondaryText}
+      />
+      <Text style={[styles.displayToggleText, { color: theme.text }]}>
+        {label}
+      </Text>
+      <View
+        accessible={false}
+        style={[
+          styles.displaySwitchTrack,
+          { backgroundColor: checked ? theme.primary : theme.border },
+        ]}
+      >
+        <View
+          style={[
+            styles.displaySwitchThumb,
+            {
+              backgroundColor: theme.surface,
+              transform: [{ translateX: checked ? 14 : 0 }],
+            },
+          ]}
+        />
+      </View>
+    </Pressable>
+  );
+}
+
 function SegmentButton({
   label,
   icon,
@@ -1008,6 +1209,27 @@ const styles = StyleSheet.create({
   },
   layerMarker: { width: 8, height: 8, borderRadius: 4 },
   layerText: { fontSize: 12, fontWeight: "800", flexShrink: 1 },
+  displayRow: { flexDirection: "row", flexWrap: "wrap", gap: 7 },
+  displayToggle: {
+    flex: 1,
+    minWidth: 150,
+    minHeight: 48,
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  displayToggleText: { flex: 1, fontSize: 12, fontWeight: "800" },
+  displaySwitchTrack: {
+    width: 34,
+    height: 20,
+    borderRadius: 10,
+    padding: 3,
+    justifyContent: "center",
+  },
+  displaySwitchThumb: { width: 14, height: 14, borderRadius: 7 },
   shell: { borderRadius: 20, overflow: "hidden", borderWidth: 1 },
   canvas: { flex: 1 },
   renderFallback: {
