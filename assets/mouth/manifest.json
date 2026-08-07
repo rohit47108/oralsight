@@ -7,7 +7,7 @@
   "provenance": "Created in this repository; no patient anatomy or external mesh is used.",
   "containsPatientData": false,
   "implementationPath": "apps/mobile/src/components/OralObservationMap.tsx",
-  "implementationSha256": "3f8fc8e321134598299772f32b3048e4e6a49ff19f0bb336651de4f1e0d6d854",
+  "implementationSha256": "403198ab06ac479b1908ee4b5c939dc91c6359e407508f839c99c29c10e5d6ed",
   "targetRegions": [
     { "regionId": "dorsal_tongue", "meshId": "tongue_dorsal" },
     { "regionId": "ventral_tongue", "meshId": "tongue_ventral" },
