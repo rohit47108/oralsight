@@ -1,8 +1,10 @@
 import { useMemo, useState } from "react";
 import { router } from "expo-router";
 import { StyleSheet, Text, TextInput, View } from "react-native";
+import type { CaptureProtocol } from "@oralsight/contracts";
 
 import { APP_TAGLINE, NEUTRAL_SEEK_CARE_COPY } from "@/constants";
+import { OralObservationMapIntroduction } from "@/components/OralObservationMap";
 import { Screen } from "@/components/Screen";
 import { SymptomBodyMap } from "@/components/SymptomBodyMap";
 import { Button, Card, ChoiceChip, SectionTitle } from "@/components/Ui";
@@ -48,6 +50,9 @@ export default function OnboardingRoute() {
   const [bleedingDuration, setBleedingDuration] = useState("");
   const [previousConditions, setPreviousConditions] = useState("");
   const [professionallyExamined, setProfessionallyExamined] = useState(false);
+  const [protocol, setProtocol] = useState<CaptureProtocol>(
+    "standard_eight_region",
+  );
   const [understood, setUnderstood] = useState(false);
   const [localConsent, setLocalConsent] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -84,7 +89,7 @@ export default function OnboardingRoute() {
       professionallyExamined,
     };
     try {
-      await finishConsentAndStartSession(profile);
+      await finishConsentAndStartSession(profile, protocol);
       router.replace("/(tabs)/scan");
     } catch (error) {
       setSaveError(
@@ -102,6 +107,7 @@ export default function OnboardingRoute() {
       <Text style={[styles.tagline, { color: theme.primary }]}>
         {APP_TAGLINE}
       </Text>
+      <OralObservationMapIntroduction />
       <Card accent="amber">
         <SectionTitle title="What this prototype does" icon="eye-outline" />
         <Text style={[styles.body, { color: theme.text }]}>
@@ -111,6 +117,47 @@ export default function OnboardingRoute() {
         <Text style={[styles.strong, { color: theme.text }]}>
           It cannot diagnose cancer or confirm that an area is harmless.
         </Text>
+      </Card>
+
+      <Card>
+        <SectionTitle
+          title="Choose a capture method"
+          subtitle="You can start with the shorter scan or collect more views for follow-up alignment."
+          icon="camera-outline"
+        />
+        <View accessibilityRole="radiogroup" style={styles.chips}>
+          <ChoiceChip
+            label="Standard · 8 photos"
+            selected={protocol === "standard_eight_region"}
+            accessibilityRole="radio"
+            fullWidth
+            onPress={() => setProtocol("standard_eight_region")}
+          />
+          <Text style={[styles.optionHelp, { color: theme.secondaryText }]}>
+            One accepted image for each region.
+          </Text>
+          <ChoiceChip
+            label="Detailed · 24 photos"
+            selected={protocol === "detailed_multi_angle"}
+            accessibilityRole="radio"
+            fullWidth
+            onPress={() => setProtocol("detailed_multi_angle")}
+          />
+          <Text style={[styles.optionHelp, { color: theme.secondaryText }]}>
+            Straight, left, and right views for every region.
+          </Text>
+          <ChoiceChip
+            label="Guided sweep · 8 short videos"
+            selected={protocol === "guided_video_sweep"}
+            accessibilityRole="radio"
+            fullWidth
+            onPress={() => setProtocol("guided_video_sweep")}
+          />
+          <Text style={[styles.optionHelp, { color: theme.secondaryText }]}>
+            A six-second camera sweep selects three quality-checked frames. The
+            raw video is deleted after frame selection.
+          </Text>
+        </View>
       </Card>
 
       <Card>
@@ -405,6 +452,12 @@ const styles = StyleSheet.create({
   multiline: { minHeight: 82, paddingTop: 12, textAlignVertical: "top" },
   adaptive: { padding: 13, borderRadius: 16, gap: 10 },
   small: { fontSize: 12, lineHeight: 18 },
+  optionHelp: {
+    fontSize: 12,
+    lineHeight: 17,
+    marginTop: -3,
+    paddingHorizontal: 4,
+  },
   seekCare: {
     textAlign: "center",
     fontSize: 12,

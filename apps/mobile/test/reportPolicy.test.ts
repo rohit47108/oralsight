@@ -19,12 +19,15 @@ const session = (demo: boolean): ScanSession => ({
   createdAt: "2026-07-22T00:00:00.000Z",
   demo,
   label: demo ? "Demo" : "Live",
+  protocol: "standard_eight_region",
 });
 
 const capture = (inputOrigin: CaptureRecord["inputOrigin"]): CaptureRecord => ({
   id: "capture",
   sessionId: "live",
   region: "left_buccal_mucosa",
+  angle: "primary",
+  mediaKind: "image",
   capturedAt: "2026-07-22T00:00:00.000Z",
   encryptedUri: null,
   mimeType: "image/png",

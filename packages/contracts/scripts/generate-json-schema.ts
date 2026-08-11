@@ -28,6 +28,28 @@ import {
   mediaKindSchema,
   modelCardSchema,
   mouthRegionSchema,
+  platformApiAccessGrantResponseSchema,
+  platformApiAnalysisRunResponseSchema,
+  platformApiAnalyticsEventInputSchema,
+  platformApiCaptureAssetResponseSchema,
+  platformApiCaptureSetResponseSchema,
+  platformApiClinicianReviewResponseSchema,
+  platformApiConsentResponseSchema,
+  platformApiDataExportArtifactResponseSchema,
+  platformApiDeletionRequestResponseSchema,
+  platformApiGeneratedArtifactResponseSchema,
+  platformApiJobCreateSchema,
+  platformApiJobResponseSchema,
+  platformApiMatchDecisionResponseSchema,
+  platformApiMatchProposalResponseSchema,
+  platformApiMeResponseSchema,
+  platformApiReportResponseSchema,
+  platformApiReviewAnnotationResponseSchema,
+  platformApiScanSessionResponseSchema,
+  platformApiShareLinkResponseSchema,
+  platformApiSyncOperationInputSchema,
+  platformApiSyncPullResponseSchema,
+  platformApiSyncPushResponseSchema,
   reportArtifactSchema,
   ruleReleaseSchema,
   shareGrantSchema,
@@ -90,6 +112,58 @@ const platformDocument = {
     SyncCursor: definition(syncCursorSchema),
     RuleRelease: definition(ruleReleaseSchema),
     ReportArtifact: definition(reportArtifactSchema),
+    PlatformApiMeResponse: definition(platformApiMeResponseSchema),
+    PlatformApiConsentResponse: definition(platformApiConsentResponseSchema),
+    PlatformApiScanSessionResponse: definition(
+      platformApiScanSessionResponseSchema,
+    ),
+    PlatformApiCaptureAssetResponse: definition(
+      platformApiCaptureAssetResponseSchema,
+    ),
+    PlatformApiCaptureSetResponse: definition(
+      platformApiCaptureSetResponseSchema,
+    ),
+    PlatformApiAnalysisRunResponse: definition(
+      platformApiAnalysisRunResponseSchema,
+    ),
+    PlatformApiMatchProposalResponse: definition(
+      platformApiMatchProposalResponseSchema,
+    ),
+    PlatformApiMatchDecisionResponse: definition(
+      platformApiMatchDecisionResponseSchema,
+    ),
+    PlatformApiJobCreate: definition(platformApiJobCreateSchema),
+    PlatformApiJobResponse: definition(platformApiJobResponseSchema),
+    PlatformApiReportResponse: definition(platformApiReportResponseSchema),
+    PlatformApiGeneratedArtifactResponse: definition(
+      platformApiGeneratedArtifactResponseSchema,
+    ),
+    PlatformApiDataExportArtifactResponse: definition(
+      platformApiDataExportArtifactResponseSchema,
+    ),
+    PlatformApiDeletionRequestResponse: definition(
+      platformApiDeletionRequestResponseSchema,
+    ),
+    PlatformApiSyncOperationInput: definition(
+      platformApiSyncOperationInputSchema,
+    ),
+    PlatformApiSyncPushResponse: definition(platformApiSyncPushResponseSchema),
+    PlatformApiSyncPullResponse: definition(platformApiSyncPullResponseSchema),
+    PlatformApiShareLinkResponse: definition(
+      platformApiShareLinkResponseSchema,
+    ),
+    PlatformApiAccessGrantResponse: definition(
+      platformApiAccessGrantResponseSchema,
+    ),
+    PlatformApiReviewAnnotationResponse: definition(
+      platformApiReviewAnnotationResponseSchema,
+    ),
+    PlatformApiClinicianReviewResponse: definition(
+      platformApiClinicianReviewResponseSchema,
+    ),
+    PlatformApiAnalyticsEventInput: definition(
+      platformApiAnalyticsEventInputSchema,
+    ),
   },
 };
 

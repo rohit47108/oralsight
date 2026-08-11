@@ -5,19 +5,6 @@ from datetime import timedelta
 from uuid import UUID
 
 import pytest
-from conftest import (
-    ACCOUNT_ID,
-    ASSET_ID,
-    CAPTURE_ID,
-    IMAGE_BYTES,
-    JOB_ID,
-    NOW,
-    REQUEST_ID,
-    TRACE_ID,
-    analysis_envelope,
-    asset_pointer,
-    retention,
-)
 from pydantic import ValidationError
 
 from oralsight_worker.models import (
@@ -41,6 +28,20 @@ from oralsight_worker.models import (
     SummaryVideoGuidance,
     SummaryVideoObservation,
     SummaryVideoPayload,
+)
+
+from .conftest import (
+    ACCOUNT_ID,
+    ASSET_ID,
+    CAPTURE_ID,
+    IMAGE_BYTES,
+    JOB_ID,
+    NOW,
+    REQUEST_ID,
+    TRACE_ID,
+    analysis_envelope,
+    asset_pointer,
+    retention,
 )
 
 
@@ -103,6 +104,7 @@ def test_all_seven_job_payloads_validate() -> None:
         ),
         JobType.REPORT: ReportPayload(
             scan_session_id=UUID("00000000-0000-4000-8000-000000000031"),
+            consent_record_id=UUID("00000000-0000-4000-8000-000000000037"),
             observation_ids=[UUID("00000000-0000-4000-8000-000000000032")],
         ),
         JobType.SUMMARY_VIDEO: SummaryVideoPayload(

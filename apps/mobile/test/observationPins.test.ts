@@ -8,6 +8,8 @@ const capture = (id: string, capturedAt: string): CaptureRecord => ({
   id,
   sessionId: id,
   region: "dorsal_tongue",
+  angle: "primary",
+  mediaKind: "image",
   capturedAt,
   encryptedUri: `${id}.osv`,
   mimeType: "image/jpeg",
@@ -29,6 +31,19 @@ const capture = (id: string, capturedAt: string): CaptureRecord => ({
 const comparison = (
   normalizedChange: number | null,
   comparable = normalizedChange !== null,
+  descriptorChanges: ComparisonResult["descriptorChanges"] = comparable
+    ? {
+        normalizedWidthChange: normalizedChange ?? 0,
+        normalizedHeightChange: 0,
+        normalizedPerimeterChange: normalizedChange ?? 0,
+        borderIrregularityChange: 0,
+        meanRednessChange: 0,
+        meanBrightnessChange: 0,
+        textureContrastChange: 0,
+        ulcerationLikeContrastChange: null,
+        measurementLabel: "approximate image-normalized change",
+      }
+    : null,
 ): ComparisonResult => ({
   contractVersion: "1.1.0",
   baselineCaptureId: "earlier",
@@ -40,6 +55,9 @@ const comparison = (
   inlierRatio: comparable ? 0.8 : 0.2,
   reprojectionErrorRatio: comparable ? 0.01 : 0.2,
   normalizedChange,
+  descriptorChanges,
+  calibratedMeasurementChanges: null,
+  calibrationSuppressionReasons: [],
   comparable,
   suppressionReasons: comparable ? [] : ["insufficient_registration_features"],
   modelVersions: {},
@@ -82,6 +100,7 @@ describe("pinsAfterConfirmedComparison", () => {
 
     expect(pin?.captureIds).toEqual(["earlier", "later"]);
     expect(pin?.status).toBe("stable");
+    expect(pin?.comparisonStatus).toBe("stable");
     expect(pin?.uvX).toBe(0.4);
   });
 
@@ -93,5 +112,48 @@ describe("pinsAfterConfirmedComparison", () => {
     );
 
     expect(pin?.status).toBe("visually_changed");
+    expect(pin?.comparisonStatus).toBe("increased_estimated_size");
+  });
+
+  it("distinguishes decreased estimated size", () => {
+    const [pin] = pinsAfterConfirmedComparison(
+      [confirmedPin],
+      captures,
+      comparison(-0.22),
+    );
+
+    expect(pin?.status).toBe("visually_changed");
+    expect(pin?.comparisonStatus).toBe("decreased_estimated_size");
+  });
+
+  it("distinguishes color or texture change when size is stable", () => {
+    const [pin] = pinsAfterConfirmedComparison(
+      [confirmedPin],
+      captures,
+      comparison(0.02, true, {
+        normalizedWidthChange: 0.01,
+        normalizedHeightChange: 0.01,
+        normalizedPerimeterChange: 0.01,
+        borderIrregularityChange: 0.01,
+        meanRednessChange: 0.11,
+        meanBrightnessChange: 0,
+        textureContrastChange: 0,
+        ulcerationLikeContrastChange: null,
+        measurementLabel: "approximate image-normalized change",
+      }),
+    );
+
+    expect(pin?.comparisonStatus).toBe("color_or_texture_changed");
+  });
+
+  it("records insufficient comparison evidence explicitly", () => {
+    const [pin] = pinsAfterConfirmedComparison(
+      [confirmedPin],
+      captures,
+      comparison(null, false),
+    );
+
+    expect(pin?.status).toBe("review_unavailable");
+    expect(pin?.comparisonStatus).toBe("insufficient_comparable_data");
   });
 });

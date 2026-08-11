@@ -4,14 +4,14 @@ import asyncio
 from dataclasses import dataclass, field
 from datetime import timedelta
 
-from conftest import NOW
-
 from oralsight_worker.engine import WorkerEngine, WorkerRunner
 from oralsight_worker.http_client import PermanentJobError, RetryableJobError
 from oralsight_worker.models import JobOutcome, JobType, ProcessorResult
 from oralsight_worker.processors import ProcessorRegistry
 from oralsight_worker.queue import IdempotencyClaim, QueueMessage
 from oralsight_worker.retry import RetryPolicy
+
+from .conftest import NOW
 
 
 class FixedRandom:

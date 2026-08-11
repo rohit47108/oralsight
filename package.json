@@ -13,7 +13,9 @@
     "test": "pnpm -r --if-present test",
     "typecheck": "pnpm -r --if-present typecheck",
     "format:check": "prettier --check .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "security:patched-deps": "node scripts/verify-patched-image-size.mjs",
+    "audit:dependencies": "pnpm security:patched-deps && pnpm audit --audit-level high --ignore GHSA-w3rx-r6r6-pgpr --ignore GHSA-5p2g-fcmc-qvqq"
   },
   "devDependencies": {
     "prettier": "3.9.6",

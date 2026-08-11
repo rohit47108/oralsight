@@ -18,12 +18,31 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.13"
       - name: Audit artifacts, assets, fixture, and contract taxonomies
         run: python .github/scripts/audit_repository.py
+
+  secret-scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Scan complete Git history for secrets
+        run: >-
+          docker run --rm
+          --user "$(id -u):$(id -g)"
+          --volume "$GITHUB_WORKSPACE:/repo:ro"
+          --workdir /repo
+          ghcr.io/gitleaks/gitleaks@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f
+          git /repo --config=/repo/.gitleaks.toml --redact --no-banner --log-opts="--all"
 
 # No artifacts are uploaded. The only embedded image permitted by the audit is the
 # exact checksum-pinned CC0 synthetic fixture in packages/contracts/fixtures.

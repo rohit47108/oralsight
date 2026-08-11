@@ -51,7 +51,11 @@ from .processing import (
     sanitize_image,
 )
 from .release_manifest import RELEASE_RUNTIME
-from .runtime import INFERENCE_EXECUTOR
+from .rate_limit import (
+    EphemeralRequestRateLimiter,
+    load_rate_limit_configuration,
+)
+from .runtime import INFERENCE_EXECUTOR, InferenceCapacityError
 from .signing import ResponseSigner
 
 SERVICE_VERSION = "0.1.0"
@@ -69,6 +73,9 @@ if MAX_COMPARE_REQUEST_BYTES >= VERCEL_REQUEST_BODY_LIMIT_BYTES:
 logger = logging.getLogger("oralsight_api")
 SERVICE_CONFIGURATION = load_service_configuration()
 DEMO_FIXTURES_ENABLED = SERVICE_CONFIGURATION.demo_fixtures_enabled
+REQUEST_RATE_LIMITER = EphemeralRequestRateLimiter(
+    load_rate_limit_configuration(production=SERVICE_CONFIGURATION.production)
+)
 RESPONSE_SIGNER = ResponseSigner.from_environment()
 if SERVICE_CONFIGURATION.production and RESPONSE_SIGNER is None:
     raise RuntimeError("Production mode requires a configured response signing key.")
@@ -278,7 +285,7 @@ def _model_card() -> ModelCard:
     }
     limitations = [
         "Comparison depends on visible local features and may abstain when registration is weak.",
-        "All areas and changes are normalized, approximate, and have no millimeter scale.",
+        "Areas and changes are approximate. Millimeter estimates appear only when the versioned physical marker and same-plane checks pass.",
         "Executing a released ONNX head does not establish clinical validity.",
     ]
     if ModelHead.SEGMENTATION not in enabled_heads:
@@ -295,6 +302,22 @@ def _model_card() -> ModelCard:
     ):
         limitations.append(
             "Unreleased appearance or disease-category research heads remain disabled."
+        )
+    if ModelHead.QUALITY_CONTROL not in enabled_heads:
+        limitations.append(
+            "No released learned quality-control head is available; deterministic capture checks remain active."
+        )
+    if ModelHead.ORAL_TISSUE_SEGMENTATION not in enabled_heads:
+        limitations.append(
+            "No separate released oral-tissue segmentation head is available."
+        )
+    if ModelHead.OUT_OF_DISTRIBUTION not in enabled_heads:
+        limitations.append(
+            "Dataset similarity remains unavailable until a validated out-of-distribution head is released."
+        )
+    if ModelHead.SECONDARY_SEGMENTATION not in enabled_heads:
+        limitations.append(
+            "Model agreement remains unavailable until an independently trained secondary segmentation head is released."
         )
     if RELEASE_RUNTIME.repeated_capture_area_error is None:
         limitations.append(
@@ -378,8 +401,24 @@ async def privacy_and_request_id_middleware(request: Request, call_next):
         uuid.uuid4()
     )
 
+    retry_after = None
+    if request.method == "POST" and request.url.path in {
+        "/v1/analyze",
+        "/v1/compare",
+    }:
+        client_identifier = request.client.host if request.client else "unknown"
+        retry_after = REQUEST_RATE_LIMITER.check(client_identifier)
+
     content_length = request.headers.get("content-length")
-    if content_length:
+    if retry_after is not None:
+        response = _error_response(
+            request,
+            429,
+            "rate_limit_exceeded",
+            "Too many analysis requests. Please retry shortly.",
+        )
+        response.headers["Retry-After"] = str(retry_after)
+    elif content_length:
         try:
             parsed_content_length = int(content_length)
         except ValueError:
@@ -458,8 +497,10 @@ async def http_error_handler(
 
 @app.exception_handler(Exception)
 async def unhandled_error_handler(request: Request, exc: Exception) -> JSONResponse:
-    logger.exception(
-        "unhandled_service_error request_id=%s", _request_id(request), exc_info=exc
+    logger.error(
+        "unhandled_service_error exception_type=%s request_id=%s",
+        type(exc).__name__,
+        _request_id(request),
     )
     return _error_response(
         request,
@@ -563,8 +604,16 @@ async def analyze(
             )
         except ImageInputError as exc:
             raise ServiceError(422, "invalid_image", str(exc)) from exc
+        except InferenceCapacityError as exc:
+            raise ServiceError(
+                503,
+                "analysis_capacity_busy",
+                "Analysis capacity is busy. Please retry shortly.",
+            ) from exc
         except Exception as exc:
-            logger.warning("analysis_runtime_failed", exc_info=exc)
+            logger.warning(
+                "analysis_runtime_failed exception_type=%s", type(exc).__name__
+            )
             return failed_analysis(parsed_metadata)
     finally:
         await image.close()
@@ -618,8 +667,16 @@ async def compare(
             )
         except ImageInputError as exc:
             raise ServiceError(422, "invalid_image", str(exc)) from exc
+        except InferenceCapacityError as exc:
+            raise ServiceError(
+                503,
+                "analysis_capacity_busy",
+                "Analysis capacity is busy. Please retry shortly.",
+            ) from exc
         except Exception as exc:
-            logger.warning("comparison_runtime_failed", exc_info=exc)
+            logger.warning(
+                "comparison_runtime_failed exception_type=%s", type(exc).__name__
+            )
             return failed_comparison(parsed_metadata)
     finally:
         await baseline_image.close()

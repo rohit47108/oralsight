@@ -145,6 +145,7 @@ describe("OralSight platform contract v2", () => {
       currentObservationId: "observation-current",
       candidatePriorObservationId: "observation-prior",
       candidateLesionId: "lesion-1",
+      proposalOrigin: "automatic_model" as const,
       score: 0.96,
       rank: 1,
       state: "proposed" as const,
@@ -167,8 +168,25 @@ describe("OralSight platform contract v2", () => {
         actorId: "model-1",
         rationale: null,
         decidedAt: CREATED_AT,
+        lesionId: null,
       }),
     ).toThrow();
+
+    expect(
+      matchProposalSchema.parse({
+        ...proposal,
+        proposalOrigin: "user_selected",
+        score: null,
+        rank: null,
+        modelVersions: {},
+      }).proposalOrigin,
+    ).toBe("user_selected");
+    expect(() =>
+      matchProposalSchema.parse({
+        ...proposal,
+        proposalOrigin: "user_selected",
+      }),
+    ).toThrow(/require none/i);
   });
 
   it("caps every share grant at seven days", () => {
@@ -342,6 +360,10 @@ describe("OralSight platform contract v2", () => {
         startedAt: CREATED_AT,
         completedAt: CREATED_AT,
         expiresAt: "2026-09-03T12:00:00.000Z",
+        outcome: "complete",
+        reasonCode: null,
+        result: { report: { reportArtifactId: "report-1" } },
+        cancellationRequested: false,
       }).status,
     ).toBe("succeeded");
 

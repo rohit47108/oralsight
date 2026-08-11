@@ -1,4 +1,44 @@
+name: oralsight
+
 services:
+  postgres:
+    image: postgres:17.6-alpine
+    environment:
+      POSTGRES_DB: oralsight
+      POSTGRES_USER: oralsight
+      POSTGRES_PASSWORD: ${ORALSIGHT_LOCAL_POSTGRES_PASSWORD:-local-development-only}
+    volumes:
+      - oralsight-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U oralsight -d oralsight"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    ports:
+      - "127.0.0.1:5432:5432"
+    restart: unless-stopped
+
+  redis:
+    image: redis:7.4.3-alpine
+    command:
+      [
+        "redis-server",
+        "--appendonly",
+        "yes",
+        "--maxmemory-policy",
+        "noeviction",
+      ]
+    volumes:
+      - oralsight-redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    ports:
+      - "127.0.0.1:6379:6379"
+    restart: unless-stopped
+
   inference:
     build:
       context: ./services/inference
@@ -16,4 +56,111 @@ services:
       - no-new-privileges:true
     cap_drop:
       - ALL
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=2).read()",
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 15
     restart: unless-stopped
+
+  platform-migrate:
+    build:
+      context: ./services/platform-api
+    image: oralsight-platform-api:local
+    command: ["alembic", "upgrade", "head"]
+    environment: &platform-environment
+      ORALSIGHT_PLATFORM_DATABASE_URL: postgresql+asyncpg://oralsight:${ORALSIGHT_LOCAL_POSTGRES_PASSWORD:-local-development-only}@postgres:5432/oralsight
+      ORALSIGHT_PLATFORM_ENVIRONMENT: development
+      ORALSIGHT_PLATFORM_CREATE_SCHEMA_ON_START: "false"
+      ORALSIGHT_PLATFORM_AUTH_MODE: local_test
+      ORALSIGHT_PLATFORM_OIDC_AUDIENCE: oralsight-platform-api
+      ORALSIGHT_PLATFORM_LOCAL_TEST_ISSUER_URL: https://oralsight.local.test
+      ORALSIGHT_PLATFORM_LOCAL_TEST_SIGNING_SECRET: ${ORALSIGHT_LOCAL_SIGNING_SECRET:-local-development-signing-secret-change-me}
+      ORALSIGHT_PLATFORM_SHARE_SECRET_DERIVATION_KEY: ${ORALSIGHT_LOCAL_SHARE_SECRET:-local-development-share-secret-change-me-32-bytes}
+      ORALSIGHT_PLATFORM_WORKER_SERVICE_HMAC_SECRET: ${ORALSIGHT_LOCAL_SERVICE_HMAC_SECRET:-local-development-worker-hmac-secret-change-me}
+      ORALSIGHT_PLATFORM_OBJECT_STORAGE_BACKEND: local
+      ORALSIGHT_PLATFORM_OBJECT_STORAGE_ROOT: /var/lib/oralsight-assets
+      ORALSIGHT_PLATFORM_OBJECT_STORAGE_PUBLIC_BASE_URL: http://127.0.0.1:8001
+      ORALSIGHT_PLATFORM_QUEUE_BACKEND: redis
+      ORALSIGHT_PLATFORM_REDIS_URL: redis://redis:6379/0
+      ORALSIGHT_PLATFORM_REDIS_STREAM_NAME: oralsight:jobs:v1
+      ORALSIGHT_PLATFORM_REDIS_CANCEL_PREFIX: "oralsight:job-cancelled:v1:"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  platform-api:
+    image: oralsight-platform-api:local
+    environment: *platform-environment
+    depends_on:
+      platform-migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8001:8080"
+    read_only: true
+    tmpfs:
+      - /tmp:size=32m,mode=1777
+    volumes:
+      - oralsight-assets:/var/lib/oralsight-assets
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/readyz', timeout=2).read()",
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 15
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: ./services/worker
+    image: oralsight-worker:local
+    environment:
+      ORALSIGHT_WORKER_ENVIRONMENT: development
+      ORALSIGHT_WORKER_CONSUMER_NAME: worker-compose-1
+      ORALSIGHT_WORKER_REDIS_URL: redis://redis:6379/0
+      ORALSIGHT_WORKER_HEALTH_PORT: "8010"
+      ORALSIGHT_WORKER_PLATFORM_API_URL: http://platform-api:8080
+      ORALSIGHT_WORKER_INFERENCE_API_URL: http://inference:8000
+      ORALSIGHT_WORKER_SERVICE_ID: oralsight-worker
+      ORALSIGHT_WORKER_SERVICE_HMAC_SECRET: ${ORALSIGHT_LOCAL_SERVICE_HMAC_SECRET:-local-development-worker-hmac-secret-change-me}
+      ORALSIGHT_WORKER_CONCURRENCY: "2"
+    depends_on:
+      redis:
+        condition: service_healthy
+      inference:
+        condition: service_healthy
+      platform-api:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8010:8010"
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    restart: unless-stopped
+
+volumes:
+  oralsight-postgres:
+  oralsight-redis:
+  oralsight-assets:

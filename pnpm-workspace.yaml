@@ -5,14 +5,38 @@ packages:
 allowBuilds:
   "@shopify/react-native-skia": true
   esbuild: true
+  unrs-resolver: true
 
 minimumReleaseAgeExclude:
   - prettier@3.9.6
+  - "@next/env@16.3.0"
+  - "@next/eslint-plugin-next@16.3.0"
+  - "@next/swc-darwin-arm64@16.3.0"
+  - "@next/swc-darwin-x64@16.3.0"
+  - "@next/swc-linux-arm64-gnu@16.3.0"
+  - "@next/swc-linux-arm64-musl@16.3.0"
+  - "@next/swc-linux-x64-gnu@16.3.0"
+  - "@next/swc-linux-x64-musl@16.3.0"
+  - "@next/swc-win32-arm64-msvc@16.3.0"
+  - "@next/swc-win32-x64-msvc@16.3.0"
+  - eslint-config-next@16.3.0
+  - next@16.3.0
+  - expo-background-task@57.0.8
+  - expo-task-manager@57.0.8
 
 patchedDependencies:
   "@infinitered/react-native-mlkit-face-detection@5.0.0": patches/react-native-mlkit-face-detection-5.0.0.patch
+  image-size@1.2.1: patches/image-size@1.2.1.patch
 
 overrides:
-  brace-expansion@5.0.7: 5.0.8
+  "brace-expansion@>=4.0.0 <5.0.9": 5.0.9
   esbuild: 0.28.1
+  "js-yaml@>=4.0.0 <4.3.1": 4.3.1
+  "nanoid@<3.3.17": 3.3.17
+  "postcss@<=8.5.22": 8.5.23
   uuid@<11.1.1: 11.1.1
+
+auditConfig:
+  ignoreGhsas:
+    - GHSA-w3rx-r6r6-pgpr
+    - GHSA-5p2g-fcmc-qvqq

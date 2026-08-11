@@ -1,5 +1,9 @@
 import { z } from "zod";
 
+import { platformApiReviewAnnotationResponseSchema } from "./platform-api";
+
+export * from "./platform-api";
+
 export const CONTRACT_VERSION = "1.1.0" as const;
 export const PLATFORM_CONTRACT_VERSION = "2.0.0" as const;
 export const DISCLAIMER = "This result is not a diagnosis." as const;
@@ -115,6 +119,10 @@ export const modelHeadSchema = z.enum([
   "appearance",
   "disease_research",
   "lesion_reidentification",
+  "quality_control",
+  "oral_tissue_segmentation",
+  "out_of_distribution",
+  "secondary_segmentation",
 ]);
 export type ModelHead = z.infer<typeof modelHeadSchema>;
 
@@ -420,6 +428,18 @@ export const priorAnalysisMetadataSchema = z
   .strict();
 export type PriorAnalysisMetadata = z.infer<typeof priorAnalysisMetadataSchema>;
 
+export const comparisonCalibrationRequestSchema = z
+  .object({
+    cardVersion: z.literal("oralsight-calibration-v1"),
+    markerId: z.literal(17),
+    markerSideMm: z.literal(20),
+    planeConfirmed: z.literal(true),
+  })
+  .strict();
+export type ComparisonCalibrationRequest = z.infer<
+  typeof comparisonCalibrationRequestSchema
+>;
+
 export const compareMetadataSchema = z
   .object({
     contractVersion: z.literal(CONTRACT_VERSION),
@@ -430,6 +450,12 @@ export const compareMetadataSchema = z
     inputOrigin: inputOriginSchema,
     baselineAnalysis: priorAnalysisMetadataSchema,
     currentAnalysis: priorAnalysisMetadataSchema,
+    baselineCalibration: comparisonCalibrationRequestSchema
+      .nullable()
+      .optional(),
+    currentCalibration: comparisonCalibrationRequestSchema
+      .nullable()
+      .optional(),
   })
   .strict()
   .superRefine((value, context) => {
@@ -476,6 +502,44 @@ export const compareMetadataSchema = z
   });
 export type CompareMetadata = z.infer<typeof compareMetadataSchema>;
 
+export const descriptorChangesSchema = z
+  .object({
+    normalizedWidthChange: z.number().min(-1),
+    normalizedHeightChange: z.number().min(-1),
+    normalizedPerimeterChange: z.number().min(-1),
+    borderIrregularityChange: z.number(),
+    meanRednessChange: z.number().min(-1).max(1),
+    meanBrightnessChange: z.number().min(-1).max(1),
+    textureContrastChange: z.number().min(-1).max(1),
+    ulcerationLikeContrastChange: z.number().min(-1).max(1).nullable(),
+    measurementLabel: z.literal("approximate image-normalized change"),
+  })
+  .strict();
+export type DescriptorChanges = z.infer<typeof descriptorChangesSchema>;
+
+export const calibratedMeasurementChangesSchema = z
+  .object({
+    cardVersion: z.literal("oralsight-calibration-v1"),
+    markerId: z.literal(17),
+    markerSideMm: z.literal(20),
+    baselineWidthMm: z.number().positive(),
+    currentWidthMm: z.number().positive(),
+    widthChangeMm: z.number(),
+    baselineHeightMm: z.number().positive(),
+    currentHeightMm: z.number().positive(),
+    heightChangeMm: z.number(),
+    baselineAreaMm2: z.number().positive(),
+    currentAreaMm2: z.number().positive(),
+    areaChangeMm2: z.number(),
+    baselineConfidence: z.number().min(0).max(1),
+    currentConfidence: z.number().min(0).max(1),
+    measurementLabel: z.literal("calibrated estimate"),
+  })
+  .strict();
+export type CalibratedMeasurementChanges = z.infer<
+  typeof calibratedMeasurementChangesSchema
+>;
+
 export const comparisonResultSchema = z
   .object({
     contractVersion: z.literal(CONTRACT_VERSION),
@@ -488,6 +552,11 @@ export const comparisonResultSchema = z
     inlierRatio: z.number().min(0).max(1),
     reprojectionErrorRatio: z.number().min(0),
     normalizedChange: z.number().min(-1).nullable(),
+    descriptorChanges: descriptorChangesSchema.nullable().optional(),
+    calibratedMeasurementChanges: calibratedMeasurementChangesSchema
+      .nullable()
+      .optional(),
+    calibrationSuppressionReasons: z.array(z.string()).optional(),
     comparable: z.boolean(),
     suppressionReasons: z.array(z.string()),
     modelVersions: z.record(z.string(), z.string()),
@@ -517,6 +586,18 @@ export const comparisonResultSchema = z
         code: "custom",
         path: ["normalizedChange"],
         message: "Suppressed comparison cannot expose normalized change.",
+      });
+    }
+    if (
+      !value.comparable &&
+      (value.descriptorChanges != null ||
+        value.calibratedMeasurementChanges != null)
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["descriptorChanges"],
+        message:
+          "Suppressed comparison cannot expose descriptor or calibrated change.",
       });
     }
     if (
@@ -572,6 +653,10 @@ export const modelCardSchema = z
       appearance: "appearance_weights",
       disease_research: "disease_research_weights",
       lesion_reidentification: "lesion_reidentification_weights",
+      quality_control: "quality_control_weights",
+      oral_tissue_segmentation: "oral_tissue_segmentation_weights",
+      out_of_distribution: "out_of_distribution_weights",
+      secondary_segmentation: "secondary_segmentation_weights",
     };
     for (const head of value.enabledHeads) {
       const gate = gates.get(head);
@@ -1097,8 +1182,9 @@ export const matchProposalSchema = z
     currentObservationId: platformIdSchema,
     candidatePriorObservationId: platformIdSchema,
     candidateLesionId: platformIdSchema.nullable(),
-    score: z.number().min(0).max(1),
-    rank: z.number().int().positive().max(100),
+    proposalOrigin: z.enum(["automatic_model", "user_selected"]),
+    score: z.number().min(0).max(1).nullable(),
+    rank: z.number().int().positive().max(100).nullable(),
     state: z.literal("proposed"),
     automaticallyConfirmed: z.literal(false),
     modelVersions: z.record(z.string(), z.string().min(1)),
@@ -1114,6 +1200,24 @@ export const matchProposalSchema = z
         message: "A match proposal requires two distinct observations.",
       });
     }
+    const invalidAutomatic =
+      value.proposalOrigin === "automatic_model" &&
+      (value.score === null ||
+        value.rank === null ||
+        Object.keys(value.modelVersions).length === 0);
+    const invalidUserSelected =
+      value.proposalOrigin === "user_selected" &&
+      (value.score !== null ||
+        value.rank !== null ||
+        Object.keys(value.modelVersions).length > 0);
+    if (invalidAutomatic || invalidUserSelected) {
+      context.addIssue({
+        code: "custom",
+        path: ["proposalOrigin"],
+        message:
+          "Automatic proposals require a score, rank, and model versions; user-selected proposals require none.",
+      });
+    }
   });
 export type MatchProposal = z.infer<typeof matchProposalSchema>;
 
@@ -1122,10 +1226,11 @@ export const matchDecisionSchema = z
     decisionId: platformIdSchema,
     proposalId: platformIdSchema,
     decision: z.enum(["confirmed", "rejected", "deferred"]),
-    decidedBy: z.enum(["patient", "clinician"]),
+    decidedBy: z.literal("patient"),
     actorId: platformIdSchema,
     rationale: z.string().min(1).max(1_000).nullable(),
     decidedAt: z.string().datetime(),
+    lesionId: platformIdSchema.nullable(),
   })
   .strict();
 export type MatchDecision = z.infer<typeof matchDecisionSchema>;
@@ -1177,6 +1282,7 @@ export const JOB_TYPES = [
   "summary_video",
   "data_export",
   "account_deletion",
+  "delete_all",
 ] as const;
 export const jobTypeSchema = z.enum(JOB_TYPES);
 export type JobType = z.infer<typeof jobTypeSchema>;
@@ -1209,6 +1315,12 @@ export const jobSchema = z
     startedAt: z.string().datetime().nullable(),
     completedAt: z.string().datetime().nullable(),
     expiresAt: z.string().datetime(),
+    outcome: z
+      .enum(["complete", "unavailable", "cancelled", "failed"])
+      .nullable(),
+    reasonCode: z.string().min(1).max(128).nullable(),
+    result: z.record(z.string(), z.unknown()).nullable(),
+    cancellationRequested: z.boolean(),
   })
   .strict()
   .superRefine((value, context) => {
@@ -1308,31 +1420,9 @@ export const shareGrantSchema = z
   });
 export type ShareGrant = z.infer<typeof shareGrantSchema>;
 
-export const clinicianAnnotationSchema = z
-  .object({
-    annotationId: platformIdSchema,
-    shareGrantId: platformIdSchema,
-    authorClinicianId: platformIdSchema,
-    authorVerification: z.literal("verified"),
-    targetType: z.enum(["scan", "capture", "observation", "report"]),
-    targetId: platformIdSchema,
-    kind: z.enum(["note", "region_label", "follow_up_request"]),
-    body: z.string().min(1).max(4_000),
-    followUpRequested: z.boolean(),
-    createdAt: z.string().datetime(),
-    updatedAt: z.string().datetime(),
-    version: z.number().int().positive(),
-  })
-  .strict()
-  .superRefine((value, context) => {
-    if ((value.kind === "follow_up_request") !== value.followUpRequested) {
-      context.addIssue({
-        code: "custom",
-        path: ["followUpRequested"],
-        message: "Follow-up state must match the annotation kind.",
-      });
-    }
-  });
+// Backwards-compatible export name backed by the exact current platform wire schema.
+export const clinicianAnnotationSchema =
+  platformApiReviewAnnotationResponseSchema;
 export type ClinicianAnnotation = z.infer<typeof clinicianAnnotationSchema>;
 
 export const auditEventSchema = z
@@ -1438,7 +1528,6 @@ const syncOperationCommon = {
     "lesion",
     "match_decision",
     "report",
-    "annotation",
   ]),
   entityId: platformIdSchema,
   version: z.number().int().positive(),

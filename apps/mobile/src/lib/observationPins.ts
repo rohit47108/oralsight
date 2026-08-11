@@ -48,12 +48,13 @@ export function pinsAfterConfirmedComparison(
       ...relatedPins.map((pin) => pin.firstObservedAt),
       ...linkedCaptures.map((capture) => capture.capturedAt),
     ].sort()[0] ?? seedPin.firstObservedAt;
+  const comparisonStatus = observationComparisonStatus(comparison);
   const status: ObservationPin["status"] =
-    comparison.comparable && comparison.normalizedChange !== null
-      ? Math.abs(comparison.normalizedChange) <= 0.1
-        ? "stable"
-        : "visually_changed"
-      : "review_unavailable";
+    comparisonStatus === "stable"
+      ? "stable"
+      : comparisonStatus === "insufficient_comparable_data"
+        ? "review_unavailable"
+        : "visually_changed";
   const relatedPinIds = new Set(relatedPins.map((pin) => pin.id));
 
   return [
@@ -63,7 +64,42 @@ export function pinsAfterConfirmedComparison(
       userConfirmed: true,
       firstObservedAt,
       status,
+      comparisonStatus,
       captureIds,
     },
   ];
+}
+
+function observationComparisonStatus(
+  comparison: ComparisonResult,
+): NonNullable<ObservationPin["comparisonStatus"]> {
+  if (
+    !comparison.comparable ||
+    comparison.normalizedChange === null ||
+    comparison.descriptorChanges == null
+  ) {
+    return "insufficient_comparable_data";
+  }
+  if (comparison.normalizedChange > 0.1) {
+    return "increased_estimated_size";
+  }
+  if (comparison.normalizedChange < -0.1) {
+    return "decreased_estimated_size";
+  }
+
+  const changes = comparison.descriptorChanges;
+  const surfaceChanged = [
+    changes.meanRednessChange,
+    changes.meanBrightnessChange,
+    changes.textureContrastChange,
+    changes.ulcerationLikeContrastChange,
+  ].some((value) => value !== null && Math.abs(value) >= 0.08);
+  if (surfaceChanged) return "color_or_texture_changed";
+
+  const shapeChanged =
+    Math.abs(changes.normalizedWidthChange) > 0.1 ||
+    Math.abs(changes.normalizedHeightChange) > 0.1 ||
+    Math.abs(changes.normalizedPerimeterChange) > 0.1 ||
+    Math.abs(changes.borderIrregularityChange) > 0.1;
+  return shapeChanged ? "shape_changed" : "stable";
 }

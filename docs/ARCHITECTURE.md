@@ -9,33 +9,42 @@
 flowchart LR
   Camera["Camera and IMU"] --> Preflight["On-device re-encode and quality preflight"]
   Preflight --> Local["SQLCipher metadata and AES-GCM blobs"]
-  Preflight -->|"sanitized copy only"| API["Stateless FastAPI service"]
+  Preflight -->|"sanitized, consented copy only"| Platform["Account and consent platform"]
+  Platform --> Queue["Durable job queue"]
+  Queue --> API["Stateless inference service"]
   API --> Gates["Versioned release gates"]
   Gates -->|"passed head"| Result["Signed schema response"]
   Gates -->|"missing or failed gate"| Abstain["Abstained or unavailable result"]
-  Result --> Local
+  Result --> Platform
+  Platform --> Local
   Local --> Map["Oral observation map and timeline"]
   Local --> PDF["Encrypted local PDF"]
+  Platform --> CloudPDF["Clinician-ready cloud PDF and encrypted export"]
 ```
 
-The mobile installation is the only intended application persistence boundary. The
-service has no accounts, database, queue, object store, analytics pipeline, or retained
-job. FastAPI's multipart parser may spool a bounded upload to its temporary-file backing
-store before application code runs. The service closes every upload in `finally`, retains
-no application-managed copy, and returns `Cache-Control: no-store`. A production
-deployment must place the process temporary directory on encrypted ephemeral storage or
-`tmpfs`, enforce ingress/request limits, and verify cleanup under success and failure.
+The mobile installation remains local-first. Cloud sync, clinician review, sharing,
+reports, and encrypted export require explicit versioned product consent. The platform
+service owns accounts, PostgreSQL metadata, private S3 objects, Redis Streams delivery,
+audit history, retention, and deletion. It never treats Redis as the only job record.
+
+The inference service remains stateless: it has no accounts or application-managed image
+retention. FastAPI's multipart parser may spool a bounded upload to temporary storage
+before application code runs. Production places that path on `tmpfs`; the service closes
+every upload in `finally`, disables body/access logging, and returns
+`Cache-Control: no-store`.
 
 ## Monorepo responsibilities
 
-| Path                 | Responsibility                                                                                                                                                    |
-| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `apps/mobile`        | Expo development-build app, camera workflow, local encryption, 3D observation map, comparison, timeline, and a local observation PDF for clinician discussion     |
-| `packages/contracts` | Canonical eight-region enum, request/result schemas, provenance values, and cross-field safety invariants                                                         |
-| `services/inference` | Four-route stateless API, sanitization, release-gate enforcement, disabled-by-default developer fixtures, registration diagnostics, and detached response signing |
-| `ml`                 | Patient-disjoint manifest validation, evaluation/calibration utilities, fail-closed release gates, DVC templates, and research-only baselines                     |
-| `assets/mouth`       | Versioned procedural map manifest and named region meshes                                                                                                         |
-| `docs`               | Intended use, forbidden claims, threat model, rule-file contract, licenses, model cards, competition evidence, and disclosures                                    |
+| Path                    | Responsibility                                                                                                                                                    |
+| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apps/mobile`           | Expo development-build app, camera workflow, local encryption, 3D observation map, comparison, timeline, and a local observation PDF for clinician discussion     |
+| `packages/contracts`    | Canonical eight-region enum, request/result schemas, provenance values, and cross-field safety invariants                                                         |
+| `services/inference`    | Four-route stateless API, sanitization, release-gate enforcement, disabled-by-default developer fixtures, registration diagnostics, and detached response signing |
+| `services/platform-api` | OIDC accounts, consent, private object storage, sync, clinician grants, sharing, reports, exports, audit, retention, and delete-all                               |
+| `services/worker`       | At-least-once Redis job consumption, analysis/comparison orchestration, reconstruction, report, summary video, export, and deletion work                          |
+| `ml`                    | Patient-disjoint manifest validation, evaluation/calibration utilities, fail-closed release gates, DVC templates, and research-only baselines                     |
+| `assets/mouth`          | Versioned procedural map manifest and named region meshes                                                                                                         |
+| `docs`                  | Intended use, forbidden claims, threat model, rule-file contract, licenses, model cards, competition evidence, and disclosures                                    |
 
 ## Capture acceptance
 
@@ -65,8 +74,12 @@ The runtime response from `GET /v1/model-card` is authoritative for the deployed
 The Markdown model-card files document the working tree and templates; they do not
 override runtime state. A head is enabled only when its locked evaluation metrics and
 required review fields pass the matching gate. With the working tree's default
-artifacts, anatomy validation is enabled; segmentation, appearance,
-disease-category research, and lesion re-identification are disabled.
+artifacts, anatomy validation and candidate segmentation are enabled. Appearance,
+disease-category research, learned quality, oral-tissue segmentation,
+out-of-distribution detection, secondary segmentation, and learned lesion
+re-identification remain disabled until their separate release evidence is present.
+The disabled paths are implemented and abstain explicitly; they do not synthesize
+scores.
 
 The generated JSON Schema bundle describes public structure and the analyze-origin
 discriminated union. Cross-field safety invariants for analysis, comparison, and model
@@ -111,3 +124,9 @@ Superseded single-region captures are removed rather than retained as hidden
 duplicates. Longitudinal comparison uses captures from distinct sessions. Complete
 deletion and key rotation passed on an Android emulator; physical-device backup,
 low-storage, interrupted-operation, and recovery testing remains release-blocking.
+
+For a consented cloud account, delete-all also removes live PostgreSQL records and S3
+objects, revokes access, tombstones the identity, and cancels outstanding work. Encrypted
+disaster-recovery copies age out under the published backup window and are never restored
+after a completed deletion. The production procedure is in
+[`deploy/production/RUNBOOK.md`](../deploy/production/RUNBOOK.md).

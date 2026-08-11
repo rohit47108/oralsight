@@ -32,14 +32,14 @@ approved copy.
 
 ## Visible ingredient inventory
 
-| Ingredient | Implementation medium | Decision |
-| --- | --- | --- |
-| OralSight wordmark | Semantic text plus small SVG mark | Produce in code |
-| Four-step scan rail | Semantic ordered list and CSS rules | Produce in code |
-| Phone capture frame | Semantic HTML/CSS with real product copy | Produce in code |
-| Eight-region mouth guide | Accessible authored SVG plus text list | Produce in code |
-| Before/after comparison | Semantic images/control with empty demo-safe state | Produce in code |
-| Expiring share explanation | Semantic form preview and icons | Produce in code |
-| Report preview | Semantic HTML matching the real report schema | Produce in code |
-| Product icons | Small local SVG icon set | Produce in code |
-| Graphic tissue or patient photography | None | Accepted omission |
+| Ingredient                            | Implementation medium                              | Decision          |
+| ------------------------------------- | -------------------------------------------------- | ----------------- |
+| OralSight wordmark                    | Semantic text plus small SVG mark                  | Produce in code   |
+| Four-step scan rail                   | Semantic ordered list and CSS rules                | Produce in code   |
+| Phone capture frame                   | Semantic HTML/CSS with real product copy           | Produce in code   |
+| Eight-region mouth guide              | Accessible authored SVG plus text list             | Produce in code   |
+| Before/after comparison               | Semantic images/control with empty demo-safe state | Produce in code   |
+| Expiring share explanation            | Semantic form preview and icons                    | Produce in code   |
+| Report preview                        | Semantic HTML matching the real report schema      | Produce in code   |
+| Product icons                         | Small local SVG icon set                           | Produce in code   |
+| Graphic tissue or patient photography | None                                               | Accepted omission |

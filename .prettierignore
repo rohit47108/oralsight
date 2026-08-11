@@ -1,10 +1,14 @@
 .agents/
 node_modules/
+.next/
+.vercel/
+outputs/
 .venv/
 .expo/
 dist/
 dist-*-verify/
 coverage/
+services/platform-api/openapi.json
 ml/data/
 ml/artifacts/
 ml/mlruns/

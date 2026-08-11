@@ -32,7 +32,7 @@ from .models import (
 
 DISCLAIMER = "This result is not a diagnosis."
 SURFACE_ALGORITHM_VERSION = "oralsight-observation-surface/2.1.0"
-VIDEO_RENDERER_VERSION = "oralsight-summary-video/2.0.0"
+VIDEO_RENDERER_VERSION = "oralsight-summary-video/3.0.0"
 MAX_IMAGE_PIXELS = 20_000_000
 SURFACE_LATITUDE_SEGMENTS = 10
 SURFACE_LONGITUDE_SEGMENTS = 16
@@ -938,19 +938,189 @@ def _render_observation_slide(
     return image
 
 
+def _summary_target_yaw(region: MouthRegion) -> float:
+    return {
+        MouthRegion.LEFT_BUCCAL_MUCOSA: -0.58,
+        MouthRegion.RIGHT_BUCCAL_MUCOSA: 0.58,
+        MouthRegion.UPPER_LIP: -0.16,
+        MouthRegion.LOWER_LIP: 0.16,
+        MouthRegion.UPPER_DENTAL_ARCH: -0.22,
+        MouthRegion.LOWER_DENTAL_ARCH: 0.22,
+        MouthRegion.DORSAL_TONGUE: 0.1,
+        MouthRegion.VENTRAL_TONGUE: -0.1,
+    }[region]
+
+
+def _render_observation_map_rotation_frame(
+    *, region: MouthRegion, progress: float
+) -> Image.Image:
+    """Render one deterministic frame of a generic map rotating to a region."""
+
+    clamped = min(1.0, max(0.0, progress))
+    eased = 0.5 - 0.5 * math.cos(math.pi * clamped)
+    target_yaw = _summary_target_yaw(region)
+    start_yaw = 0.52 if target_yaw <= 0 else -0.52
+    yaw = start_yaw + (target_yaw - start_yaw) * eased
+
+    image = Image.new("RGB", (1280, 720), "#F4F8F6")
+    draw = ImageDraw.Draw(image)
+    draw.rectangle((0, 0, 1280, 14), fill="#0B716C")
+    draw.text((62, 43), "OralSight", font=_font(19, bold=True), fill="#0B716C")
+    draw.text(
+        (62, 82),
+        f"Rotating to {REGION_DISPLAY_NAMES[region]}",
+        font=_font(42, bold=True),
+        fill="#102A43",
+    )
+    draw.text(
+        (62, 137),
+        "Generic oral observation map · selected location",
+        font=_font(21),
+        fill="#536A7C",
+    )
+
+    center_x = 640 + int(math.sin(yaw) * 38)
+    center_y = 350
+    half_width = int(300 * (0.76 + 0.24 * abs(math.cos(yaw))))
+    draw.ellipse(
+        (center_x - half_width - 20, 182, center_x + half_width + 20, 542),
+        fill="#E7A29A",
+        outline="#8A3E48",
+        width=9,
+    )
+    draw.ellipse(
+        (center_x - half_width + 24, 218, center_x + half_width - 24, 510),
+        fill="#47222B",
+        outline="#F1C9C3",
+        width=6,
+    )
+    draw.arc(
+        (center_x - half_width + 78, 224, center_x + half_width - 78, 368),
+        188,
+        352,
+        fill="#F7EFE9",
+        width=30,
+    )
+    draw.arc(
+        (center_x - half_width + 92, 364, center_x + half_width - 92, 494),
+        8,
+        172,
+        fill="#F7EFE9",
+        width=28,
+    )
+    draw.ellipse(
+        (center_x - 154, 342, center_x + 154, 504),
+        fill="#B95B69",
+        outline="#E58A91",
+        width=5,
+    )
+
+    projected: list[tuple[float, MouthRegion, float, float]] = []
+    for candidate, layout in REGION_LAYOUT.items():
+        x, y, z = (float(value) for value in layout["translation"])
+        rotated_x = x * math.cos(yaw) + z * math.sin(yaw)
+        rotated_z = -x * math.sin(yaw) + z * math.cos(yaw)
+        screen_x = center_x + rotated_x * 218
+        screen_y = center_y - y * 150
+        projected.append((rotated_z, candidate, screen_x, screen_y))
+
+    for depth, candidate, x, y in sorted(projected):
+        is_target = candidate == region
+        radius = max(12, int(18 + depth * 4))
+        if is_target:
+            glow = radius + 13 + int(5 * eased)
+            draw.ellipse(
+                (x - glow, y - glow, x + glow, y + glow),
+                fill="#FFF2C7",
+                outline="#FFC14D",
+                width=5,
+            )
+        draw.ellipse(
+            (x - radius, y - radius, x + radius, y + radius),
+            fill="#FFC14D" if is_target else "#76B8AF",
+            outline="#FFFFFF",
+            width=4,
+        )
+        if is_target:
+            draw.line((x + radius + 8, y, 1000, 316), fill="#FFC14D", width=5)
+            draw.rounded_rectangle(
+                (996, 264, 1212, 368),
+                radius=16,
+                fill="#102A43",
+            )
+            _draw_wrapped(
+                draw,
+                REGION_DISPLAY_NAMES[region],
+                xy=(1020, 286),
+                font=_font(23, bold=True),
+                fill="#FFFFFF",
+                width=170,
+                spacing=7,
+            )
+
+    draw.rounded_rectangle((52, 570, 1228, 666), radius=18, fill="#102A43")
+    _draw_wrapped(
+        draw,
+        "The video now shows the selected evidence and any confirmed "
+        "comparable change.",
+        xy=(78, 593),
+        font=_font(22, bold=True),
+        fill="#FFFFFF",
+        width=1120,
+        spacing=8,
+    )
+    draw.text((62, 682), DISCLAIMER, font=_font(19, bold=True), fill="#7A4D00")
+    return image
+
+
+def _render_observation_map_rotation(region: MouthRegion) -> list[Image.Image]:
+    frame_count = 18
+    return [
+        _render_observation_map_rotation_frame(
+            region=region,
+            progress=index / (frame_count - 1),
+        )
+        for index in range(frame_count)
+    ]
+
+
 def _encode_slides(
-    slides: list[Image.Image], *, duration_seconds: int, directory: Path
+    slides: list[Image.Image],
+    *,
+    intro_frames: list[Image.Image],
+    duration_seconds: int,
+    directory: Path,
 ) -> bytes:
+    if not slides or len(intro_frames) < 2:
+        raise RuntimeError("local_video_sequence_invalid")
+    intro_fps = 12
+    intro_duration = len(intro_frames) / intro_fps
+    if intro_duration >= duration_seconds:
+        raise RuntimeError("local_video_duration_invalid")
+    intro_pattern = directory / "intro-%03d.png"
+    for index, frame in enumerate(intro_frames):
+        frame.save(directory / f"intro-{index:03d}.png", format="PNG", optimize=True)
     slide_paths: list[Path] = []
     for index, slide in enumerate(slides):
         path = directory / f"slide-{index:02d}.png"
         slide.save(path, format="PNG", optimize=True)
         slide_paths.append(path)
-    transition_seconds = 0.45 if len(slides) > 1 else 0.0
-    segment_seconds = (duration_seconds + transition_seconds * (len(slides) - 1)) / len(
-        slides
-    )
-    command = [imageio_ffmpeg.get_ffmpeg_exe(), "-hide_banner", "-loglevel", "error"]
+    transition_seconds = 0.4
+    segment_seconds = (
+        duration_seconds - intro_duration + transition_seconds * len(slides)
+    ) / len(slides)
+    command = [
+        imageio_ffmpeg.get_ffmpeg_exe(),
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-framerate",
+        str(intro_fps),
+        "-start_number",
+        "0",
+        "-i",
+        str(intro_pattern),
+    ]
     for path in slide_paths:
         command.extend(
             [
@@ -965,19 +1135,24 @@ def _encode_slides(
             ]
         )
     filters = [
-        f"[{index}:v]scale=1280:720,format=yuv420p,settb=AVTB,"
-        f"setpts=PTS-STARTPTS,fps=24[v{index}]"
-        for index in range(len(slides))
+        "[0:v]scale=1280:720,format=yuv420p,settb=AVTB,setpts=PTS-STARTPTS,fps=24[v0]"
     ]
+    filters.extend(
+        f"[{index + 1}:v]scale=1280:720,format=yuv420p,settb=AVTB,"
+        f"setpts=PTS-STARTPTS,fps=24[v{index + 1}]"
+        for index in range(len(slides))
+    )
     current_label = "v0"
-    for index in range(1, len(slides)):
+    current_end = intro_duration
+    for index in range(1, len(slides) + 1):
         next_label = f"x{index}"
-        offset = index * (segment_seconds - transition_seconds)
+        offset = current_end - transition_seconds
         filters.append(
             f"[{current_label}][v{index}]xfade=transition=fade:"
             f"duration={transition_seconds:.6f}:offset={offset:.6f}[{next_label}]"
         )
         current_label = next_label
+        current_end = offset + segment_seconds
     filters.append(f"[{current_label}]format=yuv420p[video]")
     output_path = directory / "summary.mp4"
     command.extend(
@@ -1025,29 +1200,12 @@ def build_summary_video(
     sources: dict[UUID, bytes],
     generated_at: str,
 ) -> LocalArtifact:
-    slide_count = len(payload.selected_observations) + 2
-    slides = [
-        _render_slide(
-            title="Your selected scan summary",
-            body=(
-                f"This private video contains {len(payload.selected_observations)} "
-                "selected observation"
-                f"{'s' if len(payload.selected_observations) != 1 else ''} from "
-                "the saved scan record. Yellow lines mark candidate boundaries."
-            ),
-            caption=(
-                "Only confirmed, comparable pairs show a change value. Open the "
-                "full report for complete provenance and limitations."
-            ),
-            index=0,
-            total=slide_count,
-        )
-    ]
-    slides.extend(
+    slide_count = len(payload.selected_observations) + 1
+    slides = list(
         _render_observation_slide(
             observation,
             sources=sources,
-            index=index,
+            index=index - 1,
             total=slide_count,
         )
         for index, observation in enumerate(payload.selected_observations, start=1)
@@ -1067,11 +1225,16 @@ def build_summary_video(
     with TemporaryDirectory(prefix="oralsight-video-") as temporary:
         temp = Path(temporary)
         data = _encode_slides(
-            slides, duration_seconds=payload.duration_seconds, directory=temp
+            slides,
+            intro_frames=_render_observation_map_rotation(
+                payload.selected_observations[0].region
+            ),
+            duration_seconds=payload.duration_seconds,
+            directory=temp,
         )
 
     manifest: dict[str, Any] = {
-        "schemaVersion": "oralsight.summary-video.v2",
+        "schemaVersion": "oralsight.summary-video.v3",
         "rendererVersion": VIDEO_RENDERER_VERSION,
         "templateVersion": payload.template_version,
         "generatedAt": generated_at,
@@ -1080,6 +1243,11 @@ def build_summary_video(
         "durationSeconds": payload.duration_seconds,
         "captionsIncluded": True,
         "captionMode": "burned_in",
+        "intro": {
+            "kind": "generic_observation_map_rotation",
+            "targetRegion": payload.selected_observations[0].region.value,
+            "personalizedGeometry": False,
+        },
         "audioRequested": payload.include_audio,
         "audioIncluded": False,
         "disclaimer": DISCLAIMER,

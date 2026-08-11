@@ -54,6 +54,14 @@ Its exact frozen test reached Dice `0.7192` and boundary F1 `0.6256`, passing
 the required aggregate gates. Positive-image scores were lower, so its
 limitations remain visible and an empty mask is never treated as reassurance.
 
+That released weight used the Autooral training split under its authors'
+academic-research and non-commercial terms. A clean-license SMART-OM-only
+replacement was trained and evaluated once on a fresh patient holdout, but it
+reached Dice `0.6809` and boundary F1 `0.5616`, below the fixed `0.70`/`0.60`
+gate. It was rejected and is not bundled. The current weight is therefore for
+the documented academic competition/research build unless broader written
+permission is obtained.
+
 Disease-category research failed (`macro F1 0.3596`, calibration error
 `0.0827`, inadequate held-out patients, and no signed clinical review).
 Appearance classification and lesion re-identification lack the required labels
@@ -75,11 +83,16 @@ in [requirement audit](docs/REQUIREMENT_AUDIT.md).
 ## Repository
 
 - `apps/mobile`: Expo and React Native application
+- `apps/web`: public, patient, clinician, and administrator Next.js product
 - `packages/contracts`: canonical TypeScript schemas and cross-field safety rules
 - `services/inference`: stateless FastAPI, OpenCV, signing, and model-release service
+- `services/platform-api`: accounts, sync, storage, sharing, review, jobs,
+  analytics, and deletion APIs
+- `services/worker`: durable PDF, MP4, GLB, export, and retention worker
 - `ml`: patient-disjoint manifest, training, evaluation, calibration, and release-gate
   tooling
 - `assets/mouth`: versioned oral observation map metadata
+- `deploy`: production Compose, environment contract, and operator runbook
 - `docs`: architecture, safety, privacy, release, licensing, and build instructions
 
 No restricted medical image, patient dataset, database, secret, or generated build
@@ -110,7 +123,8 @@ pnpm typecheck
 
 py -3.12 -m pip install --upgrade uv
 py -3.12 -m uv sync --frozen --all-packages --extra dev
-py -3.12 -m uv run --frozen --all-packages pytest services/inference/tests ml/tests
+py -3.12 -m uv run --frozen --all-packages pytest `
+  services/inference/tests services/platform-api/tests services/worker/tests ml/tests
 
 python .github/scripts/audit_repository.py
 ```
@@ -160,27 +174,36 @@ Every non-loopback mobile build requires:
   `EXPO_PUBLIC_RESPONSE_SIGNING_PUBLIC_KEY_B64`; and
 - production ingress rate, connection, and timeout limits.
 
-The checked-in `preview` and `production` EAS profiles already contain the
-deployed API URL and public response-verification key. The matching private key
-exists only in the Vercel secret store. Never commit populated secret files.
+The checked-in EAS profiles contain public inference configuration. A complete
+account/cloud build also needs the platform, OIDC, web, and share-viewer values
+documented in [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md). Private signing keys
+belong only in the deployment secret store. Never commit populated secret files.
 
 ## Deployment
 
 The native app is distributed as an Android or iOS build, not as a Vercel website.
 The OpenCV inference API can run either from the hardened container configuration
-or from the repository's Vercel Services entry point. The production service is
-live at `https://oralsight-inference.vercel.app/api`; health is available at
-`https://oralsight-inference.vercel.app/api/healthz`.
+or from the repository's Vercel entry point. An older inference-only source
+release is live at `https://oralsight-inference.vercel.app/api`; it is not proof
+that the current web, platform, worker, or full source tree is deployed.
 
 Vercel is only the API host. It does not replace the installed mobile app, model
 artifacts, release manifest, signing secrets, or Apple/Google distribution.
 The supplied configuration uses the inference service's own Python workspace and
 the mobile/API pipeline caps each image at 1.75 MB so two-image comparisons fit
-under Vercel's request-body limit. The deployed service passed all four-route,
+under Vercel's request-body limit. That older service passed all four-route,
 live-model, no-store, and detached-signature verification on July 28, 2026.
 
-See [mobile build and deployment](docs/MOBILE_BUILD_AND_DEPLOY.md) and the inference
+See the complete [deployment handoff](docs/DEPLOYMENT.md),
+[mobile build instructions](docs/MOBILE_BUILD_AND_DEPLOY.md), and inference
 service [deployment notes](services/inference/README.md).
+
+Optional accounts, cloud sync, clinician review, QR sharing, server-rendered reports,
+encrypted exports, and durable jobs run through the separate platform and worker
+services. `compose.yaml` is the local stack. The hardened production surface and its
+external PostgreSQL, TLS Redis, private S3, OIDC, backup, restore, and retention
+requirements are documented in
+[`deploy/production/RUNBOOK.md`](deploy/production/RUNBOOK.md).
 
 ## Safety boundary
 
@@ -189,6 +212,17 @@ service [deployment notes](services/inference/README.md).
 - Learned outputs remain disabled unless their locked evaluation and review gates
   pass.
 - A failed live request never receives a fixture result.
-- All measurements are image-normalized and approximate, never millimeters.
+- Measurements are image-normalized unless a versioned reference-card calibration
+  passes; calibrated millimeter values remain clearly labeled approximate estimates.
 - Passing software tests does not establish clinical accuracy, regulatory status,
   effectiveness, or HIPAA compliance.
+
+## Distribution boundary
+
+No repository-wide source license has been selected by the owner. The bundled
+segmentation weight is documented for academic research/non-commercial use and
+is not cleared here for unrestricted public or commercial redistribution. A
+private competition repository and local source ZIP can be used within that
+scope. Before a public GitHub release, choose the source license and obtain
+written model permission or replace the weight with a properly licensed model
+that passes a new untouched release test.

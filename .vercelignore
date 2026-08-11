@@ -1,13 +1,14 @@
 .git/
 .vercel/
+.impeccable/
 .venv/
 node_modules/
-apps/
+apps/mobile/
 assets/
+design-system/
 docs/
 ml/
-packages/
-patches/
+outputs/
 scripts/
 .github/
 .expo/
@@ -28,3 +29,8 @@ captures/
 .env.*
 services/inference/tests/
 services/inference/.pytest_cache/
+services/platform-api/
+services/worker/
+packages/contracts/fixtures/
+packages/contracts/test/
+work/

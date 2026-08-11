@@ -100,6 +100,8 @@ Status panels:
 Observation map:
 
 - the 3D view is a generic oral observation map, not a personalized digital twin;
+- a generated private GLB may project selected capture colors and confirmed pins onto
+  the generic surface, but must never be described as reconstructed patient anatomy;
 - every region must also be selectable through the synchronized native list;
 - pin data stays bound to region ID, named mesh, UV coordinates, and asset version;
 - map controls use 48-point targets and visible press feedback.
@@ -146,6 +148,8 @@ Always say:
 
 - "This result is not a diagnosis."
 - "approximate" for image-normalized measurements
+- "approximate calibrated estimate" for a millimeter value that passed the physical
+  marker and same-plane checks
 - "oral observation map"
 - "analysis unavailable" when the service cannot produce a validated output
 
@@ -153,7 +157,7 @@ Never claim:
 
 - cancer or harmlessness;
 - clinical accuracy;
-- physical millimeter measurement;
+- uncalibrated or clinically precise millimeter measurement;
 - HIPAA compliance;
 - a personalized digital twin; or
 - that an unavailable model produced a result.

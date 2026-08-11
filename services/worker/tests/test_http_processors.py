@@ -9,7 +9,6 @@ import cv2
 import httpx
 import numpy as np
 import pytest
-from conftest import CAPTURE_ID, IMAGE_BYTES, asset_pointer
 from PIL import Image, ImageDraw
 
 from oralsight_worker.auth import ServiceRequestSigner
@@ -50,6 +49,8 @@ from oralsight_worker.processors import (
     ReportProcessor,
     SummaryVideoProcessor,
 )
+
+from .conftest import CAPTURE_ID, IMAGE_BYTES, asset_pointer
 
 
 async def never_cancelled(_job_id: str) -> bool:
@@ -254,6 +255,7 @@ async def test_local_reconstruction_abstains_on_undecodable_views(envelope) -> N
 async def test_report_accepts_only_a_real_pdf_artifact(envelope) -> None:
     payload = ReportPayload(
         scan_session_id=UUID("00000000-0000-4000-8000-000000000060"),
+        consent_record_id=UUID("00000000-0000-4000-8000-000000000063"),
         observation_ids=[UUID("00000000-0000-4000-8000-000000000061")],
     )
     report_job = envelope.model_copy(
@@ -489,6 +491,15 @@ async def test_local_artifact_processors_publish_real_glb_and_mp4(
     )
     assert video.result["summaryVideo"]["captionsIncluded"] is True
     assert video.result["summaryVideo"]["manifest"]["notForDiagnosis"] is True
+    assert (
+        video.result["summaryVideo"]["manifest"]["schemaVersion"]
+        == "oralsight.summary-video.v3"
+    )
+    assert video.result["summaryVideo"]["manifest"]["intro"] == {
+        "kind": "generic_observation_map_rotation",
+        "targetRegion": "dorsal_tongue",
+        "personalizedGeometry": False,
+    }
     assert len(uploaded) == 2
     assert b"glTF" in uploaded[0]
     assert b"ftyp" in uploaded[1]

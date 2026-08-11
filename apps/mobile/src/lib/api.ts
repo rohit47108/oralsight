@@ -11,6 +11,7 @@ import {
   DISCLAIMER,
   modelCardSchema,
   type AnalysisResult,
+  type ComparisonCalibrationRequest,
   type ComparisonResult,
   type ModelCard,
   type ModelHead,
@@ -76,6 +77,8 @@ interface CompareCaptureInput {
   currentAnalysis: ComparisonAnalysisReference;
   inputOrigin: "live_capture";
   userConfirmedMatch: boolean;
+  baselineCalibration?: ComparisonCalibrationRequest | null;
+  currentCalibration?: ComparisonCalibrationRequest | null;
 }
 
 function uploadPart(uri: string): LocalFile {
@@ -280,6 +283,10 @@ export async function analyzeCapture(
     requestedHeads: input.requestedHeads ?? [
       "segmentation",
       "anatomy",
+      "quality_control",
+      "oral_tissue_segmentation",
+      "out_of_distribution",
+      "secondary_segmentation",
       "appearance",
       "disease_research",
     ],
@@ -341,6 +348,8 @@ export async function compareCaptures(
     inputOrigin: input.inputOrigin,
     baselineAnalysis: input.baselineAnalysis,
     currentAnalysis: input.currentAnalysis,
+    baselineCalibration: input.baselineCalibration ?? null,
+    currentCalibration: input.currentCalibration ?? null,
   };
   const validatedMetadata = compareMetadataSchema.parse(metadata);
   const form = new FormData();
@@ -387,6 +396,12 @@ export async function compareCaptures(
       inlierRatio: 0,
       reprojectionErrorRatio: 1,
       normalizedChange: null,
+      descriptorChanges: null,
+      calibratedMeasurementChanges: null,
+      calibrationSuppressionReasons:
+        input.baselineCalibration || input.currentCalibration
+          ? ["comparison_not_comparable"]
+          : [],
       comparable: false,
       suppressionReasons: [
         reason,

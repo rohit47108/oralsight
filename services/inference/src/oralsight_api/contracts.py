@@ -74,6 +74,27 @@ class ModelHead(StrEnum):
     APPEARANCE = "appearance"
     DISEASE_RESEARCH = "disease_research"
     LESION_REIDENTIFICATION = "lesion_reidentification"
+    QUALITY_CONTROL = "quality_control"
+    ORAL_TISSUE_SEGMENTATION = "oral_tissue_segmentation"
+    OUT_OF_DISTRIBUTION = "out_of_distribution"
+    SECONDARY_SEGMENTATION = "secondary_segmentation"
+
+
+class QualityClass(StrEnum):
+    ACCEPTABLE = "acceptable"
+    BLURRY = "blurry"
+    TOO_DARK = "too-dark"
+    TOO_BRIGHT = "too-bright"
+    GLARE_HEAVY = "glare-heavy"
+    TARGET_REGION_MISSING = "target-region-missing"
+    TOO_FAR = "too-far"
+    TOO_CLOSE = "too-close"
+    OBSTRUCTED = "obstructed"
+
+
+class DistributionClass(StrEnum):
+    SUPPORTED = "supported"
+    UNSUPPORTED = "unsupported"
 
 
 class AppearanceClass(StrEnum):
@@ -130,6 +151,13 @@ class PriorAnalysisMetadata(ContractModel):
     model_versions: dict[str, str]
 
 
+class ComparisonCalibrationRequest(ContractModel):
+    card_version: Literal["oralsight-calibration-v1"]
+    marker_id: Literal[17]
+    marker_side_mm: Literal[20]
+    plane_confirmed: Literal[True]
+
+
 class CompareMetadata(ContractModel):
     contract_version: Literal[CONTRACT_VERSION]
     baseline_capture_id: Annotated[str, Field(min_length=1, max_length=128)]
@@ -139,6 +167,8 @@ class CompareMetadata(ContractModel):
     input_origin: InputOrigin
     baseline_analysis: PriorAnalysisMetadata
     current_analysis: PriorAnalysisMetadata
+    baseline_calibration: ComparisonCalibrationRequest | None = None
+    current_calibration: ComparisonCalibrationRequest | None = None
 
     @model_validator(mode="after")
     def analysis_references_match_request(self) -> "CompareMetadata":
@@ -331,6 +361,38 @@ class AnalysisResult(ContractModel):
         return self
 
 
+class DescriptorChanges(ContractModel):
+    normalized_width_change: Annotated[float, Field(ge=-1)]
+    normalized_height_change: Annotated[float, Field(ge=-1)]
+    normalized_perimeter_change: Annotated[float, Field(ge=-1)]
+    border_irregularity_change: float
+    mean_redness_change: Annotated[float, Field(ge=-1, le=1)]
+    mean_brightness_change: Annotated[float, Field(ge=-1, le=1)]
+    texture_contrast_change: Annotated[float, Field(ge=-1, le=1)]
+    ulceration_like_contrast_change: Annotated[float, Field(ge=-1, le=1)] | None
+    measurement_label: Literal["approximate image-normalized change"] = (
+        "approximate image-normalized change"
+    )
+
+
+class CalibratedMeasurementChanges(ContractModel):
+    card_version: Literal["oralsight-calibration-v1"]
+    marker_id: Literal[17]
+    marker_side_mm: Literal[20]
+    baseline_width_mm: Annotated[float, Field(gt=0)]
+    current_width_mm: Annotated[float, Field(gt=0)]
+    width_change_mm: float
+    baseline_height_mm: Annotated[float, Field(gt=0)]
+    current_height_mm: Annotated[float, Field(gt=0)]
+    height_change_mm: float
+    baseline_area_mm2: Annotated[float, Field(gt=0)]
+    current_area_mm2: Annotated[float, Field(gt=0)]
+    area_change_mm2: float
+    baseline_confidence: Annotated[float, Field(ge=0, le=1)]
+    current_confidence: Annotated[float, Field(ge=0, le=1)]
+    measurement_label: Literal["calibrated estimate"] = "calibrated estimate"
+
+
 class ComparisonResult(ContractModel):
     contract_version: Literal[CONTRACT_VERSION] = CONTRACT_VERSION
     baseline_capture_id: Annotated[str, Field(min_length=1)]
@@ -342,6 +404,9 @@ class ComparisonResult(ContractModel):
     inlier_ratio: Annotated[float, Field(ge=0, le=1)]
     reprojection_error_ratio: Annotated[float, Field(ge=0)]
     normalized_change: Annotated[float, Field(ge=-1)] | None
+    descriptor_changes: DescriptorChanges | None = None
+    calibrated_measurement_changes: CalibratedMeasurementChanges | None = None
+    calibration_suppression_reasons: list[str] = Field(default_factory=list)
     comparable: bool
     suppression_reasons: list[str]
     model_versions: dict[str, str]
@@ -363,6 +428,13 @@ class ComparisonResult(ContractModel):
             )
         if not self.comparable and self.normalized_change is not None:
             raise ValueError("Suppressed comparison cannot expose normalized change.")
+        if not self.comparable and (
+            self.descriptor_changes is not None
+            or self.calibrated_measurement_changes is not None
+        ):
+            raise ValueError(
+                "Suppressed comparison cannot expose descriptor or calibrated change."
+            )
         if (
             self.analysis_origin
             in {
@@ -437,6 +509,10 @@ class ModelCard(ContractModel):
                 ModelHead.APPEARANCE: "appearance_weights",
                 ModelHead.DISEASE_RESEARCH: "disease_research_weights",
                 ModelHead.LESION_REIDENTIFICATION: "lesion_reidentification_weights",
+                ModelHead.QUALITY_CONTROL: "quality_control_weights",
+                ModelHead.ORAL_TISSUE_SEGMENTATION: "oral_tissue_segmentation_weights",
+                ModelHead.OUT_OF_DISTRIBUTION: "out_of_distribution_weights",
+                ModelHead.SECONDARY_SEGMENTATION: "secondary_segmentation_weights",
             }[head]
             if self.artifact_hashes.get(artifact_name) is None:
                 raise ValueError("Enabled heads require a pinned weight artifact hash.")

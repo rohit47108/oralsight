@@ -1,165 +1,179 @@
 # OralSight requirement audit
 
-Date: 2026-07-28
+Audit date: 2026-08-10
 
 This audit compares the current repository with:
 
-1. the original “OralSight: Complete Product and Engineering Blueprint”; and
-2. the later “OralSight 2026 Competition Build Plan” that the user explicitly
-   asked to implement.
+1. the original **OralSight: Complete Product and Engineering Blueprint**;
+2. the later **OralSight 2026 Competition Build Plan**; and
+3. the later request to expand OralSight into an optional account/cloud product
+   with multi-angle capture, calibration, generated artifacts, sharing, and a
+   clinician portal.
 
-The later plan controls where the documents conflict. In particular, it fixes
-the scan at eight regions and one accepted image per region, describes the 3D
-surface as an oral observation map, and defers multi-angle capture, physical
-calibration, personalized reconstruction, QR sharing, clinician portals, and
-scan-summary videos.
+The later fixed safety and data contracts still control conflicting details:
 
-Verdicts:
+- the product uses the canonical eight regions, not the original ten-region
+  example;
+- results remain non-diagnostic and cannot claim cancer, harmlessness, clinical
+  accuracy, HIPAA compliance, or unsupported physical precision;
+- learned outputs remain hidden when their evidence gates fail;
+- every proposed lesion match still requires a separate user decision; and
+- Parkinson/NeuroSight remains deferred until OralSight is complete.
 
-- **Verified locally** means current code plus a test, build, runtime check, or
-  inspected artifact directly supports the requirement.
-- **Gate closed** means the product implements the safe unavailable state
-  required by the plan because the evidence needed to expose that output did
-  not pass.
-- **Deferred by the controlling plan** means the feature must remain a static
-  roadmap item rather than appear as working functionality.
-- **External release work** means the repository is prepared, but completion
-  requires a physical device, clinician, account, credential, or owner decision
-  that is not present in the workspace.
+> **This result is not a diagnosis.** This is a software audit, not clinical or
+> regulatory evidence.
 
-> **This result is not a diagnosis.** This is an engineering audit, not evidence
-> of clinical validity, safety, effectiveness, or regulatory status.
+## Verdict meanings
 
-## Product and safety contract
+- **Implemented locally**: the source path exists and has direct local test,
+  build, runtime, or artifact evidence.
+- **Implemented; external setup**: the source path exists, but real use needs
+  identity, hosting, storage, a domain, a clinician, or physical hardware.
+- **Implemented; release gate closed**: the safe workflow exists, but a learned
+  or numeric output remains suppressed because its required evidence is absent.
+- **Partial**: a useful version exists, but an explicit part of the blueprint is
+  absent.
+- **Missing**: no real implementation or release evidence exists.
 
-| Requirement                                                         | Current evidence                                                                                                                                              | Verdict          |
-| ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- |
-| Fixed eight-region taxonomy everywhere                              | Canonical enum and region metadata in `packages/contracts/src/index.ts`; cross-language taxonomy repository audit                                             | Verified locally |
-| Exactly one accepted image per region                               | Replacement and cleanup logic in `useOralSightStore.ts`; completeness logic and tests in `scanLogic.ts`                                                       | Verified locally |
-| A scan completes only at 8/8 accepted regions                       | Mobile scan progress and report gate; contract and mobile tests                                                                                               | Verified locally |
-| No fake normal-use photos or fallback results                       | Installed mobile bundle contains no mouth fixture; live-input policy rejects cached and fixture response origins; failed requests save `analysis unavailable` | Verified locally |
-| Input and analysis provenance remain separate                       | Public contracts, result screen, timeline, comparisons, PDF, and API tests                                                                                    | Verified locally |
-| Every screen and report repeats the exact disclaimer                | Shared `Screen` frame and locally generated report footer/header                                                                                              | Verified locally |
-| No cancer, harmlessness, HIPAA, or clinical-accuracy claim          | Forbidden-claim documentation, repository text audit, fixed user-facing copy                                                                                  | Verified locally |
-| Approximate, image-normalized measurements only                     | Contracts require `measurementLabel: "approximate"`; result, comparison, and report copy prohibit millimeter interpretation                                   | Verified locally |
-| Review priority comes only from an approved deterministic rule file | Signed-payload, expiry, scope, and version checks in `guidanceRules.ts`; bundled configuration is deliberately disabled                                       | Gate closed      |
+## Original 50-feature audit
 
-## Real mobile workflow
+|   # | Blueprint feature                                         | Current evidence                                                                                                                                                                               | Verdict                                                                                                                                    |
+| --: | --------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+|   1 | Intelligent onboarding, adaptive intake, symptom body map | Mobile onboarding captures the requested context, reveals dependent questions, records head/neck symptom locations, and feeds only gated rules/reminders                                       | **Implemented locally**; clinician urgency rule remains closed                                                                             |
+|   2 | Anatomical 3D mouth navigator                             | Eight named meshes plus support anatomy, rotate, zoom, select, transparency, hide teeth, pins, and accessible region list                                                                      | **Implemented locally** under the fixed eight-region contract                                                                              |
+|   3 | Exploded anatomical mode                                  | Map separates the observation regions and support structures with accessible controls                                                                                                          | **Implemented locally**                                                                                                                    |
+|   4 | Scan-path animation                                       | Guided region sequence, animated replay, phone-position/tongue/helper cues, and reduced-motion handling                                                                                        | **Implemented locally**; uses a compact path cue rather than a detailed phone avatar                                                       |
+|   5 | Scan-completeness map                                     | 8/8 accepted/pending state appears in the map, native list, scan screen, and report                                                                                                            | **Implemented locally**                                                                                                                    |
+|   6 | Lesion pins                                               | Explicitly confirmed pins store region, mesh, UV, version, dates, captures, status, symptoms, and measurement provenance                                                                       | **Implemented locally**                                                                                                                    |
+|   7 | 3D lesion/status heatmap                                  | Scan coverage, unavailable/quality state, changed observations, and confirmed pins have distinct text/shape/color states                                                                       | **Implemented locally**; it is not a risk heatmap                                                                                          |
+|   8 | Personalized mouth model                                  | Worker creates a real GLB from three or more hash-verified views, bakes coarse projected colors onto the standard region meshes, and embeds confirmed pins                                     | **Implemented; external setup** with a major limit: geometry is generic, not reconstructed patient anatomy                                 |
+|   9 | Guided camera                                             | Live stability and framing overlay plus immediate focus/exposure/glare/obstruction/size/privacy/anatomy acceptance                                                                             | **Implemented locally** under the later capture contract                                                                                   |
+|  10 | Stability ring and automatic capture                      | IMU-driven ring, automatic capture option, sensor fallback, and explicit manual capture                                                                                                        | **Partial**: the ring represents device stability only; focus, lighting, and centering are checked after capture                           |
+|  11 | AR anatomical overlay                                     | Region-specific SVG/tissue target overlay on the live camera, with mirror support                                                                                                              | **Implemented locally**; it is a 2D guide rather than environment-tracked AR                                                               |
+|  12 | Ghost-image follow-up                                     | A prior encrypted capture is temporarily decrypted into a low-opacity camera guide and cleaned on exit                                                                                         | **Implemented locally**                                                                                                                    |
+|  13 | Multi-angle capture                                       | Straight/left/right capture sets plus guided six-second sweep and retained extracted frames only                                                                                               | **Implemented locally**; cloud persistence needs the platform                                                                              |
+|  14 | Calibration reference                                     | Exact A4/Letter 20 mm ArUco card, QR payload, grayscale patches, same-plane confirmation, marker-plane geometry, and nullable approximate mm/mm² fields                                        | **Implemented; external evidence**: print and cross-device repeatability are not validated, and no clinical precision claim is allowed     |
+|  15 | Caregiver-assisted mode                                   | Intake selects self/assisted use and capture guidance assigns patient/helper positioning responsibilities                                                                                      | **Implemented locally**                                                                                                                    |
+|  16 | Mirror mode                                               | User-controlled mirrored anatomical capture guide                                                                                                                                              | **Implemented locally**                                                                                                                    |
+|  17 | Video-to-best-frame capture                               | Short sweep is sampled, privacy/quality checked, direction-diversified, reduced to three traceable frames, and raw video deleted                                                               | **Implemented locally**                                                                                                                    |
+|  18 | Privacy preprocessing                                     | Metadata removal, randomized IDs, face checks, mouth-only confirmation, encrypted storage, bounded transport, and safe filenames                                                               | **Implemented locally**                                                                                                                    |
+|  19 | Image-quality model/check                                 | Deterministic local/server checks cover blur, exposure, glare, obstruction, resolution, aspect ratio, face presence, and target mismatch                                                       | **Partial**: there is no trained quality model or true camera-distance measurement; physical-device error-rate validation remains external |
+|  20 | Anatomical-region classification                          | Released hash-pinned eight-class anatomy ONNX with mismatch rejection and abstention                                                                                                           | **Implemented locally**                                                                                                                    |
+|  21 | Oral-cavity tissue segmentation                           | A separate model-head contract, runtime adapter, mask intersection, limitations, and fail-closed gate are implemented                                                                          | **Implemented; release gate closed** because no licensed tissue-mask dataset and held-out boundary evidence are available                  |
+|  22 | Lesion/candidate detection                                | Candidate bounding box is derived from the released candidate mask and may be absent                                                                                                           | **Implemented locally** without a redundant second detector                                                                                |
+|  23 | Lesion/candidate segmentation                             | Released mask plus normalized area, perimeter, width/height, shape, border, color, and texture descriptors                                                                                     | **Implemented locally**                                                                                                                    |
+|  24 | Visual-pattern classification                             | Contracts, UI, model-card gate, abstention, and seven-class taxonomy exist; no real class is shown                                                                                             | **Implemented; release gate closed** because the required labels and held-out support do not exist                                         |
+|  25 | Uncertainty system                                        | Six honest factors cover quality, visibility, alignment, symptom completeness, dataset similarity, and model agreement, each with a value or unavailable reason                                | **Implemented locally**; learned similarity/agreement values remain unavailable until their heads pass release gates                       |
+|  26 | Out-of-distribution detection                             | Separate supported/unsupported model-head contract, runtime adapter, score, threshold, abstention, model card, and tests                                                                       | **Implemented; release gate closed** because no licensed supported-versus-unsupported evaluation set is available                          |
+|  27 | Ensemble analysis                                         | Independent secondary-segmentation adapter, numeric agreement, disagreement suppression, and combined explanation are implemented                                                              | **Implemented; release gate closed** because no independently trained secondary artifact and locked agreement evidence are available       |
+|  28 | Explainable AI                                            | Mask overlay, descriptors, symptom/duration factors, structured explanation text, confidence/limitations, provenance, and no invented findings                                                 | **Implemented locally**                                                                                                                    |
+|  29 | Lesion re-identification                                  | Proposal/decision contracts, region/feature evidence, cloud persistence, and mandatory confirmation exist                                                                                      | **Implemented; release gate closed** for the learned automatic head; the user-confirmed path works                                         |
+|  30 | Image registration                                        | ORB features, RANSAC homography, inlier ratio, normalized reprojection error, and suppression reasons                                                                                          | **Implemented locally**                                                                                                                    |
+|  31 | Change measurements                                       | Gated deltas cover normalized area, width, height, perimeter, border irregularity, redness, brightness, texture, ulceration-like contrast, symptoms, days, and confidence                      | **Implemented locally**; paired millimeter changes appear only when both captures have valid same-plane calibration evidence               |
+|  32 | Time-lapse morph                                          | Motion-controlled chronological replay/crossfade of observations and masks                                                                                                                     | **Implemented locally**                                                                                                                    |
+|  33 | Before-and-after slider                                   | Drag, tap, keyboard/screen-reader adjustment, originals, and masks                                                                                                                             | **Implemented locally**                                                                                                                    |
+|  34 | Trajectory graph                                          | Accessible visual-change chart for approximate area, symptoms, quality, confidence, and comparison status                                                                                      | **Implemented locally**                                                                                                                    |
+|  35 | Same-angle replay                                         | Ghost guide plus persisted tilt, rotation, lighting, and calibrated image-scale similarity, with unavailable reasons when evidence is absent                                                   | **Implemented locally**; scale is a framing-distance proxy and is never represented as tissue identity                                     |
+|  36 | Stability detection                                       | Confirmed comparisons classify stable, increased, decreased, color/texture change, shape change, or insufficient data with non-color cues                                                      | **Implemented locally** and remains confidence-gated                                                                                       |
+|  37 | Smart reminder engine                                     | User-controlled local reminders adapt to quality, duration, and follow-up state; severe neutral seek-care copy does not depend on a model                                                      | **Implemented locally**; clinician-derived urgency remains disabled without an approved rule file                                          |
+|  38 | Oral Health Digital Twin                                  | Map/timeline combines coverage, pins, dates, symptoms, comparisons, and review state; cloud GLB adds projected capture colors                                                                  | **Implemented** as an oral observation map/surface, not a digital twin or patient-specific anatomy                                         |
+|  39 | Lesion identity card                                      | Result/timeline/report surfaces show location, date/persistence, descriptors, symptoms, quality, confidence, status, and gated change                                                          | **Implemented locally**; no unsupported appearance/urgency is inserted                                                                     |
+|  40 | Interactive explanation tree                              | Expandable steps connect verified image evidence, symptoms, duration, comparison, release gates, and limitations                                                                               | **Implemented locally**                                                                                                                    |
+|  41 | Confidence constellation                                  | Accessible six-factor view shows quality, visibility, agreement, alignment, symptom completeness, and dataset similarity with explicit unavailable reasons                                     | **Implemented locally** without collapsing uncertainty into one unexplained percentage                                                     |
+|  42 | Clinician-ready report                                    | Local and cloud PDF paths contain real images/overlays, map, intake, timeline, comparisons, consent, model versions, uncertainty, and per-page disclaimer                                      | **Implemented locally**; cloud rendering needs deployment                                                                                  |
+|  43 | Expiring QR-share mode                                    | Selective share, fragment secret, browser QR, exchange cookie, expiry, revocation, report access, and access history                                                                           | **Implemented; external setup**: needs live OIDC, platform, database, Redis, private storage, and web domain                               |
+|  44 | Appointment-preparation assistant                         | Fixed, non-prescriptive professional-discussion questions are included in app/report outputs                                                                                                   | **Implemented locally**                                                                                                                    |
+|  45 | Clinician annotation mode                                 | Verified clinician queue, dates, protected images/reports, polygon outline editor, location correction, eight annotation kinds, insufficiency state, comparison, status, and follow-up message | **Implemented; external setup** for real OIDC, clinician verification, storage, and deployment                                             |
+|  46 | Scan summary video                                        | Worker renders a captioned H.264 MP4 that rotates the generic map to the selected region, then shows images, masks, confirmed progression, and allowed guidance                                | **Implemented; external setup** for private storage, report prerequisite, worker, and deployed playback                                    |
+|  47 | Interactive oral anatomy atlas                            | Eight tappable region lessons with names, capture instructions, variations, and neutral professional-review education                                                                          | **Implemented locally**                                                                                                                    |
+|  48 | Normal-variation gallery                                  | Clearly separated educational variation cards with explicit non-reassurance language                                                                                                           | **Implemented locally**; uses original non-patient educational artwork/text rather than a diagnostic look-up gallery                       |
+|  49 | Scan simulator                                            | Interactive practice scenarios cover lighting, distance, glare, blur, obstruction, and coverage without using patient results                                                                  | **Implemented locally**                                                                                                                    |
+|  50 | Knowledge challenges                                      | Short adult-toned questions explain quality, persistence, AI limits, comparison, and sharing                                                                                                   | **Implemented locally**                                                                                                                    |
 
-| Requirement                                  | Current evidence                                                                                                                                   | Verdict          |
-| -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- |
-| Consent and symptom intake                   | Age, assisted use, first-noticed date, duration, symptoms, change, exposures, prior conditions, prior examination, and two required consent checks | Verified locally |
-| Adaptive intake                              | Bleeding questions appear only after bleeding is selected; region-specific capture instructions adapt to the selected scan region                  | Verified locally |
-| Camera and saved-photo input                 | Expo Camera and image picker in the installed Android development build                                                                            | Verified locally |
-| IMU stability guidance                       | Live accelerometer stability gate and accessible stability indicator                                                                               | Verified locally |
-| Immediate quality checks                     | Local focus, exposure, glare, obstruction, resolution, aspect-ratio, and upload-size checks                                                        | Verified locally |
-| Accidental face check                        | On-device ML Kit face detection is required before acceptance; server repeats a hash-pinned YuNet face check                                       | Verified locally |
-| Anatomy mismatch rejection                   | Released eight-region model plus mobile storage policy; a real mismatch was rejected in the installed app                                          | Verified locally |
-| Rejected images are not retained or uploaded | Cleanup paths and tests; emulator storage inspection after rejection                                                                               | Verified locally |
-| Manual privacy and region confirmation       | Both checkboxes are required before protected storage and upload                                                                                   | Verified locally |
-| Encrypted local capture                      | AES-256-GCM protected file with record-bound associated data; key in SecureStore                                                                   | Verified locally |
-| Encrypted SQLCipher database                 | Expo SQLite is configured with SQLCipher; a random database key is stored in SecureStore; emulator file header was not plaintext SQLite            | Verified locally |
-| Signed response validation                   | Ed25519 response verification and pinned public key required outside loopback development                                                          | Verified locally |
-| Retry and honest failure states              | Offline, timeout, malformed response, canceled picker, and unavailable-analysis paths were exercised                                               | Verified locally |
-| Complete local deletion and key rotation     | Database, vault, reports, temporary files, consent, and history are removed; database and vault keys are replaced                                  | Verified locally |
+## Non-numbered blueprint requirements
 
-## Analysis and release gates
+| Area                       | Current evidence                                                                                                                                                                          | Verdict                                                                                                                                                |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Accessibility              | VoiceOver/TalkBack semantics, native map alternative, large text, high contrast, non-color status, haptics, spoken instructions, reduced motion/transparency, and motion-speed preference | **Implemented locally**; physical VoiceOver/TalkBack and device-matrix checks remain external                                                          |
+| Data strategy              | No restricted medical images in Git; source/license/checksum inventory; patient-disjoint manifests; DVC templates; model/data version hashes                                              | **Implemented locally**; new licensed datasets are external                                                                                            |
+| Training/evaluation        | Reproducible anatomy/segmentation training/evaluation, calibration, gates, model cards, failed disease evaluation, and fail-closed release manifest                                       | **Implemented locally**; absent evidence cannot be manufactured                                                                                        |
+| Mobile architecture        | Expo/React Native development build, Expo Router, Zustand, camera/sensors/Skia/Reanimated/Three, SQLCipher, SecureStore, encrypted files, local PDF                                       | **Implemented locally**                                                                                                                                |
+| Inference architecture     | Four-route stateless FastAPI service, PyTorch/ONNX/OpenCV boundary, no accounts/jobs, no-store, no body logging, cleanup in `finally`, response signing                                   | **Implemented locally and on the older live inference release**                                                                                        |
+| Full-product platform      | OIDC accounts, PostgreSQL, S3, Redis outbox/stream, worker, analytics consent, retained jobs, sync, clinician access, reports, exports, and deletion                                      | **Implemented; external setup**                                                                                                                        |
+| Security/privacy           | EXIF removal, local encryption, private storage controls, response signing, HMAC worker calls, safe logging, deletion, retention, backup/restore contract                                 | **Implemented locally**; actual host/backup/ingress verification remains external                                                                      |
+| Competition/source handoff | CI definitions, disclosures, model/license documents, demo script, release roadmap, source packager                                                                                       | **Implemented in source**; the handoff ZIP is created and verified after source freeze; hosted CI, owner review, and submission assets remain external |
 
-| Head or output                                         | Current evidence                                                                                                                                                           | Verdict                                              |
-| ------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
-| Image quality                                          | Local and server deterministic checks with calibration record; physical-device target still pending                                                                        | Verified locally; external device validation remains |
-| Anatomy matching                                       | Released hash-pinned ONNX; macro F1 `0.9842`; lowest region recall `0.9302`; calibration error `0.0123`                                                                    | Verified locally                                     |
-| Candidate segmentation                                 | Released hash-pinned ONNX; Dice `0.7192`; boundary F1 `0.6256`; visible installed-app mask and descriptors                                                                 | Verified locally                                     |
-| Candidate bounding box                                 | Derived from the released segmentation mask, not from a separate detector or heuristic result                                                                              | Verified locally                                     |
-| Area, perimeter, shape, color, and texture descriptors | Derived only from the released mask and analyzed pixels                                                                                                                    | Verified locally                                     |
-| Uncertainty and limitations                            | Overall and image-quality confidence plus explicit limitations; unavailable dataset-similarity and ensemble factors are now `null` and shown as “Not assessed,” never `0%` | Verified locally                                     |
-| Appearance classes                                     | Required labels and held-out class support are unavailable; no class is shown                                                                                              | Gate closed                                          |
-| Disease-category research output                       | Locked test failed the required metrics and patient support; expandable panel exposes only the disabled explanation                                                        | Gate closed                                          |
-| Automated lesion re-identification                     | Required matched longitudinal and hard-negative data are unavailable; the user may still review and manually confirm a pair                                                | Gate closed                                          |
-| Review urgency                                         | No clinician-approved rule file is installed, so the app provides neutral seek-care information only                                                                       | Gate closed                                          |
+## Additional full-product features beyond the numbered blueprint
 
-The segmentation test is patient-disjoint, but earlier failed candidates were
-evaluated on the same SMART-OM test split. The result is therefore not a pristine
-project-wide test. Positive-image segmentation scores are also materially lower
-than the aggregate scores. Both limitations remain in the model card and release
-review.
+The later expansion also added:
 
-## 3D map, progression, and reporting
+- OIDC/PKCE patient accounts and optional local-first cloud consent;
+- encrypted sync, recovery code, background retry, resumable assets, and
+  tombstones;
+- durable job/cancel/retry/dead-letter/retention infrastructure;
+- private cloud reports and generated-artifact viewers;
+- X25519 recipient-encrypted portable export;
+- administrator clinician verification and privacy-thresholded opt-in analytics;
+- explicit share/access audit history; and
+- production container hardening, migrations, readiness, backup, restore,
+  retention, and no-resurrection deletion rules.
 
-| Requirement                             | Current evidence                                                                                                                                                                                              | Verdict                                                             |
-| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
-| Generic rotatable and zoomable oral map | React Three Fiber native procedural map with all eight named meshes, rotation, zoom, exploded mode, dental-arch fading, a named-region fallback, and retry after renderer failure                             | Verified locally                                                    |
-| Scan completeness                       | Accepted and pending states appear on both the 3D view and accessible native region list                                                                                                                      | Verified locally                                                    |
-| Versioned lesion pins                   | User-confirmed pins persist region ID, mesh ID, UV coordinates, and asset version; world position is calculated during render                                                                                 | Verified locally                                                    |
-| Ghost-image follow-up                   | Prior protected capture can be locally decrypted as a temporary low-opacity camera guide and is cleaned up on exit                                                                                            | Verified locally                                                    |
-| Mandatory pair confirmation             | Original baseline/current images are shown before the user can link observations                                                                                                                              | Verified locally                                                    |
-| Geometric registration                  | ORB landmarks, RANSAC homography, inlier ratio, and normalized reprojection error are calculated from the two uploaded images                                                                                 | Verified locally                                                    |
-| Confidence-gated change                 | Change requires user confirmation, 60% inliers, at most 3% reprojection error, a released mask on both images, and passed repeat-capture evidence                                                             | Gate closed for numeric change until repeat-capture evidence passes |
-| Before/after comparison                 | Side-by-side originals plus a continuously draggable, tappable, and screen-reader-adjustable blend slider                                                                                                     | Verified locally                                                    |
-| Timeline and visual trajectory          | Chronological observations plus an accessible graph of approximate area, symptoms, quality, confidence, comparison status, and map linkage; graph segments require an exact comparison that passed every gate | Verified locally                                                    |
-| Clinician-ready local PDF               | Profile, symptoms, consent, generated oral map, original images with mask overlays, measurements, timeline, comparisons, limitations, provenance, model versions, and professional-discussion questions       | Verified locally                                                    |
-| PDF protection and sharing              | PDF is generated locally, encrypted immediately, and decrypted only to a short-lived share file                                                                                                               | Verified locally                                                    |
+These are implemented software paths, not evidence that the required external
+services are already running.
 
-## Backend, contracts, ML, and packaging
+## What prevents a 100% verdict
 
-| Requirement                              | Current evidence                                                                                                                                                                       | Verdict                                                              |
-| ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
-| Only four public routes                  | `POST /v1/analyze`, `POST /v1/compare`, `GET /v1/model-card`, and `GET /healthz`                                                                                                       | Verified locally and on production                                   |
-| Stateless processing                     | No accounts, retained jobs, PostgreSQL, S3, Redis, analytics, or image persistence                                                                                                     | Verified locally                                                     |
-| No request-body logs or response caching | Access logging disabled; structured logs exclude bodies; `Cache-Control: no-store` enforced and tested                                                                                 | App verified; proxy configuration awaits host review                 |
-| Sanitized in-memory processing           | Bounded JPEG/PNG/WebP decode, orientation, metadata stripping, re-encoding, and analysis in memory                                                                                     | Verified locally                                                     |
-| Public schema parity                     | TypeScript contract `1.1.0`, mirrored Pydantic models, generated JSON Schema, repository parity audit, and tested migration of encrypted `1.0.0` mobile state                          | Verified locally                                                     |
-| Patient-disjoint ML tooling              | Manifest validation rejects patient overlap, duplicate samples, invalid licenses, absolute paths, and traversal                                                                        | Verified locally                                                     |
-| Release artifact integrity               | Model interfaces, hashes, metrics, approval evidence, and gates are validated before adapters load                                                                                     | Verified locally                                                     |
-| CI                                       | Contract generation, tests, type checking, formatting, dependency audits, mobile exports, repository audit, container build, and health smoke workflows                                | Verified locally in source; hosted GitHub run awaits repository push |
-| Clean source ZIP                         | Packager includes audited models and excludes dependencies, data, secrets, caches, exports, and training artifacts; the distributed archive is reread and hash-verified after creation | Verified locally                                                     |
+The original blueprint's software paths are now implemented except for one deliberate
+hardware limitation: the preview stability ring uses the phone's motion sensors because
+Expo Camera does not expose live focus, luminance, or anatomy frames to JavaScript.
+Focus, exposure, glare, obstruction, size, privacy, and anatomy are checked immediately
+after capture before an image is accepted. Replacing that boundary would require a
+custom native frame processor and a new physical-device validation cycle; the fixed
+competition contract explicitly calls for IMU preview guidance plus post-capture checks.
 
-## Accessibility
+Several learned paths are present but correctly unavailable because the repository does
+not contain the required licensed data and evaluation evidence: learned quality,
+appearance, oral-tissue, OOD, secondary segmentation, disease-category research, and
+automatic re-identification. The clinician-approved urgency rule is also absent. These
+are evidence gates, not missing screens or placeholder results.
 
-| Requirement                             | Current evidence                                                                                      | Verdict                                        |
-| --------------------------------------- | ----------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
-| Large text and reflow                   | System scaling plus app larger-text mode; responsive phone, landscape, and tablet widths              | Verified locally                               |
-| Screen-reader semantics                 | Labels, roles, selected/checked/busy states, adjustable comparison slider, and native map alternative | Verified locally on Android accessibility tree |
-| High contrast and non-color status      | Light/dark high-contrast palettes and persistent text/icon status                                     | Verified locally                               |
-| Reduced motion                          | Operating-system preference and app setting jointly disable custom motion                             | Verified locally                               |
-| Haptics and spoken capture instructions | Optional haptic results and Expo Speech region instructions                                           | Verified locally                               |
-| Physical VoiceOver and TalkBack runs    | Requires physical iPhones and Android phones                                                          | External release work                          |
+The current segmentation head passed the competition engineering gate, but it used
+Autooral training data under academic-research/non-commercial terms. A SMART-OM-only
+CC BY 4.0 replacement was trained and evaluated once on a new patient holdout that
+excluded every earlier holdout patient. It scored Dice `0.6809` and boundary F1
+`0.5616`, below the fixed `0.70`/`0.60` gate, and was rejected. Public or commercial
+distribution therefore still needs written permission or a future properly licensed
+model that passes a new untouched test.
 
-## Explicitly deferred by the controlling plan
+The following implemented features also need outside proof before they can be
+called production-complete:
 
-Only static roadmap entries are present for:
+- personalized GLB generation, calibration, QR sharing, clinician access, cloud
+  reports/video/export, analytics, and cloud deletion in one deployed stack;
+- the required two-iPhone/two-Android scan and accessibility matrix;
+- printed-card and repeated-capture measurement validation;
+- a clinician-approved urgency-rule file, if urgency is to be enabled;
+- hosted GitHub CI, container/Vercel builds, app signing, store artifacts, and
+  domain deployment; and
+- deployed retention and backup settings that match the web privacy notice's published
+  35-day maximum backup window;
+- a repository-wide source license plus confirmation that the
+  Autooral-derived segmentation artifact may be distributed and used for the
+  planned release; and
+- final wording, demo-case, and competition review.
 
-- NeuroSight and every Parkinson-related test, model, score, report, and care
-  flow;
-- personalized 3D reconstruction;
-- multi-angle capture and video sweeps;
-- physical calibration cards and millimeter measurements;
-- clinician portal and annotation workflow;
-- expiring QR sharing;
-- scan-summary video; and
-- the original blueprint's symptom body map, automatic stability capture,
-  mirrored scan directions, animated scan path, time-lapse morph, adaptive
-  reminders, 3D heatmap, anatomy atlas, variation gallery, scan simulator, and
-  knowledge challenges.
+## Parkinson/NeuroSight
 
-## Remaining external release work
+The original file includes a later Parkinson module, but the user explicitly
+asked to finish OralSight first. NeuroSight voice, tapping, spiral, handwriting,
+tremor, gait, balance, cognition, fusion, rehabilitation, avatar, and clinician
+flows remain a static roadmap only. They are not part of this OralSight
+completion verdict.
 
-These are not code substitutions and must not be fabricated:
+## Overall verdict
 
-1. Test three complete scans on each of two physical iPhones and two physical
-   Android devices and calculate the required quality false-accept and
-   false-reject rates.
-2. Exercise VoiceOver, TalkBack, low storage, interruption, OS backup/restore,
-   physical camera thresholds, GPU rendering, PDF sharing, and deletion on that
-   device matrix.
-3. Obtain clinician approval for an exact versioned guidance-rule payload or
-   keep review priority disabled.
-4. Obtain production Expo, Apple, and Google signing credentials.
-5. Select the source-code license and complete the final human license and
-   wording review.
-6. Run the final GitHub-hosted CI and deployed ingress, temporary-file, and
-   proxy-log verification.
-
-Until those items are complete, OralSight is a working local research
-application and codebase, but not a publicly deployed, clinically validated, or
-submission-frozen release.
+OralSight now implements the software path for all 50 audited features and the later
+full-product expansion, with the explicit hardware and evidence-gated limits above.
+It is not a fixture-driven fake demo. The source is a complete academic
+competition/research build; it is not yet a fully deployed, physically validated,
+clinically validated, or commercially licensed public medical product.

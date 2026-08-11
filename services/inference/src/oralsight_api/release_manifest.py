@@ -29,8 +29,10 @@ from pydantic import (
 from .contracts import (
     AppearanceClass,
     DiseaseResearchClass,
+    DistributionClass,
     ModelHead,
     MouthRegion,
+    QualityClass,
 )
 from .model_adapters import (
     ModelAdapter,
@@ -49,6 +51,10 @@ ARTIFACT_KEY_BY_HEAD: Mapping[ModelHead, str] = MappingProxyType(
         ModelHead.APPEARANCE: "appearance_weights",
         ModelHead.DISEASE_RESEARCH: "disease_research_weights",
         ModelHead.LESION_REIDENTIFICATION: "lesion_reidentification_weights",
+        ModelHead.QUALITY_CONTROL: "quality_control_weights",
+        ModelHead.ORAL_TISSUE_SEGMENTATION: "oral_tissue_segmentation_weights",
+        ModelHead.OUT_OF_DISTRIBUTION: "out_of_distribution_weights",
+        ModelHead.SECONDARY_SEGMENTATION: "secondary_segmentation_weights",
     }
 )
 REQUIRED_ANALYSIS_HEADS = frozenset({ModelHead.SEGMENTATION, ModelHead.ANATOMY})
@@ -230,6 +236,10 @@ class HeadReleaseManifest(ImmutableManifestModel):
             ModelHead.APPEARANCE: "class_logits",
             ModelHead.DISEASE_RESEARCH: "class_logits",
             ModelHead.LESION_REIDENTIFICATION: "embedding",
+            ModelHead.QUALITY_CONTROL: "class_logits",
+            ModelHead.ORAL_TISSUE_SEGMENTATION: "binary_mask_logits",
+            ModelHead.OUT_OF_DISTRIBUTION: "class_logits",
+            ModelHead.SECONDARY_SEGMENTATION: "binary_mask_logits",
         }[self.head]
         if self.interface is not None and self.interface.output_kind != expected_output:
             raise ValueError(
@@ -240,6 +250,10 @@ class HeadReleaseManifest(ImmutableManifestModel):
             ModelHead.APPEARANCE: tuple(item.value for item in AppearanceClass),
             ModelHead.DISEASE_RESEARCH: tuple(
                 item.value for item in DiseaseResearchClass
+            ),
+            ModelHead.QUALITY_CONTROL: tuple(item.value for item in QualityClass),
+            ModelHead.OUT_OF_DISTRIBUTION: tuple(
+                item.value for item in DistributionClass
             ),
         }.get(self.head, ())
         if (

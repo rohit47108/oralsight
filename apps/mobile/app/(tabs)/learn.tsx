@@ -15,6 +15,12 @@ const lessons = [
     route: "/learn/atlas" as const,
   },
   {
+    title: "Variation gallery",
+    body: "See how anatomy, lighting, texture, and symmetry can change a photograph.",
+    icon: "images-outline" as const,
+    route: "/learn/normal-variations" as const,
+  },
+  {
     title: "Capture practice",
     body: "Practice recognizing blur, glare, obstruction, and useful framing.",
     icon: "camera-outline" as const,

@@ -143,6 +143,7 @@ interface ToggleRowProps {
   description?: string;
   value: boolean;
   onValueChange: (value: boolean) => void;
+  disabled?: boolean;
 }
 
 export function ToggleRow({
@@ -150,10 +151,17 @@ export function ToggleRow({
   description,
   value,
   onValueChange,
+  disabled = false,
 }: ToggleRowProps) {
   const theme = useAppTheme();
   return (
-    <View style={[styles.toggleRow, { borderBottomColor: theme.border }]}>
+    <View
+      style={[
+        styles.toggleRow,
+        { borderBottomColor: theme.border },
+        disabled && styles.disabled,
+      ]}
+    >
       <View style={styles.toggleCopy}>
         <Text
           style={[
@@ -176,6 +184,8 @@ export function ToggleRow({
       </View>
       <Switch
         accessibilityLabel={label}
+        accessibilityState={{ disabled, checked: value }}
+        disabled={disabled}
         value={value}
         onValueChange={onValueChange}
         trackColor={{ false: theme.line, true: theme.aqua }}

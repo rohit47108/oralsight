@@ -28,17 +28,22 @@ from .contracts import (
     AnatomyPrediction,
     AppearanceClass,
     CandidateMask,
+    CalibratedMeasurementChanges,
     ClassScore,
     ComparisonResult,
     CompareMetadata,
+    DescriptorChanges,
     DiseaseResearchClass,
+    DistributionClass,
     ModelHead,
     ModelOutput,
     MouthRegion,
+    QualityClass,
     QualityResult,
     Uncertainty,
     VisualDescriptors,
 )
+from .calibration import estimate_calibrated_bounding_box
 from .model_adapters import (
     ClassificationPrediction,
     EmbeddingPrediction,
@@ -56,8 +61,9 @@ SUPPORTED_PIL_FORMATS = {"JPEG", "PNG", "WEBP"}
 
 MODEL_VERSIONS = {
     "quality": "opencv-quality-yunet-v3",
-    "registration": "orb-homography-area-normalization-v2",
+    "registration": "orb-homography-descriptor-normalization-v3",
 }
+MINIMUM_SEGMENTATION_ENSEMBLE_IOU = 0.50
 YUNET_MODEL_PATH = (
     Path(__file__).resolve().parent / "assets" / "face_detection_yunet_2023mar.onnx"
 )
@@ -285,12 +291,10 @@ def assess_quality(image: SanitizedImage) -> tuple[QualityResult, float]:
     )
 
 
-def candidate_from_model_mask(
+def _segmentation_probabilities_for_image(
     image: SanitizedImage,
     prediction: SegmentationPrediction,
-) -> tuple[CandidateMask | None, VisualDescriptors | None, np.ndarray | None]:
-    """Convert one validated model probability map into approximate descriptors."""
-
+) -> np.ndarray:
     probabilities = np.asarray(prediction.probabilities, dtype=np.float32)
     if (
         probabilities.ndim != 2
@@ -312,6 +316,55 @@ def candidate_from_model_mask(
         (width, height),
         interpolation=cv2.INTER_LINEAR,
     )
+    return np.clip(resized_probabilities, 0.0, 1.0)
+
+
+def _apply_tissue_mask(
+    image: SanitizedImage,
+    candidate: SegmentationPrediction,
+    tissue: SegmentationPrediction,
+) -> SegmentationPrediction:
+    candidate_probabilities = _segmentation_probabilities_for_image(image, candidate)
+    tissue_probabilities = _segmentation_probabilities_for_image(image, tissue)
+    tissue_pixels = tissue_probabilities >= tissue.threshold
+    if not np.any(tissue_pixels):
+        raise ModelAdapterError("The oral-tissue segmentation mask is empty.")
+    return SegmentationPrediction(
+        probabilities=np.where(tissue_pixels, candidate_probabilities, 0.0).astype(
+            np.float32
+        ),
+        threshold=candidate.threshold,
+        confidence=min(candidate.confidence, tissue.confidence),
+    )
+
+
+def _segmentation_agreement(
+    image: SanitizedImage,
+    primary: SegmentationPrediction,
+    secondary: SegmentationPrediction,
+) -> float:
+    primary_mask = (
+        _segmentation_probabilities_for_image(image, primary) >= primary.threshold
+    )
+    secondary_mask = (
+        _segmentation_probabilities_for_image(image, secondary) >= secondary.threshold
+    )
+    union = int(np.count_nonzero(primary_mask | secondary_mask))
+    if union == 0:
+        return 1.0
+    intersection = int(np.count_nonzero(primary_mask & secondary_mask))
+    return _clamp(intersection / union)
+
+
+def candidate_from_model_mask(
+    image: SanitizedImage,
+    prediction: SegmentationPrediction,
+) -> tuple[CandidateMask | None, VisualDescriptors | None, np.ndarray | None]:
+    """Convert one validated model probability map into approximate descriptors."""
+
+    resized_probabilities = _segmentation_probabilities_for_image(image, prediction)
+    rgb = image.rgb
+    height, width, _ = rgb.shape
     binary = (resized_probabilities >= prediction.threshold).astype(np.uint8) * 255
 
     count, labels, stats, _ = cv2.connectedComponentsWithStats(binary, connectivity=8)
@@ -512,6 +565,101 @@ def analyze_sanitized_image(
     runtime = RELEASE_RUNTIME if runtime is None else runtime
     quality, quality_confidence = assess_quality(image)
     requested = set(metadata.requested_heads)
+    limitations = [
+        "All candidate areas and visual descriptors are approximate and have no physical scale.",
+        "Model outputs are research observations and cannot diagnose or rule out disease.",
+    ]
+    if ModelHead.OUT_OF_DISTRIBUTION not in runtime.adapters:
+        limitations.append(
+            "Dataset similarity was not assessed because no released out-of-distribution model is available."
+        )
+    if ModelHead.SECONDARY_SEGMENTATION not in runtime.adapters:
+        limitations.append(
+            "Model agreement was not assessed because no released independent ensemble is available."
+        )
+    successful_model_output = False
+    invoked_heads: set[ModelHead] = set()
+    dataset_similarity: float | None = None
+    model_agreement: float | None = None
+    distribution_supported = True
+    distribution_rejected = False
+
+    quality_adapter = runtime.adapters.get(ModelHead.QUALITY_CONTROL)
+    if ModelHead.QUALITY_CONTROL in requested:
+        if quality_adapter is None:
+            limitations.append(
+                "Learned quality control was not assessed because no released quality model is available; deterministic checks were used."
+            )
+        elif quality.accepted:
+            invoked_heads.add(ModelHead.QUALITY_CONTROL)
+            learned_quality_reason: str | None = None
+            try:
+                prediction = quality_adapter.predict(image.rgb)
+                if not isinstance(prediction, ClassificationPrediction):
+                    raise ModelAdapterError(
+                        "The quality-control adapter returned the wrong output type."
+                    )
+                _validate_classification_prediction(
+                    prediction,
+                    tuple(item.value for item in QualityClass),
+                )
+                successful_model_output = True
+                quality_confidence = min(quality_confidence, prediction.confidence)
+                if prediction.abstained:
+                    learned_quality_reason = "quality_control_model_abstained"
+                elif prediction.top_label != QualityClass.ACCEPTABLE.value:
+                    assert prediction.top_label is not None
+                    learned_quality_reason = (
+                        "learned_quality_" + prediction.top_label.replace("-", "_")
+                    )
+            except Exception:
+                learned_quality_reason = "quality_control_inference_failed"
+            if learned_quality_reason is not None:
+                quality = QualityResult(
+                    accepted=False,
+                    blur_score=quality.blur_score,
+                    exposure_score=quality.exposure_score,
+                    glare_score=quality.glare_score,
+                    obstruction_score=quality.obstruction_score,
+                    face_detected=quality.face_detected,
+                    reasons=list(
+                        dict.fromkeys([*quality.reasons, learned_quality_reason])
+                    ),
+                )
+
+    ood_adapter = runtime.adapters.get(ModelHead.OUT_OF_DISTRIBUTION)
+    if ModelHead.OUT_OF_DISTRIBUTION in requested:
+        if ood_adapter is None:
+            limitations.append(
+                "Dataset similarity was not assessed because no released out-of-distribution model is available."
+            )
+        elif quality.accepted:
+            invoked_heads.add(ModelHead.OUT_OF_DISTRIBUTION)
+            try:
+                prediction = ood_adapter.predict(image.rgb)
+                if not isinstance(prediction, ClassificationPrediction):
+                    raise ModelAdapterError(
+                        "The out-of-distribution adapter returned the wrong output type."
+                    )
+                expected_labels = tuple(item.value for item in DistributionClass)
+                _validate_classification_prediction(prediction, expected_labels)
+                supported_index = expected_labels.index(
+                    DistributionClass.SUPPORTED.value
+                )
+                dataset_similarity = prediction.probabilities[supported_index]
+                successful_model_output = True
+                if prediction.abstained:
+                    distribution_supported = False
+                    quality.reasons.append("out_of_distribution_model_abstained")
+                elif prediction.top_label == DistributionClass.UNSUPPORTED.value:
+                    distribution_supported = False
+                    distribution_rejected = True
+                    quality.reasons.append("unsupported_image_distribution")
+            except Exception:
+                dataset_similarity = None
+                distribution_supported = False
+                quality.reasons.append("out_of_distribution_inference_failed")
+
     anatomy_prediction = AnatomyPrediction(
         region=None,
         confidence=0.0,
@@ -519,22 +667,9 @@ def analyze_sanitized_image(
         selected_region_matches=False,
     )
     abstention_reasons = list(quality.reasons)
-    limitations = [
-        "All candidate areas and visual descriptors are approximate and have no physical scale.",
-        "Model outputs are research observations and cannot diagnose or rule out disease.",
-        (
-            "Dataset similarity was not assessed because no released "
-            "out-of-distribution model is available."
-        ),
-        (
-            "Model agreement was not assessed because no released independent "
-            "ensemble is available."
-        ),
-    ]
-    successful_model_output = False
-    invoked_heads: set[ModelHead] = set()
     anatomy_supported_and_matches = False
     segmentation_prediction: SegmentationPrediction | None = None
+    tissue_prediction: SegmentationPrediction | None = None
     segmentation_confidence = 0.0
 
     for required_head in (ModelHead.SEGMENTATION, ModelHead.ANATOMY):
@@ -546,7 +681,7 @@ def analyze_sanitized_image(
     abstention_reasons.extend(runtime.load_reasons)
 
     anatomy_adapter = runtime.adapters.get(ModelHead.ANATOMY)
-    if quality.accepted and anatomy_adapter is not None:
+    if quality.accepted and distribution_supported and anatomy_adapter is not None:
         invoked_heads.add(ModelHead.ANATOMY)
         try:
             anatomy_result = anatomy_adapter.predict(image.rgb)
@@ -575,15 +710,49 @@ def analyze_sanitized_image(
                 abstention_reasons.append("selected_region_anatomy_mismatch")
         except Exception:
             abstention_reasons.append("anatomy_inference_failed")
-    elif quality.accepted:
+    elif quality.accepted and distribution_supported:
         limitations.append(
             "Anatomy support is unavailable because no validated anatomy adapter is loaded."
         )
 
+    tissue_adapter = runtime.adapters.get(ModelHead.ORAL_TISSUE_SEGMENTATION)
+    tissue_requested = ModelHead.ORAL_TISSUE_SEGMENTATION in requested
+    if tissue_requested and tissue_adapter is None:
+        limitations.append(
+            "A separate oral-tissue mask was not assessed because no released oral-tissue segmentation model is available."
+        )
+    elif (
+        tissue_requested
+        and tissue_adapter is not None
+        and quality.accepted
+        and distribution_supported
+        and anatomy_supported_and_matches
+    ):
+        invoked_heads.add(ModelHead.ORAL_TISSUE_SEGMENTATION)
+        try:
+            raw_tissue = tissue_adapter.predict(image.rgb)
+            if not isinstance(raw_tissue, SegmentationPrediction):
+                raise ModelAdapterError(
+                    "The oral-tissue adapter returned the wrong output type."
+                )
+            tissue_probabilities = _segmentation_probabilities_for_image(
+                image, raw_tissue
+            )
+            if not np.any(tissue_probabilities >= raw_tissue.threshold):
+                raise ModelAdapterError("The oral-tissue segmentation mask is empty.")
+            tissue_prediction = raw_tissue
+            successful_model_output = True
+        except Exception:
+            abstention_reasons.append("oral_tissue_segmentation_inference_failed")
+
+    tissue_required = tissue_requested and tissue_adapter is not None
+
     segmentation_adapter = runtime.adapters.get(ModelHead.SEGMENTATION)
     if (
         quality.accepted
+        and distribution_supported
         and anatomy_supported_and_matches
+        and (not tissue_required or tissue_prediction is not None)
         and segmentation_adapter is not None
     ):
         invoked_heads.add(ModelHead.SEGMENTATION)
@@ -593,6 +762,12 @@ def analyze_sanitized_image(
                 raise ModelAdapterError(
                     "The segmentation adapter returned the wrong output type."
                 )
+            if tissue_prediction is not None:
+                raw_segmentation = _apply_tissue_mask(
+                    image,
+                    raw_segmentation,
+                    tissue_prediction,
+                )
             # Validate and convert the model mask before marking this request complete.
             candidate_from_model_mask(image, raw_segmentation)
             segmentation_prediction = raw_segmentation
@@ -600,16 +775,68 @@ def analyze_sanitized_image(
             successful_model_output = True
         except Exception:
             abstention_reasons.append("segmentation_inference_failed")
-    elif quality.accepted and anatomy_supported_and_matches:
+    elif (
+        quality.accepted
+        and distribution_supported
+        and anatomy_supported_and_matches
+        and (not tissue_required or tissue_prediction is not None)
+    ):
         limitations.append(
             "Candidate masks are unavailable because no validated segmentation adapter is loaded."
         )
 
-    primary_complete = (
+    base_primary_complete = (
         quality.accepted
+        and distribution_supported
         and anatomy_supported_and_matches
         and segmentation_prediction is not None
     )
+    secondary_adapter = runtime.adapters.get(ModelHead.SECONDARY_SEGMENTATION)
+    secondary_requested = ModelHead.SECONDARY_SEGMENTATION in requested
+    secondary_required = secondary_requested and secondary_adapter is not None
+    secondary_passed = not secondary_required
+    if secondary_requested and secondary_adapter is None:
+        limitations.append(
+            "Model agreement was not assessed because no released independently trained secondary segmentation model is available."
+        )
+    elif base_primary_complete and secondary_adapter is not None:
+        invoked_heads.add(ModelHead.SECONDARY_SEGMENTATION)
+        try:
+            raw_secondary = secondary_adapter.predict(image.rgb)
+            if not isinstance(raw_secondary, SegmentationPrediction):
+                raise ModelAdapterError(
+                    "The secondary segmentation adapter returned the wrong output type."
+                )
+            if tissue_prediction is not None:
+                raw_secondary = _apply_tissue_mask(
+                    image,
+                    raw_secondary,
+                    tissue_prediction,
+                )
+            assert segmentation_prediction is not None
+            model_agreement = _segmentation_agreement(
+                image,
+                segmentation_prediction,
+                raw_secondary,
+            )
+            segmentation_confidence = min(
+                segmentation_confidence,
+                raw_secondary.confidence,
+                model_agreement,
+            )
+            successful_model_output = True
+            secondary_passed = model_agreement >= MINIMUM_SEGMENTATION_ENSEMBLE_IOU
+            if not secondary_passed:
+                abstention_reasons.append("segmentation_models_disagree")
+                limitations.append(
+                    "Independent segmentation masks disagreed beyond the released comparison threshold, so the candidate result was withheld."
+                )
+        except Exception:
+            secondary_passed = False
+            model_agreement = None
+            abstention_reasons.append("secondary_segmentation_inference_failed")
+
+    primary_complete = base_primary_complete and secondary_passed
     candidate_mask: CandidateMask | None = None
     descriptors: VisualDescriptors | None = None
     if primary_complete and segmentation_prediction is not None:
@@ -678,6 +905,8 @@ def analyze_sanitized_image(
 
     if primary_complete:
         status = AnalysisStatus.COMPLETE
+    elif distribution_rejected:
+        status = AnalysisStatus.UNSUPPORTED
     elif (
         quality.accepted
         and anatomy_prediction.confidence > 0
@@ -690,15 +919,16 @@ def analyze_sanitized_image(
     else:
         status = AnalysisStatus.ABSTAINED
 
-    overall_confidence = (
-        min(
-            quality_confidence,
-            anatomy_prediction.confidence,
-            segmentation_confidence,
-        )
-        if primary_complete
-        else 0.0
-    )
+    confidence_factors = [
+        quality_confidence,
+        anatomy_prediction.confidence,
+        segmentation_confidence,
+    ]
+    if dataset_similarity is not None:
+        confidence_factors.append(dataset_similarity)
+    if model_agreement is not None:
+        confidence_factors.append(model_agreement)
+    overall_confidence = min(confidence_factors) if primary_complete else 0.0
     if not primary_complete:
         limitations.append("No completed image interpretation is available.")
 
@@ -714,9 +944,9 @@ def analyze_sanitized_image(
         uncertainty=Uncertainty(
             overall_confidence=overall_confidence,
             image_quality_confidence=quality_confidence,
-            dataset_similarity=None,
-            model_agreement=None,
-            limitations=limitations,
+            dataset_similarity=dataset_similarity,
+            model_agreement=model_agreement,
+            limitations=list(dict.fromkeys(limitations)),
         ),
         abstention_reasons=list(dict.fromkeys(abstention_reasons)),
         model_versions=_invoked_model_versions(runtime, invoked_heads),
@@ -839,6 +1069,88 @@ def _orb_registration(
         reasons,
         homography,
     )
+
+
+@dataclass(frozen=True)
+class _MaskGeometry:
+    normalized_area: float
+    normalized_width: float
+    normalized_height: float
+    normalized_perimeter: float
+    border_irregularity: float
+
+
+def _mask_geometry(component: np.ndarray) -> _MaskGeometry | None:
+    """Derive image-normalized geometry from a single binary candidate mask."""
+
+    if not isinstance(component, np.ndarray) or component.ndim != 2:
+        return None
+    height, width = component.shape
+    mask = (component > 0).astype(np.uint8) * 255
+    pixel_area = int(np.count_nonzero(mask))
+    if height <= 0 or width <= 0 or pixel_area <= 0:
+        return None
+    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    if not contours:
+        return None
+    contour = max(contours, key=cv2.contourArea)
+    geometric_area = float(cv2.contourArea(contour))
+    if geometric_area <= 0:
+        return None
+    perimeter_pixels = float(cv2.arcLength(contour, True))
+    _, _, box_width, box_height = cv2.boundingRect(contour)
+    border_irregularity = max(
+        0.0,
+        (perimeter_pixels * perimeter_pixels) / (4.0 * math.pi * geometric_area) - 1.0,
+    )
+    return _MaskGeometry(
+        normalized_area=_clamp(pixel_area / float(width * height)),
+        normalized_width=_clamp(box_width / float(width)),
+        normalized_height=_clamp(box_height / float(height)),
+        normalized_perimeter=perimeter_pixels / max(math.hypot(width, height), 1.0),
+        border_irregularity=border_irregularity,
+    )
+
+
+def _relative_change(baseline: float, current: float) -> float | None:
+    if baseline <= 0 or not math.isfinite(baseline) or not math.isfinite(current):
+        return None
+    return (current - baseline) / baseline
+
+
+def _ulceration_like_contrast(
+    image: SanitizedImage,
+    component: np.ndarray,
+) -> float | None:
+    """Return a non-diagnostic center-to-edge color/brightness contrast statistic.
+
+    This is a deterministic image descriptor, not an ulcer detector or disease
+    probability. Small masks abstain rather than manufacture a value.
+    """
+
+    if component.ndim != 2 or component.shape != image.bgr.shape[:2]:
+        return None
+    mask = (component > 0).astype(np.uint8)
+    if int(np.count_nonzero(mask)) < 25:
+        return None
+    distance = cv2.distanceTransform(mask, cv2.DIST_L2, 5)
+    maximum_distance = float(distance.max())
+    if not math.isfinite(maximum_distance) or maximum_distance < 2.0:
+        return None
+    core = distance >= maximum_distance * 0.6
+    rim = (mask > 0) & (distance <= max(1.0, maximum_distance * 0.3))
+    if int(np.count_nonzero(core)) < 5 or int(np.count_nonzero(rim)) < 5:
+        return None
+
+    rgb = image.rgb.astype(np.float32)
+    brightness = np.mean(rgb, axis=2) / 255.0
+    redness = np.maximum(0.0, rgb[:, :, 0] - (rgb[:, :, 1] + rgb[:, :, 2]) / 2.0)
+    redness /= 255.0
+    brightness_contrast = abs(
+        float(np.mean(brightness[core]) - np.mean(brightness[rim]))
+    )
+    redness_contrast = abs(float(np.mean(redness[core]) - np.mean(redness[rim])))
+    return _clamp((brightness_contrast + redness_contrast) / 2.0)
 
 
 def compare_sanitized_images(
@@ -981,7 +1293,7 @@ def compare_sanitized_images(
     # supplied by the caller and therefore never drives a live measurement.
     # Candidate areas are recomputed from the two sanitized images by the
     # currently deployed segmentation head.
-    baseline_area: float | None = None
+    registered_baseline: np.ndarray | None = None
     if baseline_component is not None and homography is not None:
         current_height, current_width = current.bgr.shape[:2]
         registered_baseline = cv2.warpPerspective(
@@ -992,31 +1304,166 @@ def compare_sanitized_images(
             borderMode=cv2.BORDER_CONSTANT,
             borderValue=0,
         )
-        baseline_area = _clamp(
-            float(np.count_nonzero(registered_baseline))
-            / max(float(current_width * current_height), 1.0)
-        )
-    current_area = (
-        _clamp(
-            float(np.count_nonzero(current_component))
-            / max(float(current_component.size), 1.0)
-        )
-        if current_component is not None
-        else None
+    baseline_geometry = (
+        _mask_geometry(registered_baseline) if registered_baseline is not None else None
     )
-    if baseline_area is None:
+    current_geometry = (
+        _mask_geometry(current_component) if current_component is not None else None
+    )
+    if baseline_geometry is None:
         suppression_reasons.append("registered_baseline_candidate_area_unavailable")
-    if current_area is None:
+    if current_geometry is None:
         suppression_reasons.append("current_candidate_area_unavailable")
 
     comparable = not suppression_reasons
     normalized_change: float | None = None
-    if comparable and baseline_area is not None and current_area is not None:
-        if baseline_area > 0:
-            normalized_change = (current_area - baseline_area) / baseline_area
-        else:
+    descriptor_changes: DescriptorChanges | None = None
+    if comparable and baseline_geometry is not None and current_geometry is not None:
+        normalized_change = _relative_change(
+            baseline_geometry.normalized_area,
+            current_geometry.normalized_area,
+        )
+        normalized_width_change = _relative_change(
+            baseline_geometry.normalized_width,
+            current_geometry.normalized_width,
+        )
+        normalized_height_change = _relative_change(
+            baseline_geometry.normalized_height,
+            current_geometry.normalized_height,
+        )
+        normalized_perimeter_change = _relative_change(
+            baseline_geometry.normalized_perimeter,
+            current_geometry.normalized_perimeter,
+        )
+        if (
+            normalized_change is None
+            or normalized_width_change is None
+            or normalized_height_change is None
+            or normalized_perimeter_change is None
+            or baseline_descriptors is None
+            or current_descriptors is None
+            or baseline_component is None
+            or current_component is None
+        ):
             comparable = False
-            suppression_reasons.append("baseline_candidate_area_zero")
+            suppression_reasons.append("candidate_descriptor_change_unavailable")
+            normalized_change = None
+        else:
+            baseline_ulceration_contrast = _ulceration_like_contrast(
+                baseline, baseline_component
+            )
+            current_ulceration_contrast = _ulceration_like_contrast(
+                current, current_component
+            )
+            descriptor_changes = DescriptorChanges(
+                normalized_width_change=normalized_width_change,
+                normalized_height_change=normalized_height_change,
+                normalized_perimeter_change=normalized_perimeter_change,
+                border_irregularity_change=(
+                    current_geometry.border_irregularity
+                    - baseline_geometry.border_irregularity
+                ),
+                mean_redness_change=(
+                    current_descriptors.mean_redness - baseline_descriptors.mean_redness
+                ),
+                mean_brightness_change=(
+                    current_descriptors.mean_brightness
+                    - baseline_descriptors.mean_brightness
+                ),
+                texture_contrast_change=(
+                    current_descriptors.texture_contrast
+                    - baseline_descriptors.texture_contrast
+                ),
+                ulceration_like_contrast_change=(
+                    current_ulceration_contrast - baseline_ulceration_contrast
+                    if baseline_ulceration_contrast is not None
+                    and current_ulceration_contrast is not None
+                    else None
+                ),
+            )
+
+    calibrated_changes: CalibratedMeasurementChanges | None = None
+    calibration_suppression_reasons: list[str] = []
+    calibration_requests = (
+        metadata.baseline_calibration,
+        metadata.current_calibration,
+    )
+    if any(request is not None for request in calibration_requests):
+        if not all(request is not None for request in calibration_requests):
+            calibration_suppression_reasons.append("paired_calibration_required")
+        elif not comparable:
+            calibration_suppression_reasons.append("comparison_not_comparable")
+        elif baseline_candidate is None or current_candidate is None:
+            calibration_suppression_reasons.append("candidate_bounds_unavailable")
+        else:
+            baseline_request = metadata.baseline_calibration
+            current_request = metadata.current_calibration
+            assert baseline_request is not None and current_request is not None
+            baseline_estimate = estimate_calibrated_bounding_box(
+                baseline.bgr,
+                baseline_candidate.bounding_box,
+                plane_confirmed=baseline_request.plane_confirmed,
+                expected_marker_id=baseline_request.marker_id,
+                marker_side_mm=baseline_request.marker_side_mm,
+            )
+            current_estimate = estimate_calibrated_bounding_box(
+                current.bgr,
+                current_candidate.bounding_box,
+                plane_confirmed=current_request.plane_confirmed,
+                expected_marker_id=current_request.marker_id,
+                marker_side_mm=current_request.marker_side_mm,
+            )
+            calibration_suppression_reasons.extend(
+                f"baseline_{reason}" for reason in baseline_estimate.suppression_reasons
+            )
+            calibration_suppression_reasons.extend(
+                f"current_{reason}" for reason in current_estimate.suppression_reasons
+            )
+            required_values = (
+                baseline_estimate.estimated_width_mm,
+                current_estimate.estimated_width_mm,
+                baseline_estimate.estimated_height_mm,
+                current_estimate.estimated_height_mm,
+                baseline_estimate.estimated_area_mm2,
+                current_estimate.estimated_area_mm2,
+            )
+            if (
+                baseline_estimate.valid
+                and current_estimate.valid
+                and all(value is not None for value in required_values)
+            ):
+                (
+                    baseline_width_mm,
+                    current_width_mm,
+                    baseline_height_mm,
+                    current_height_mm,
+                    baseline_area_mm2,
+                    current_area_mm2,
+                ) = required_values
+                assert baseline_width_mm is not None
+                assert current_width_mm is not None
+                assert baseline_height_mm is not None
+                assert current_height_mm is not None
+                assert baseline_area_mm2 is not None
+                assert current_area_mm2 is not None
+                calibrated_changes = CalibratedMeasurementChanges(
+                    card_version=baseline_request.card_version,
+                    marker_id=baseline_request.marker_id,
+                    marker_side_mm=baseline_request.marker_side_mm,
+                    baseline_width_mm=baseline_width_mm,
+                    current_width_mm=current_width_mm,
+                    width_change_mm=current_width_mm - baseline_width_mm,
+                    baseline_height_mm=baseline_height_mm,
+                    current_height_mm=current_height_mm,
+                    height_change_mm=current_height_mm - baseline_height_mm,
+                    baseline_area_mm2=baseline_area_mm2,
+                    current_area_mm2=current_area_mm2,
+                    area_change_mm2=current_area_mm2 - baseline_area_mm2,
+                    baseline_confidence=baseline_estimate.confidence,
+                    current_confidence=current_estimate.confidence,
+                )
+            elif not calibration_suppression_reasons:
+                calibration_suppression_reasons.append("calibration_evidence_invalid")
 
     return ComparisonResult(
         baseline_capture_id=metadata.baseline_capture_id,
@@ -1028,6 +1475,11 @@ def compare_sanitized_images(
         inlier_ratio=inlier_ratio,
         reprojection_error_ratio=reprojection_error_ratio,
         normalized_change=normalized_change,
+        descriptor_changes=descriptor_changes,
+        calibrated_measurement_changes=calibrated_changes,
+        calibration_suppression_reasons=list(
+            dict.fromkeys(calibration_suppression_reasons)
+        ),
         comparable=comparable,
         suppression_reasons=list(dict.fromkeys(suppression_reasons)),
         model_versions=_invoked_model_versions(runtime, invoked_heads),
@@ -1051,6 +1503,14 @@ def failed_comparison(metadata: CompareMetadata) -> ComparisonResult:
         inlier_ratio=0,
         reprojection_error_ratio=1,
         normalized_change=None,
+        descriptor_changes=None,
+        calibrated_measurement_changes=None,
+        calibration_suppression_reasons=(
+            ["comparison_not_comparable"]
+            if metadata.baseline_calibration is not None
+            or metadata.current_calibration is not None
+            else []
+        ),
         comparable=False,
         suppression_reasons=["analysis_unavailable"],
         model_versions=MODEL_VERSIONS,

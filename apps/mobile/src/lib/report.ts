@@ -17,6 +17,7 @@ import {
   removeTemporaryFile,
 } from "@/lib/secureFiles";
 import { reportContainsSyntheticData } from "@/lib/reportPolicy";
+import { calibrationForReport } from "@/lib/reportCalibration";
 import {
   observationImageMarkup,
   oralObservationMapMarkup,
@@ -182,6 +183,24 @@ async function observationRows(input: ReportInput): Promise<string> {
         ? `${analysis.diseaseResearchOutput.topLabel.replaceAll("_", " ")} (${Math.round((analysis.diseaseResearchOutput.confidence ?? 0) * 100)}% confidence; experimental research output)`
         : (analysis?.diseaseResearchOutput?.limitation ??
           "Not requested or unavailable");
+    const calibration = calibrationForReport(capture);
+    const calibrationMarkup =
+      calibration.status === "valid"
+        ? `<p><strong>Physical size (${calibration.measurementLabel}):</strong> width ${calibration.estimatedWidthMm === null ? "unavailable" : `${calibration.estimatedWidthMm.toFixed(2)} mm`}; height ${calibration.estimatedHeightMm === null ? "unavailable" : `${calibration.estimatedHeightMm.toFixed(2)} mm`}; area ${calibration.estimatedAreaMm2 === null ? "unavailable" : `${calibration.estimatedAreaMm2.toFixed(2)} mm²`}</p>
+          <p><strong>Calibration evidence:</strong> card ${escapeHtml(calibration.cardVersion)}; marker ${escapeHtml(calibration.markerId)}; reference width ${calibration.referenceWidthMm.toFixed(1)} mm; scale ${calibration.millimetersPerPixel.toFixed(5)} mm/pixel; confidence ${Math.round(calibration.confidence * 100)}%; calibrated ${escapeHtml(new Date(calibration.calibratedAt).toLocaleString())}</p>
+          <p><strong>Calibration versions:</strong><br />${Object.entries(
+            calibration.modelVersions,
+          )
+            .sort(([left], [right]) => left.localeCompare(right))
+            .map(
+              ([name, version]) =>
+                `${escapeHtml(name)}: ${escapeHtml(version)}`,
+            )
+            .join("<br />")}</p>`
+        : calibration.status === "invalid" ||
+            calibration.status === "unavailable"
+          ? `<p><strong>Physical calibration:</strong> Millimeter estimates suppressed. ${calibration.gateReasons.length ? `Gate reasons: ${calibration.gateReasons.map(humanizeResultReason).map(escapeHtml).join(" ")}` : "Required calibration evidence was unavailable."}</p>`
+          : "<p><strong>Physical calibration:</strong> Not attempted; millimeter estimates unavailable.</p>";
     rows.push(`
       <section class="observation">
         <div>${image}</div>
@@ -194,6 +213,7 @@ async function observationRows(input: ReportInput): Promise<string> {
           <p><strong>Quality acceptance:</strong> ${escapeHtml(qualityAcceptance)}</p>
           <p><strong>Anatomy acceptance:</strong> ${escapeHtml(anatomyAcceptance)}</p>
           <p><strong>Approximate normalized area:</strong> ${analysis?.descriptors ? `${(analysis.descriptors.normalizedArea * 100).toFixed(1)}%` : "Unavailable"}</p>
+          ${calibrationMarkup}
           <p><strong>Approximate normalized mask box (x, y, width, height):</strong> ${escapeHtml(boundingBox)}</p>
           <p><strong>Shape descriptors:</strong> ${analysis?.descriptors ? `perimeter ${analysis.descriptors.perimeter.toFixed(3)}; border irregularity ${analysis.descriptors.borderIrregularity.toFixed(3)}` : "Unavailable"}</p>
           <p><strong>Color descriptors:</strong> ${analysis?.descriptors ? `redness ${analysis.descriptors.meanRedness.toFixed(3)}; brightness ${analysis.descriptors.meanBrightness.toFixed(3)}` : "Unavailable"}</p>
@@ -296,9 +316,20 @@ export async function generateEncryptedObservationReport(
       .filter(([captureId]) => sessionCaptureIds.has(captureId))
       .map(([, analysis]) => analysis),
   );
+  const hasValidCalibration = input.captures.some(
+    (capture) => calibrationForReport(capture).status === "valid",
+  );
+  const acceptedRegions = [
+    ...new Set(
+      input.captures
+        .filter((capture) => capture.quality.accepted)
+        .map((capture) => capture.region),
+    ),
+  ];
   const html = `<!doctype html>
   <html><head><meta charset="utf-8" /><style>
-    body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; color:#17324D; padding:28px; line-height:1.45; }
+    @page { margin: 34px 28px 52px; }
+    body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; color:#17324D; padding:0; line-height:1.45; }
     h1 { color:#0B7A75; margin-bottom:2px; } h2 { border-bottom:2px solid #DDF5EE; padding-bottom:6px; }
     .warning { background:#FFF4DF; border:1px solid #D28B16; padding:12px; border-radius:8px; font-weight:700; }
     .demo-watermark { margin:0 0 18px; border:4px solid #B42318; color:#B42318; padding:14px; text-align:center; font-size:20px; font-weight:900; letter-spacing:1px; }
@@ -317,8 +348,10 @@ export async function generateEncryptedObservationReport(
     table { width:100%; border-collapse:collapse; font-size:11px; margin:12px 0; }
     th, td { border:1px solid #DCE6EC; padding:7px; text-align:left; vertical-align:top; }
     th { background:#F5FAF9; color:#17324D; }
-    footer { margin-top:32px; color:#5D7286; font-size:11px; }
+    .page-disclaimer { position:fixed; left:0; right:0; bottom:-36px; border-top:1px solid #DCE6EC; padding-top:6px; color:#536A7C; font-size:10px; font-weight:700; text-align:center; }
+    .report-footer { margin-top:32px; color:#5D7286; font-size:11px; }
   </style></head><body>
+    <div class="page-disclaimer">${DISCLAIMER}</div>
     ${syntheticReport ? '<div class="demo-watermark">SYNTHETIC DEMONSTRATION - NOT PATIENT DATA</div>' : ""}
     <h1>${syntheticReport ? "OralSight synthetic demonstration report" : "OralSight observation report"}</h1>
     <p>Structured visual observations for discussion with a dental or medical professional.</p>
@@ -340,11 +373,9 @@ export async function generateEncryptedObservationReport(
       <p><strong>Previous conditions:</strong> ${displayValue(input.profile?.previousConditions)}</p>
       <p><strong>Professionally examined:</strong> ${input.profile ? (input.profile.professionallyExamined ? "Yes" : "No") : "Not provided"}</p>
     </div>
-    <h2>Oral observation map</h2><p>Eight-region coverage: ${input.captures.filter((capture) => capture.quality.accepted).length} of 8 accepted. Pin positions are region-relative coordinates on the versioned generic asset, not a personalized anatomical model.</p>
+    <h2>Oral observation map</h2><p>Eight-region coverage: ${acceptedRegions.length} of 8 accepted. Pin positions are region-relative coordinates on the versioned generic asset, not a personalized anatomical model.</p>
     ${oralObservationMapMarkup({
-      acceptedRegions: input.captures
-        .filter((capture) => capture.quality.accepted)
-        .map((capture) => capture.region),
+      acceptedRegions,
       pins: input.pins,
       assetVersion: ORAL_MAP_ASSET_VERSION,
     })}
@@ -358,7 +389,7 @@ export async function generateEncryptedObservationReport(
     <p><strong>Rule version:</strong> ${escapeHtml(guidance.rulesVersion ?? "disabled / unavailable")}</p>
     <p><strong>Review priority:</strong> ${escapeHtml(guidance.reviewPriority?.replaceAll("_", " ") ?? "disabled / unavailable")}</p>
     <p>${escapeHtml(guidance.message)}</p>
-    <p>Measurements are approximate and normalized to each image. They are not millimeter measurements. Appearance outputs describe visible image patterns and cannot determine a cause.</p>
+    <p>${hasValidCalibration ? "Image-normalized measurements remain approximate. Values explicitly labeled calibrated estimate are shown in millimeters only when a versioned reference-card gate passed; perspective, tissue curvature, camera angle, and card placement can still affect them." : "Measurements are approximate and normalized to each image. Millimeter estimates are unavailable because no capture passed the physical-calibration gate."} Appearance outputs describe visible image patterns and cannot determine a cause.</p>
     <h2>Questions for professional discussion</h2>
     <p>These are conversation prompts, not clinical recommendations.</p>
     <ul>
@@ -367,7 +398,7 @@ export async function generateEncryptedObservationReport(
       <li>Which visible changes, if any, should prompt an earlier follow-up?</li>
       <li>When, if at all, should this area be checked again?</li>
     </ul>
-    <footer>${syntheticReport ? "SYNTHETIC DEMONSTRATION - NOT PATIENT DATA. " : ""}${DISCLAIMER} Generated locally by OralSight. Images and report files are encrypted at rest. Model versions are recorded with each observation.</footer>
+    <footer class="report-footer">${syntheticReport ? "SYNTHETIC DEMONSTRATION - NOT PATIENT DATA. " : ""}${DISCLAIMER} Generated locally by OralSight. Images and report files are encrypted at rest. Model versions are recorded with each observation.</footer>
   </body></html>`;
 
   let plaintextPdfUri: string | null = null;

@@ -1,8 +1,8 @@
 # OralSight segmentation-head engineering release review
 
-Review date: 2026-07-28  
-Review type: engineering model-contract and release-gate review  
-Clinical review: no  
+Review date: 2026-08-10
+Review type: engineering model-contract and release-gate review
+Clinical review: no
 Decision: approved only for non-diagnostic candidate-region outlining
 
 This review approves the model only for drawing an approximate mask around one
@@ -57,5 +57,24 @@ validation before its exact evaluation.
 Performance can change with phone model, lighting, saliva, blur, skin tone,
 age, anatomy, lesion type, and capture distance. Physical-device and subgroup
 testing remain required before a public competition release.
+
+## Redistribution status and replacement attempt
+
+The released artifact used the Autooral author training split under terms stated
+as academic research only and non-commercial. That supports this academic
+competition/research build, but the repository does not contain written permission
+for unrestricted commercial use or public redistribution of the derived weight.
+
+On 2026-08-10, a replacement was trained only on SMART-OM under CC BY 4.0. It was
+selected using a fresh validation split and then evaluated once on a fresh,
+patient-disjoint test split that excluded every patient used by earlier holdouts.
+The exact frozen artifact reached Dice `0.680880` and boundary F1 `0.561571`, below
+the fixed `0.70` and `0.60` gates. It was rejected and is not bundled. Aggregate
+evidence is checked in at
+`docs/licenses-model-cards/SEGMENTATION_SMART_OM_ONLY_ATTEMPT.json`.
+
+Therefore the current segmentation artifact must not be represented as cleared for
+a general commercial/public product. Broader release requires written permission or
+a properly licensed replacement that passes a new untouched evaluation.
 
 This result is not a diagnosis.

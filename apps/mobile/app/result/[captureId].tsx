@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { router, useLocalSearchParams } from "expo-router";
 import {
   Alert,
@@ -18,10 +18,13 @@ import { Button, Card, MetricBar, SectionTitle } from "@/components/Ui";
 import { analyzeCapture } from "@/lib/api";
 import { captureStorageRejectionReasons } from "@/lib/analysisPolicy";
 import { evaluateBundledGuidance } from "@/lib/guidanceRules";
+import { scheduleObservationReminder } from "@/lib/notifications";
+import { reminderSuggestion } from "@/lib/reminderPolicy";
 import { analysisStatusTitle, humanizeResultReason } from "@/lib/resultCopy";
 import { decryptToTemporaryFile, removeTemporaryFile } from "@/lib/secureFiles";
 import { useOralSightStore } from "@/store/useOralSightStore";
 import { useAppTheme } from "@/theme";
+import type { IntakeProfile } from "@/types";
 
 export default function ResultRoute() {
   const theme = useAppTheme();
@@ -32,11 +35,12 @@ export default function ResultRoute() {
   const analysis = useOralSightStore((state) =>
     captureId ? state.analyses[captureId] : undefined,
   );
-  const pinConfirmed = useOralSightStore((state) =>
+  const observationPin = useOralSightStore((state) =>
     captureId
-      ? state.pins.some((pin) => pin.captureIds.includes(captureId))
-      : false,
+      ? state.pins.find((pin) => pin.captureIds.includes(captureId))
+      : undefined,
   );
+  const pinConfirmed = Boolean(observationPin);
   const confirmObservationPin = useOralSightStore(
     (state) => state.confirmObservationPin,
   );
@@ -46,20 +50,41 @@ export default function ResultRoute() {
   const discardCapture = useOralSightStore((state) => state.discardCapture);
   const setActiveSession = useOralSightStore((state) => state.setActiveSession);
   const sessions = useOralSightStore((state) => state.sessions);
+  const comparisons = useOralSightStore((state) => state.comparisons);
   const currentProfile = useOralSightStore((state) => state.profile);
   const [previewUri, setPreviewUri] = useState<string | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [previewEpoch, setPreviewEpoch] = useState(0);
   const [researchOpen, setResearchOpen] = useState(false);
+  const [openExplanationStep, setOpenExplanationStep] = useState<string | null>(
+    "quality",
+  );
   const [retrying, setRetrying] = useState(false);
   const [retryError, setRetryError] = useState<string | null>(null);
   const [retryNotice, setRetryNotice] = useState<string | null>(null);
+  const [reminderBusy, setReminderBusy] = useState(false);
+  const [reminderNotice, setReminderNotice] = useState<string | null>(null);
+  const [reminderError, setReminderError] = useState<string | null>(null);
   const sessionProfile =
     sessions.find((session) => session.id === capture?.sessionId)
       ?.intakeProfile ?? currentProfile;
   const guidance = evaluateBundledGuidance(
     sessionProfile,
     analysis ? [analysis] : [],
+  );
+  const reminder = reminderSuggestion(sessionProfile, analysis);
+  const relatedComparison = useMemo(
+    () =>
+      captureId
+        ? comparisons
+            .filter(
+              (comparison) =>
+                comparison.baselineCaptureId === captureId ||
+                comparison.currentCaptureId === captureId,
+            )
+            .at(-1)
+        : undefined,
+    [captureId, comparisons],
   );
 
   useEffect(() => {
@@ -155,6 +180,81 @@ export default function ResultRoute() {
     Boolean(capture.encryptedUri) &&
     !complete;
   const qualityRejected = analysis?.quality.accepted === false;
+  const explanationSteps = analysis
+    ? [
+        {
+          id: "quality",
+          title: "Image quality",
+          summary: analysis.quality.accepted ? "Accepted" : "Not accepted",
+          detail: analysis.quality.accepted
+            ? "The server accepted blur, exposure, glare, obstruction, and privacy checks for this image."
+            : `The image did not clear every quality check. ${analysis.quality.reasons.map(humanizeResultReason).join(" ") || "No additional reason was returned."}`,
+        },
+        {
+          id: "anatomy",
+          title: "Region match",
+          summary:
+            analysis.anatomyPrediction.supported &&
+            analysis.anatomyPrediction.selectedRegionMatches
+              ? "Matched"
+              : "Not confirmed",
+          detail:
+            analysis.anatomyPrediction.supported &&
+            analysis.anatomyPrediction.selectedRegionMatches
+              ? `The anatomy model matched the selected ${label.toLowerCase()} region.`
+              : "The selected mouth region was not confirmed, so the app does not treat this as a completed region result.",
+        },
+        {
+          id: "candidate",
+          title: "Candidate boundary",
+          summary: analysis.candidateMask ? "Returned" : "Not returned",
+          detail: analysis.candidateMask
+            ? "A released segmentation model returned a candidate boundary. The visible measurements come from that boundary and remain approximate."
+            : "No candidate boundary was returned. This is not an all-clear and does not establish that the tissue is healthy.",
+        },
+        {
+          id: "intake",
+          title: "Reported context",
+          summary: sessionProfile ? "Saved with this scan" : "Not provided",
+          detail: sessionProfile
+            ? `Reported duration: ${sessionProfile.durationDays === undefined ? "not provided" : `${sessionProfile.durationDays} days`}. Reported symptoms: ${sessionProfile.symptoms.length ? sessionProfile.symptoms.join(", ") : "none"}. These answers provide context but do not change the image model output.`
+            : "No symptom intake is linked to this scan. The image result is shown without filling in missing answers.",
+        },
+        {
+          id: "follow-up",
+          title: "Follow-up comparison",
+          summary: relatedComparison?.comparable
+            ? "Comparable"
+            : "Not available",
+          detail: relatedComparison?.comparable
+            ? `A user-confirmed follow-up cleared the registration gates with ${Math.round(relatedComparison.registrationConfidence * 100)}% registration confidence.`
+            : "No user-confirmed comparison linked to this observation has enough alignment evidence to report change.",
+        },
+        {
+          id: "research",
+          title: "Research outputs",
+          summary:
+            analysis.appearanceOutput?.enabled &&
+            analysis.appearanceOutput.gatePassed
+              ? "Appearance output released"
+              : "Hidden or disabled",
+          detail:
+            analysis.appearanceOutput?.enabled &&
+            analysis.appearanceOutput.gatePassed
+              ? "The appearance output passed its release gate for this deployed model. Disease-category research remains separate and never establishes a diagnosis."
+              : "The app does not show an appearance or disease-category label unless its documented release gate passes.",
+        },
+        {
+          id: "limitations",
+          title: "Limits and uncertainty",
+          summary: `${Math.round(analysis.uncertainty.overallConfidence * 100)}% overall model confidence`,
+          detail: analysis.uncertainty.limitations.length
+            ? analysis.uncertainty.limitations.join(" ")
+            : "No additional model limitation text was returned. The standing limitation still applies: this result is not a diagnosis.",
+        },
+      ]
+    : [];
+  const symptomCompleteness = intakeCompleteness(sessionProfile);
 
   const retryAnalysis = async () => {
     if (!canRetry || !previewUri) return;
@@ -402,6 +502,51 @@ export default function ResultRoute() {
           )}
         </Card>
       ) : null}
+      {analysis?.candidateMask ? (
+        <Card>
+          <SectionTitle
+            title="Observation identity card"
+            subtitle="A plain-language record of this saved image and its confirmed links."
+            icon="id-card-outline"
+          />
+          <View style={styles.grid}>
+            <Descriptor label="Location" value={label} />
+            <Descriptor
+              label="First saved"
+              value={new Date(capture.capturedAt).toLocaleDateString()}
+            />
+            <Descriptor
+              label="Reported duration"
+              value={
+                sessionProfile?.durationDays === undefined
+                  ? "Not provided"
+                  : `${sessionProfile.durationDays} day${sessionProfile.durationDays === 1 ? "" : "s"}`
+              }
+            />
+            <Descriptor
+              label="Map status"
+              value={
+                observationPin
+                  ? (
+                      observationPin.comparisonStatus ?? observationPin.status
+                    ).replaceAll("_", " ")
+                  : "Not yet confirmed"
+              }
+            />
+          </View>
+          <Text style={[styles.limitation, { color: theme.secondaryText }]}>
+            Reported symptoms:{" "}
+            {sessionProfile?.symptoms.length
+              ? sessionProfile.symptoms.join(", ")
+              : "none provided"}
+          </Text>
+          <Text style={[styles.limitation, { color: theme.secondaryText }]}>
+            Visible record: approximate area{" "}
+            {(analysis.candidateMask.normalizedArea * 100).toFixed(1)}% of this
+            image. This card does not identify a cause.
+          </Text>
+        </Card>
+      ) : null}
       {analysis?.descriptors ? (
         <Card>
           <SectionTitle
@@ -429,65 +574,79 @@ export default function ResultRoute() {
           </View>
         </Card>
       ) : null}
+      {capture.calibrationRequested ? (
+        <Card
+          accent={
+            capture.calibration?.status === "valid"
+              ? "teal"
+              : capture.calibration?.status === "invalid"
+                ? "amber"
+                : undefined
+          }
+        >
+          <SectionTitle
+            title={
+              capture.calibration?.status === "valid"
+                ? "Physical scale verified"
+                : capture.calibration?.status === "invalid"
+                  ? "Physical scale could not be verified"
+                  : "Physical scale check pending"
+            }
+            subtitle="Millimeter values are calibrated estimates, not clinical measurements."
+            icon="resize-outline"
+          />
+          {capture.calibration?.status === "valid" ? (
+            <View style={styles.grid}>
+              <Descriptor
+                label="Estimated width"
+                value={`${capture.calibration.estimatedWidthMm?.toFixed(1) ?? "—"} mm`}
+              />
+              <Descriptor
+                label="Estimated height"
+                value={`${capture.calibration.estimatedHeightMm?.toFixed(1) ?? "—"} mm`}
+              />
+              <Descriptor
+                label="Estimated area"
+                value={`${capture.calibration.estimatedAreaMm2?.toFixed(1) ?? "—"} mm²`}
+              />
+              <Descriptor
+                label="Scale confidence"
+                value={`${Math.round((capture.calibration.confidence ?? 0) * 100)}%`}
+              />
+            </View>
+          ) : (
+            <Text style={[styles.limitation, { color: theme.secondaryText }]}>
+              {capture.calibration?.gateReasons.length
+                ? capture.calibration.gateReasons
+                    .map(humanizeResultReason)
+                    .join(" ")
+                : "No millimeter value is stored until the versioned marker, same-plane placement, and candidate-boundary checks all pass."}
+            </Text>
+          )}
+        </Card>
+      ) : null}
       {complete && analysis ? (
         <>
           <Card>
             <SectionTitle
               title="Why this result appears"
-              subtitle="A fixed explanation tree derived only from returned fields."
+              subtitle="Open each step to see exactly what evidence was used."
               icon="git-branch-outline"
             />
-            {[
-              [
-                "Quality",
-                analysis.quality.accepted
-                  ? "Server quality gate accepted the image."
-                  : "Server quality gate did not accept the image.",
-              ],
-              [
-                "Anatomy",
-                analysis.anatomyPrediction.supported &&
-                analysis.anatomyPrediction.selectedRegionMatches
-                  ? "Selected anatomy was confirmed."
-                  : "Selected anatomy was not confirmed.",
-              ],
-              [
-                "Candidate",
-                analysis.candidateMask
-                  ? "A candidate boundary and approximate descriptors were returned."
-                  : "No candidate boundary was returned.",
-              ],
-              [
-                "Research gates",
-                analysis.appearanceOutput?.enabled &&
-                analysis.appearanceOutput.gatePassed
-                  ? "The appearance gate passed for this deployed model."
-                  : "Appearance and disease-category labels remain hidden or disabled.",
-              ],
-              [
-                "Limitations",
-                `${analysis.uncertainty.limitations.length} explicit limitation${analysis.uncertainty.limitations.length === 1 ? "" : "s"}; overall confidence ${Math.round(analysis.uncertainty.overallConfidence * 100)}%.`,
-              ],
-            ].map(([step, explanation], index) => (
-              <View key={step} style={styles.treeStep}>
-                <View
-                  style={[styles.treeIndex, { backgroundColor: theme.mint }]}
-                >
-                  <Text style={{ color: theme.primary, fontWeight: "900" }}>
-                    {index + 1}
-                  </Text>
-                </View>
-                <View style={styles.treeCopy}>
-                  <Text style={[styles.treeTitle, { color: theme.text }]}>
-                    {step}
-                  </Text>
-                  <Text
-                    style={[styles.limitation, { color: theme.secondaryText }]}
-                  >
-                    {explanation}
-                  </Text>
-                </View>
-              </View>
+            {explanationSteps.map((step, index) => (
+              <ExplanationStep
+                key={step.id}
+                index={index + 1}
+                title={step.title}
+                summary={step.summary}
+                detail={step.detail}
+                expanded={openExplanationStep === step.id}
+                onPress={() =>
+                  setOpenExplanationStep((current) =>
+                    current === step.id ? null : step.id,
+                  )
+                }
+              />
             ))}
           </Card>
           <Card>
@@ -501,25 +660,35 @@ export default function ResultRoute() {
               value={analysis.uncertainty.imageQualityConfidence}
             />
             <ConfidenceFactor
-              label="Dataset similarity"
-              value={analysis.uncertainty.datasetSimilarity}
+              label="Candidate visibility"
+              value={null}
+              unavailableReason="No separate candidate-visibility score has passed a release gate."
             />
             <ConfidenceFactor
               label="Model agreement"
               value={analysis.uncertainty.modelAgreement}
+              unavailableReason="No independent model ensemble has passed a release gate."
             />
-            {analysis.uncertainty.datasetSimilarity === null ? (
-              <Text style={[styles.limitation, { color: theme.secondaryText }]}>
-                Dataset similarity is not assessed because no released
-                out-of-distribution model is installed.
-              </Text>
-            ) : null}
-            {analysis.uncertainty.modelAgreement === null ? (
-              <Text style={[styles.limitation, { color: theme.secondaryText }]}>
-                Model agreement is not assessed because no independent ensemble
-                has passed its release gate.
-              </Text>
-            ) : null}
+            <ConfidenceFactor
+              label="Follow-up alignment"
+              value={
+                relatedComparison?.userConfirmedMatch &&
+                relatedComparison.comparable
+                  ? relatedComparison.registrationConfidence
+                  : null
+              }
+              unavailableReason="No user-confirmed comparable follow-up is linked to this observation."
+            />
+            <ConfidenceFactor
+              label="Symptom completeness"
+              value={symptomCompleteness}
+              unavailableReason="No saved symptom intake is linked to this scan."
+            />
+            <ConfidenceFactor
+              label="Dataset similarity"
+              value={analysis.uncertainty.datasetSimilarity}
+              unavailableReason="No released dataset-similarity model is installed."
+            />
             {analysis.uncertainty.limitations.map((limitation) => (
               <Text
                 key={limitation}
@@ -605,6 +774,58 @@ export default function ResultRoute() {
           {guidance.message}
         </Text>
       </Card>
+      <Card>
+        <SectionTitle
+          title={reminder.title}
+          subtitle={reminder.description}
+          icon="notifications-outline"
+        />
+        <Button
+          label={`Remind me in ${reminder.delayDays === 1 ? "1 day" : "7 days"}`}
+          icon="alarm-outline"
+          variant="secondary"
+          loading={reminderBusy}
+          loadingLabel="Scheduling reminder..."
+          onPress={() => {
+            setReminderBusy(true);
+            setReminderError(null);
+            setReminderNotice(null);
+            void scheduleObservationReminder({
+              captureId: capture.id,
+              suggestion: reminder,
+            })
+              .then(({ scheduledFor }) => {
+                setReminderNotice(
+                  `Reminder scheduled for ${scheduledFor.toLocaleString()}.`,
+                );
+              })
+              .catch((error: unknown) => {
+                setReminderError(
+                  error instanceof Error
+                    ? error.message
+                    : "The reminder could not be scheduled.",
+                );
+              })
+              .finally(() => setReminderBusy(false));
+          }}
+        />
+        {reminderNotice ? (
+          <Text
+            accessibilityLiveRegion="polite"
+            style={[styles.notice, { color: theme.primary }]}
+          >
+            {reminderNotice}
+          </Text>
+        ) : null}
+        {reminderError ? (
+          <Text
+            accessibilityRole="alert"
+            style={[styles.error, { color: theme.danger }]}
+          >
+            {reminderError}
+          </Text>
+        ) : null}
+      </Card>
       <Button
         label="Open timeline"
         icon="analytics-outline"
@@ -634,19 +855,78 @@ function Descriptor({ label, value }: { label: string; value: string }) {
   );
 }
 
+function ExplanationStep({
+  index,
+  title,
+  summary,
+  detail,
+  expanded,
+  onPress,
+}: {
+  index: number;
+  title: string;
+  summary: string;
+  detail: string;
+  expanded: boolean;
+  onPress: () => void;
+}) {
+  const theme = useAppTheme();
+  return (
+    <View style={[styles.treeStep, { borderColor: theme.border }]}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`${title}: ${summary}`}
+        accessibilityHint={
+          expanded ? "Collapses this explanation" : "Expands this explanation"
+        }
+        accessibilityState={{ expanded }}
+        onPress={onPress}
+        style={({ pressed }) => [
+          styles.treeButton,
+          pressed && styles.expandPressed,
+        ]}
+      >
+        <View style={[styles.treeIndex, { backgroundColor: theme.mint }]}>
+          <Text style={{ color: theme.primary, fontWeight: "900" }}>
+            {index}
+          </Text>
+        </View>
+        <View style={styles.treeCopy}>
+          <Text style={[styles.treeTitle, { color: theme.text }]}>{title}</Text>
+          <Text style={[styles.treeSummary, { color: theme.secondaryText }]}>
+            {summary}
+          </Text>
+        </View>
+        <Ionicons
+          name={expanded ? "chevron-up" : "chevron-down"}
+          color={theme.secondaryText}
+          size={20}
+        />
+      </Pressable>
+      {expanded ? (
+        <Text style={[styles.treeDetail, { color: theme.secondaryText }]}>
+          {detail}
+        </Text>
+      ) : null}
+    </View>
+  );
+}
+
 function ConfidenceFactor({
   label,
   value,
+  unavailableReason = "This factor was not returned.",
 }: {
   label: string;
   value: number | null;
+  unavailableReason?: string;
 }) {
   const theme = useAppTheme();
   if (value !== null) return <MetricBar label={label} value={value} />;
   return (
     <View
       accessible
-      accessibilityLabel={`${label}: not assessed`}
+      accessibilityLabel={`${label}: not assessed. ${unavailableReason}`}
       style={[
         styles.unavailableFactor,
         { borderColor: theme.border, backgroundColor: theme.background },
@@ -655,13 +935,53 @@ function ConfidenceFactor({
       <Text style={[styles.unavailableFactorLabel, { color: theme.text }]}>
         {label}
       </Text>
-      <Text
-        style={[styles.unavailableFactorValue, { color: theme.secondaryText }]}
-      >
-        Not assessed
-      </Text>
+      <View style={styles.unavailableFactorCopy}>
+        <Text
+          style={[
+            styles.unavailableFactorValue,
+            { color: theme.secondaryText },
+          ]}
+        >
+          Not assessed
+        </Text>
+        <Text
+          style={[
+            styles.unavailableFactorReason,
+            { color: theme.secondaryText },
+          ]}
+        >
+          {unavailableReason}
+        </Text>
+      </View>
     </View>
   );
+}
+
+function intakeCompleteness(profile: IntakeProfile | null): number | null {
+  if (!profile) return null;
+  const answers = [
+    Boolean(profile.ageRange),
+    typeof profile.assisted === "boolean",
+    profile.firstNoticed.trim().length > 0,
+    profile.durationDays !== undefined,
+    Array.isArray(profile.symptoms),
+    Boolean(profile.change),
+    Boolean(profile.tobaccoExposure),
+    Boolean(profile.alcoholExposure),
+    profile.previousConditions.trim().length > 0,
+    typeof profile.professionallyExamined === "boolean",
+  ];
+  if (
+    profile.symptoms.some(
+      (symptom) => symptom.trim().toLowerCase() === "bleeding",
+    )
+  ) {
+    answers.push(
+      profile.bleedingFrequency !== undefined,
+      Boolean(profile.bleedingDuration?.trim()),
+    );
+  }
+  return answers.filter(Boolean).length / answers.length;
 }
 
 function analysisOriginCopy(
@@ -699,12 +1019,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 9,
     flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+    alignItems: "flex-start",
     gap: 12,
   },
-  unavailableFactorLabel: { flex: 1, fontSize: 13, fontWeight: "800" },
+  unavailableFactorLabel: { width: "38%", fontSize: 13, fontWeight: "800" },
+  unavailableFactorCopy: { flex: 1, alignItems: "flex-end", gap: 2 },
   unavailableFactorValue: { fontSize: 13, fontWeight: "700" },
+  unavailableFactorReason: { fontSize: 11, lineHeight: 15, textAlign: "right" },
   appearance: { fontSize: 23, fontWeight: "900", textTransform: "capitalize" },
   expand: {
     minHeight: 48,
@@ -713,7 +1034,14 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   expandPressed: { opacity: 0.8, transform: [{ scale: 0.99 }] },
-  treeStep: { flexDirection: "row", gap: 10, alignItems: "flex-start" },
+  treeStep: { borderBottomWidth: StyleSheet.hairlineWidth },
+  treeButton: {
+    minHeight: 52,
+    flexDirection: "row",
+    gap: 10,
+    alignItems: "center",
+    paddingVertical: 8,
+  },
   treeIndex: {
     width: 28,
     height: 28,
@@ -723,6 +1051,13 @@ const styles = StyleSheet.create({
   },
   treeCopy: { flex: 1, gap: 2 },
   treeTitle: { fontSize: 13, fontWeight: "800" },
+  treeSummary: { fontSize: 12, lineHeight: 17 },
+  treeDetail: {
+    fontSize: 13,
+    lineHeight: 19,
+    paddingLeft: 38,
+    paddingBottom: 12,
+  },
   notice: { fontSize: 13, lineHeight: 19, fontWeight: "700" },
   error: { fontSize: 13, lineHeight: 19, fontWeight: "700" },
 });

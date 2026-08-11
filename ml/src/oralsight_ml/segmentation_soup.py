@@ -79,6 +79,8 @@ def _compatible_configuration(
         "normalization_mean",
         "normalization_std",
         "supplemental_segmentation",
+        "positive_sample_repeat",
+        "effective_training_sample_count",
         "training_splits",
     )
     mismatches = [

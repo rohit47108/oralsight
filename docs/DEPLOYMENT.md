@@ -1,0 +1,469 @@
+# OralSight deployment handoff
+
+Last reviewed: 2026-08-10
+
+This document separates what is present in source from what still needs an
+account, credential, managed service, physical device, or real deployment. A
+successful software deployment does not establish clinical accuracy or
+regulatory status.
+
+> **This result is not a diagnosis.**
+
+## Deployment state
+
+| Surface               | Current evidence                                                                                                                                                                                                                                          | Deployment status                                                        |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| Inference API         | `https://oralsight-inference.vercel.app/api/healthz` and `/api/v1/model-card` returned `200`, `Cache-Control: no-store`, production signing, release ID `oralsight-segmentation-release-2026-07-28`, and enabled anatomy/segmentation heads on 2026-08-08 | An older inference-only release is live                                  |
+| Current web app       | Next.js source, tests, build script, Auth0 integration, and Vercel configuration are in the repository                                                                                                                                                    | No deployment of the current tree has been verified                      |
+| Stateful platform API | Container, migrations, OIDC validation, PostgreSQL, private object storage, consent, sync, sharing, reports, audit, retention, and deletion paths are in the repository                                                                                   | No production deployment has been verified                               |
+| Durable worker        | Container, Redis consumer, artifact rendering, report/video/export/deletion processors, retry, heartbeat, and cleanup paths are in the repository                                                                                                         | No production deployment has been verified                               |
+| Mobile app            | Expo development-build source and EAS profiles are present                                                                                                                                                                                                | No final `.aab` or `.ipa` from the current tree exists in this workspace |
+| Full product          | The mobile, web, platform, worker, and inference pieces exist as separate deployable surfaces                                                                                                                                                             | Not yet proven end to end in one production environment                  |
+
+Do not describe the current source tree as deployed merely because the older
+inference endpoint is live.
+
+## Runtime map
+
+```mermaid
+flowchart LR
+  Mobile["Installed iOS or Android app"] --> Inference["Stateless inference API"]
+  Mobile --> Platform["Stateful platform API"]
+  Web["Next.js patient and clinician web app"] --> Platform
+  Platform --> Postgres["TLS PostgreSQL"]
+  Platform --> Storage["Private S3 bucket"]
+  Platform --> Redis["TLS Redis Streams"]
+  Worker["Long-running worker"] --> Redis
+  Worker --> Platform
+  Worker --> Inference
+  Identity["OIDC provider"] --> Mobile
+  Identity --> Web
+  Identity --> Platform
+```
+
+The web app and stateless inference API may run on Vercel. The platform API,
+Redis consumer, PostgreSQL, and S3 storage are a separate container deployment.
+The worker must run as a continuously available process; it is not a request-time
+Vercel Function. The mobile app is installed through EAS, TestFlight, the App
+Store, or Google Play; a domain does not replace the native build.
+
+## External resources required
+
+Before a complete public deployment, the owner must provide:
+
+1. A GitHub repository and protected `main` branch. This workspace currently has
+   no Git remote.
+2. A Vercel team/project for the web app and inference API.
+3. An OIDC provider such as Auth0 with a public native client, a regular web
+   client, an API audience, asymmetric signing, and the required patient,
+   clinician-pending, clinician, and administrator role claims. The platform
+   defaults to the access-token claim `https://oralsight.app/roles` and falls
+   back to `roles`; production must deliberately emit or configure one of them.
+4. Managed PostgreSQL with TLS and point-in-time recovery.
+5. Managed Redis with TLS, authentication, persistence, and `noeviction`.
+6. A private S3 bucket with all Block Public Access controls enabled, Bucket
+   owner enforced Object Ownership, TLS-only access, encryption, and lifecycle
+   rules matching the published retention periods.
+7. A container registry and a host capable of running the platform API,
+   inference service, and at least one continuously running worker.
+8. DNS and TLS for the web, platform API, and inference origins.
+9. A secret manager for OIDC, response-signing, worker HMAC, share derivation,
+   database, Redis, and KMS material.
+10. Expo, Apple Developer, and Google Play accounts plus signing credentials for
+    installable release builds.
+11. Physical iPhones and Android phones for the release device matrix.
+12. An explicit repository-wide source license and written confirmation that
+    every shipped model and derived weight may be distributed and used for the
+    intended release. The current segmentation inventory includes Autooral under
+    academic-research/non-commercial terms; that evidence supports the
+    competition prototype, not an unrestricted commercial-product license.
+13. A published privacy/retention notice that matches operations. The production
+    runbook currently targets a maximum 35-day encrypted backup lifetime, but the
+    current public privacy page does not state that window.
+14. Final native application identifiers. The checked source still uses
+    `org.oralsight.prototype` and has no owner-specific Expo project ID.
+
+The application remains usable in local-only mode when account services are not
+configured. Accounts, cloud sync, QR sharing, clinician review, server-rendered
+artifacts, and cloud deletion require the platform stack and OIDC.
+
+## Prepare a release commit
+
+Use Node 22 to 24, pnpm 11.9.0, Python 3.12 or 3.13, `uv`, Docker, and Git.
+Load the real release web environment from a protected location before the web
+build; do not enable the CI dummy-value switch for a release. From the repository
+root:
+
+```powershell
+corepack enable
+pnpm install --frozen-lockfile
+pnpm contracts:generate
+git diff --exit-code -- packages/contracts/generated
+pnpm test
+pnpm typecheck
+pnpm --filter @oralsight/web lint
+pnpm --filter @oralsight/web build
+pnpm audit:dependencies
+pnpm format:check
+
+uv sync --frozen --all-packages --extra dev
+uv run --frozen --all-packages --no-sync pytest `
+  services/inference/tests services/platform-api/tests services/worker/tests ml/tests
+uvx --from ruff==0.14.14 ruff check `
+  services/inference services/platform-api services/worker ml .github/scripts
+uvx --from ruff==0.14.14 ruff format --check `
+  services/inference services/platform-api services/worker ml .github/scripts
+uvx --from jsonschema==4.26.0 python `
+  .github/scripts/validate_vercel_config.py
+
+python .github/scripts/audit_repository.py
+docker compose -f compose.yaml config --quiet
+docker compose --env-file deploy/production/production.env.example `
+  -f compose.production.yaml config --quiet
+```
+
+Before publishing a repository, scan the complete Git object history as well as
+the working tree for secrets, restricted images, patient data, databases, and
+unlicensed artifacts. The `secret-scan` workflow uses digest-pinned Gitleaks
+against all Git history. The repository audit validates the checked tree; neither
+check replaces a deliberate license and patient-data review.
+
+Then run Expo Doctor, public-config inspection, Android export, and iOS export as
+listed in [`MOBILE_BUILD_AND_DEPLOY.md`](MOBILE_BUILD_AND_DEPLOY.md). Do not
+continue to production if generated contracts drift, the repository audit fails,
+or any current-tree check is red.
+
+The GitHub workflows reproduce these checks after the repository is pushed. The
+Python workflow also copies each service's `pyproject.toml`, `README.md`, and
+`uv.lock` outside the monorepo before `uv lock --check`, which proves the three
+container/Vercel locks stand on their own instead of silently using the root
+workspace lock. A workflow file in source is not evidence that a hosted run
+passed.
+
+## Run the complete stack locally
+
+Start the data and Python services:
+
+```powershell
+docker compose up -d --build
+docker compose ps
+```
+
+This publishes PostgreSQL on `127.0.0.1:5432`, Redis on
+`127.0.0.1:6379`, inference on `127.0.0.1:8000`, the platform API on
+`127.0.0.1:8001`, and worker health on `127.0.0.1:8010`.
+
+Run the web app separately from the repository root:
+
+```powershell
+Copy-Item apps/web/.env.example apps/web/.env.local
+pnpm --filter @oralsight/web dev
+```
+
+For the web app, `ORALSIGHT_PLATFORM_API_URL` must match the Compose port:
+`http://127.0.0.1:8001`. Interactive web and mobile sign-in still needs a real
+development OIDC application. The platform's `local_test` token mode is for
+automated tests and direct development calls; it is not an OIDC discovery,
+authorization, or token server.
+
+For a device build, set the inference, platform, OIDC, web, and share-viewer
+values described below. Plain HTTP is accepted only for loopback development.
+
+Stop the local stack without deleting its volumes:
+
+```powershell
+docker compose down
+```
+
+Deleting volumes removes local development data and is intentionally not part
+of the normal shutdown command.
+
+## Configure the web app
+
+Set these values in every Vercel environment that will be exercised:
+
+| Variable                     | Purpose                                              |
+| ---------------------------- | ---------------------------------------------------- |
+| `AUTH0_DOMAIN`               | OIDC tenant domain                                   |
+| `AUTH0_CLIENT_ID`            | Auth0 regular web application ID                     |
+| `AUTH0_CLIENT_SECRET`        | Server-only web client secret                        |
+| `AUTH0_SECRET`               | Random secret used to protect web sessions           |
+| `APP_BASE_URL`               | Exact public origin for this deployment              |
+| `NEXT_PUBLIC_SITE_URL`       | Public origin used for metadata, sitemap, and robots |
+| `AUTH0_AUDIENCE`             | Exact platform API audience                          |
+| `ORALSIGHT_PLATFORM_API_URL` | Server-only HTTPS origin of the platform API         |
+
+Register exact callback, logout, and web-origin URLs for production and each
+preview environment with the OIDC provider. Never put a client secret, access
+token, database URL, or signing private key in a `NEXT_PUBLIC_*` variable.
+
+The production build stops before compilation if any required web value is
+missing or still looks like a placeholder. CI may use explicit dummy values only
+with both `CI=true` and `ORALSIGHT_ALLOW_CI_DUMMY_WEB_ENV=true`. The bypass is
+disabled whenever `VERCEL=1`, so it cannot make a real Vercel deployment pass.
+
+## Configure the inference API
+
+The production inference runtime requires:
+
+```text
+ORALSIGHT_DEPLOYMENT_MODE=production
+ORALSIGHT_REQUIRE_RESPONSE_SIGNING=true
+ORALSIGHT_RESPONSE_SIGNING_PRIVATE_KEY_B64=<raw 32-byte Ed25519 private key in base64>
+ORALSIGHT_RESPONSE_SIGNING_KEY_ID=<derived key ID>
+ORALSIGHT_ENABLE_DEMO_FIXTURES=false
+ORALSIGHT_MAX_CONCURRENT_INFERENCE=2
+ORALSIGHT_RATE_LIMIT_PER_CLIENT=30
+ORALSIGHT_RATE_LIMIT_GLOBAL=300
+ORALSIGHT_RATE_LIMIT_WINDOW_SECONDS=60
+```
+
+The three rate-limit values are process-local safety limits. Keep an additional
+rate limit at the public ingress, especially when more than one inference replica
+is running.
+
+The packaged Vercel entry point sets the hash-pinned release manifest path when
+the release directory is present. The matching raw public key is compiled into
+the mobile release. Rotate the private key and mobile public-key pin together;
+old app builds cannot trust a newly rotated key unless a deliberate overlap
+strategy is added.
+
+## Deploy web and inference on Vercel
+
+### Option A: one Vercel Services project
+
+The root [`vercel.json`](../vercel.json) describes a web service plus inference
+service with `/api/v1/*` and `/api/healthz` routed to FastAPI and all remaining
+paths routed to Next.js. Vercel's June 2026 documentation lists Services as a
+beta available on all plans. The project framework preset must still be
+**Services**.
+
+Services is still a Vercel Beta. Vercel's release-phase documentation says Beta
+products are not recommended for a full production environment and are outside
+the Enterprise SLA. Use this path for a preview or only after the owner accepts
+that limitation. For the lower-risk production handoff, prefer the separate
+stable projects below until Services leaves Beta.
+
+Use Vercel CLI 48.1.8 or newer. The globally installed CLI in this workspace is
+older, so use a pinned current CLI for release work:
+
+```powershell
+pnpm dlx vercel@58.8.0 link
+pnpm dlx vercel@58.8.0 env pull .vercel/.env.preview.local --environment=preview
+pnpm dlx vercel@58.8.0 build
+pnpm dlx vercel@58.8.0 deploy --prebuilt
+```
+
+Inspect and test the preview before promotion:
+
+```powershell
+pnpm dlx vercel@58.8.0 inspect <preview-url>
+pnpm dlx vercel@58.8.0 logs <preview-url>
+pnpm dlx vercel@58.8.0 promote <preview-url>
+```
+
+Do not reuse an existing project link without checking its project name and
+intended framework. In the current development workspace, the root `.vercel`
+link points to the older `oralsight-inference` project even though the root
+configuration now describes the combined product. The source ZIP excludes
+`.vercel`, so a fresh extraction starts unlinked.
+
+### Option B: two stable Vercel projects
+
+If the team prefers separate release and domain lifecycles, or the Services beta
+is unsuitable for the account, connect the same Git repository twice:
+
+- Web project root: `apps/web`
+- Inference project root: `services/inference`
+
+Keep the monorepo checkout intact so the web workspace dependency on
+`packages/contracts` resolves. Configure the web and inference environment
+variables in their own projects and use their separate HTTPS origins. The
+inference package declares `vercel_entrypoint:app` in `pyproject.toml` for a
+standalone FastAPI deployment.
+
+Vercel's current FastAPI runtime turns the service into one Function and applies
+Function limits, including request size, duration, memory, and bundle size. Run
+an actual preview build and live analyze/compare smoke before production; source
+inspection is not a substitute for a successful Vercel build.
+
+Both Vercel configurations set the inference Function duration to 60 seconds
+through the inference service's `functions` glob. Confirm that the selected plan
+supports that value, then exercise analyze and compare against a real preview.
+The mobile request timeout remains a separate client limit and does not prove
+that a 60-second Function is appropriate under load.
+
+## Deploy the stateful platform and worker
+
+Use [`compose.production.yaml`](../compose.production.yaml) with the operator
+steps in [`deploy/production/RUNBOOK.md`](../deploy/production/RUNBOOK.md). It
+starts application containers only. PostgreSQL, Redis, S3, OIDC, DNS, TLS, and
+the reverse proxy remain operator-owned.
+
+Build, scan, push, and record immutable image digests:
+
+```powershell
+docker build -t <registry>/oralsight-platform-api:<version> services/platform-api
+docker build -t <registry>/oralsight-inference:<version> services/inference
+docker build -t <registry>/oralsight-worker:<version> services/worker
+```
+
+Populate a copy of `deploy/production/production.env.example` in a protected
+location outside Git. Use digest-pinned image references. Then:
+
+```powershell
+docker network create oralsight-ingress
+docker compose --env-file C:\secure\oralsight-production.env `
+  -f compose.production.yaml config --quiet
+docker compose --env-file C:\secure\oralsight-production.env `
+  -f compose.production.yaml up -d
+docker compose --env-file C:\secure\oralsight-production.env `
+  -f compose.production.yaml ps
+```
+
+The ingress proxy must route the public platform origin to `platform-api:8080`
+and the public inference origin to `inference:8000`. Do not expose the worker,
+PostgreSQL, Redis, or S3 admin surface publicly. Run multiple workers only with
+unique `ORALSIGHT_WORKER_CONSUMER_NAME` values.
+
+Production startup fails closed when it sees local authentication, SQLite,
+plain Redis, local object storage, HTTP public URLs, default secrets, or
+automatic schema creation. Keep that behavior enabled.
+
+Set `ORALSIGHT_PLATFORM_OIDC_ROLE_CLAIM` when the identity provider uses a
+different access-token role claim. A web profile field is not enough: the role
+must be present in the API access token, and verified-clinician status is still
+checked in PostgreSQL before professional access is granted.
+
+`ORALSIGHT_PLATFORM_PENDING_UPLOAD_LIFETIME_SECONDS` defaults to `3600`. This is
+the maximum lifetime of an unfinished upload reservation; retention cleanup must
+be running so abandoned reservations and related objects do not remain
+indefinitely.
+
+## Configure the mobile release
+
+The full account-enabled mobile build needs all of these public build values:
+
+| Variable                                      | Required value                                                                        |
+| --------------------------------------------- | ------------------------------------------------------------------------------------- |
+| `EXPO_PUBLIC_INFERENCE_URL`                   | Production HTTPS inference base, including `/api` when using the current Vercel route |
+| `EXPO_PUBLIC_RESPONSE_SIGNING_PUBLIC_KEY_B64` | Public half matching the inference signing key                                        |
+| `EXPO_PUBLIC_PLATFORM_URL`                    | Production HTTPS platform API origin                                                  |
+| `EXPO_PUBLIC_OIDC_ISSUER`                     | OIDC issuer used by the public native client                                          |
+| `EXPO_PUBLIC_OIDC_CLIENT_ID`                  | Public native client ID; never a client secret                                        |
+| `EXPO_PUBLIC_OIDC_AUDIENCE`                   | Exact platform API audience                                                           |
+| `EXPO_PUBLIC_SHARE_VIEWER_URL`                | Web share entry point, normally `https://app.example.org/shared`                      |
+| `EXPO_PUBLIC_WEB_URL`                         | Web origin used to open the calibration-card page                                     |
+
+The preview and production EAS profiles select their matching EAS environment.
+Add the account-related values to both environments before building; otherwise
+the app deliberately remains local-only even though the cloud code is present.
+
+Register the native callback generated for the `oralsight` app scheme with the
+OIDC provider, then create the EAS project and build:
+
+Before `eas:configure`, replace `org.oralsight.prototype` with the stable iOS
+bundle identifier and Android application ID registered to the owner. Treat
+those identifiers as permanent after a store release. Record the EAS project ID
+created for the owner's Expo organization.
+
+```powershell
+Set-Location apps/mobile
+pnpm dlx eas-cli@latest login
+pnpm run eas:configure
+pnpm run eas:build:android:preview
+pnpm run eas:build:ios:preview
+```
+
+After the physical-device release matrix passes, create store artifacts with
+the production profiles. An Expo export is a JavaScript verification artifact;
+it is not an installable `.aab` or `.ipa`.
+
+## Domain layout
+
+A clear production layout is:
+
+```text
+app.example.org          Next.js public, patient, shared, and clinician web app
+api.example.org          Stateful platform API
+inference.example.org    Stateless inference API, if not mounted under app /api
+identity.example.org     OIDC provider or custom identity domain
+```
+
+The QR share URL must use the stable web origin. Keep the share secret in the URL
+fragment until the web app exchanges it for a short-lived HTTP-only cookie.
+
+## Post-deployment acceptance
+
+Record the commit SHA, image digests, Vercel deployment IDs, EAS build IDs, model
+release ID, signing key ID, migration revision, and environment names. Then
+verify:
+
+1. Web public pages load and authenticated patient, clinician-pending,
+   clinician, and administrator roles reach only their allowed screens.
+2. `GET /api/healthz` and `GET /api/v1/model-card` report the expected release,
+   enabled heads, signing state, and `Cache-Control: no-store`.
+3. `GET /readyz` on the platform origin reports database, queue, and object
+   storage ready.
+4. One synthetic or expressly licensed scan completes all eight regions using
+   live model responses. A failed live request produces no fixture result.
+5. Account consent, sync, multi-angle upload, report, personalized observation
+   surface, summary video, encrypted export, QR share/exchange/revoke, clinician
+   review, and access history work through the deployed services.
+6. Delete-all removes live database rows and object bytes, revokes shares and
+   grants, cancels work, creates the identity tombstone, and causes the mobile
+   installation keys to rotate.
+7. Logs contain no image bytes, request bodies, query strings, tokens, subjects,
+   filenames, or share secrets.
+8. Backup restore, lifecycle expiry, dead-letter alerting, key rotation, and
+   rollback procedures are exercised in a non-production environment.
+9. Two physical iPhones and two physical Android devices complete the required
+   scan, quality, accessibility, interruption, storage, sharing, and deletion
+   matrix.
+10. The public privacy notice states the deployed retention periods, including
+    the actual maximum backup lifetime, and matches the configured lifecycle
+    rules and operator runbook.
+11. The repository license and all asset/model redistribution and intended-use
+    rights have been approved for the planned form of release.
+
+Only after those checks pass should the current tree be called deployed.
+
+## Rollback and recovery
+
+- Vercel: retain the tested preview deployment and use `vercel promote` or
+  `vercel rollback` to move the production alias without rebuilding.
+- Containers: retain the previous digest-pinned images. Roll back application
+  images only when the database migration is backward compatible; do not run a
+  destructive database downgrade as an automatic rollback.
+- Data: restore into an isolated network first and follow the no-resurrection
+  rules in the production runbook. A completed deletion must not be undone from
+  an older database snapshot or S3 version.
+- Secrets: treat response-signing, worker HMAC, share derivation, OIDC, database,
+  Redis, and KMS rotation as separate procedures with overlap only where the
+  clients support it.
+
+## Source ZIP handoff
+
+After the final checks and documentation are frozen:
+
+```powershell
+.\scripts\package-source.ps1 `
+  -OutputPath .\outputs\release\OralSight-complete-2026-08-10.zip `
+  -Force
+```
+
+The packager enumerates tracked and non-ignored source through Git, rejects paths
+outside the repository, omits ignored secrets/dependencies/data/caches, and
+returns a SHA-256. Reopen the archive, confirm the required roots and locked model
+files are present, and rerun the repository audit from an extracted copy before
+publishing the checksum. The ZIP contains source, not Git history; publishing the
+repository itself requires the separate full-history check above.
+
+Useful references:
+
+- [Vercel Services](https://vercel.com/docs/services)
+- [Vercel release phases](https://vercel.com/docs/release-phases)
+- [FastAPI on Vercel](https://vercel.com/docs/frameworks/backend/fastapi)
+- [Vercel environment variables](https://vercel.com/docs/environment-variables)
+- [Vercel monorepos](https://vercel.com/docs/monorepos)
+- [Expo EAS build setup](https://docs.expo.dev/build/setup/)

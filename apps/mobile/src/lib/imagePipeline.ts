@@ -11,7 +11,7 @@ export interface SanitizedCapture {
   uri: string;
   mimeType: "image/jpeg" | "image/png";
   telemetry: ImageTelemetry;
-  source: "camera" | "photo_library";
+  source: "camera" | "photo_library" | "video_sweep";
   width: number;
   height: number;
   byteSize: number;
@@ -244,6 +244,15 @@ export async function sanitizeSelectedImage(
   return sanitizeImageCapture(uri, {
     stable: true,
     source: "photo_library",
+  });
+}
+
+export async function sanitizeVideoFrame(
+  uri: string,
+): Promise<SanitizedCapture> {
+  return sanitizeImageCapture(uri, {
+    stable: true,
+    source: "video_sweep",
   });
 }
 

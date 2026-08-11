@@ -34,6 +34,10 @@ def _interface(head: str) -> dict[str, object]:
         "appearance": "class_logits",
         "disease_research": "class_logits",
         "lesion_reidentification": "embedding",
+        "quality_control": "class_logits",
+        "oral_tissue_segmentation": "binary_mask_logits",
+        "out_of_distribution": "class_logits",
+        "secondary_segmentation": "binary_mask_logits",
     }[head]
     labels: list[str] = []
     if head == "anatomy":
@@ -59,6 +63,20 @@ def _interface(head: str) -> dict[str, object]:
         ]
     elif head == "disease_research":
         labels = ["normal", "variation", "opmd", "oral_cancer"]
+    elif head == "quality_control":
+        labels = [
+            "acceptable",
+            "blurry",
+            "too-dark",
+            "too-bright",
+            "glare-heavy",
+            "target-region-missing",
+            "too-far",
+            "too-close",
+            "obstructed",
+        ]
+    elif head == "out_of_distribution":
+        labels = ["supported", "unsupported"]
     output_settings: dict[str, object]
     if output_kind == "binary_mask_logits":
         output_settings = {
@@ -244,6 +262,33 @@ def test_enabled_heads_and_hashes_require_a_loaded_adapter(
     assert runtime.enabled_heads == (ModelHead.SEGMENTATION,)
     assert runtime.analysis_ready is False
     assert runtime.artifact_hashes["segmentation_weights"] == digest
+
+
+def test_auxiliary_safety_heads_have_strict_loadable_interfaces(tmp_path: Path) -> None:
+    names = (
+        "quality_control",
+        "oral_tissue_segmentation",
+        "out_of_distribution",
+        "secondary_segmentation",
+    )
+    heads: list[dict[str, object]] = []
+    for name in names:
+        artifact = tmp_path / f"{name}.onnx"
+        artifact.write_bytes(f"{name}-audited-test-artifact".encode())
+        heads.append(
+            _enabled_head(
+                name, artifact.name, hashlib.sha256(artifact.read_bytes()).hexdigest()
+            )
+        )
+    manifest_path = _write_manifest(tmp_path, heads)
+    runtime = load_release_runtime(
+        {RELEASE_MANIFEST_ENV: str(manifest_path)},
+        adapter_loader=_stub_adapter_loader,
+    )
+    assert runtime.enabled_heads == tuple(ModelHead(name) for name in names)
+    assert runtime.analysis_ready is False
+    for name in names:
+        assert runtime.artifact_hashes[f"{name}_weights"] is not None
 
 
 def test_analysis_readiness_requires_both_loaded_core_adapters(
