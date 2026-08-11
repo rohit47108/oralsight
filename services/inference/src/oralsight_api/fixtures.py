@@ -16,6 +16,7 @@ from .contracts import (
     CandidateMask,
     ComparisonResult,
     CompareMetadata,
+    DescriptorChanges,
     InputOrigin,
     ModelHead,
     ModelOutput,
@@ -132,6 +133,9 @@ def ineligible_demo_comparison(metadata: CompareMetadata) -> ComparisonResult:
         inlier_ratio=0,
         reprojection_error_ratio=1,
         normalized_change=None,
+        descriptor_changes=None,
+        calibrated_measurement_changes=None,
+        calibration_suppression_reasons=[],
         comparable=False,
         suppression_reasons=list(dict.fromkeys(reasons)),
         model_versions=MODEL_VERSIONS,
@@ -254,6 +258,27 @@ def manual_demo_comparison(metadata: CompareMetadata) -> ComparisonResult:
         inlier_ratio=1.0,
         reprojection_error_ratio=0.0,
         normalized_change=normalized_change if comparable else None,
+        descriptor_changes=(
+            DescriptorChanges(
+                normalized_width_change=0.0,
+                normalized_height_change=0.0,
+                normalized_perimeter_change=0.0,
+                border_irregularity_change=0.0,
+                mean_redness_change=0.0,
+                mean_brightness_change=0.0,
+                texture_contrast_change=0.0,
+                ulceration_like_contrast_change=0.0,
+            )
+            if comparable
+            else None
+        ),
+        calibrated_measurement_changes=None,
+        calibration_suppression_reasons=(
+            ["fixture_calibration_not_available"]
+            if metadata.baseline_calibration is not None
+            or metadata.current_calibration is not None
+            else []
+        ),
         comparable=comparable,
         suppression_reasons=reasons,
         model_versions={**MODEL_VERSIONS, "fixture": "bundled-demo-left-cheek-v1"},

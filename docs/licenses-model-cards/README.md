@@ -32,6 +32,13 @@ inventory hash is the JSON file hash; its notes separately pin the decoded PNG
 hash. Editing any audited file requires recalculating its SHA-256, updating the
 inventory/manifest, and rerunning the repository audit workflow.
 
+`SEGMENTATION_SMART_OM_ONLY_ATTEMPT.json` records the failed 2026-08-10 attempt
+to replace the Autooral-assisted segmentation artifact with a SMART-OM-only
+CC BY 4.0 model. The failed model weights are not bundled. The existing released
+weight remains restricted to the documented academic competition/research scope
+until broader redistribution rights are confirmed or a future replacement passes
+a new untouched release test.
+
 No public license has been selected for the OralSight source repository as a whole.
 The CC0 declarations for the procedural map and synthetic fixture apply only to those
 listed assets. Third-party dependency licenses apply to their respective packages. Do

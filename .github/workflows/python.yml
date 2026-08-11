@@ -8,10 +8,14 @@ on:
       - "services/platform-api/**"
       - "services/worker/**"
       - "compose.yaml"
+      - "compose.production.yaml"
+      - "deploy/production/**"
+      - "vercel.json"
       - "pyproject.toml"
       - "uv.lock"
       - ".python-version"
       - ".github/workflows/python.yml"
+      - ".github/scripts/validate_vercel_config.py"
   push:
     branches: [main]
     paths:
@@ -20,10 +24,14 @@ on:
       - "services/platform-api/**"
       - "services/worker/**"
       - "compose.yaml"
+      - "compose.production.yaml"
+      - "deploy/production/**"
+      - "vercel.json"
       - "pyproject.toml"
       - "uv.lock"
       - ".python-version"
       - ".github/workflows/python.yml"
+      - ".github/scripts/validate_vercel_config.py"
   workflow_dispatch:
 
 permissions:
@@ -65,13 +73,19 @@ jobs:
           --health-timeout 3s
           --health-retries 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.13"
-      - uses: astral-sh/setup-uv@v6
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
         with:
           enable-cache: true
+      - name: Validate Vercel configuration schema
+        run: >-
+          uvx --from jsonschema==4.26.0 python
+          .github/scripts/validate_vercel_config.py
       - name: Install locked uv workspace
         run: uv sync --frozen --all-packages --extra dev
       - name: Verify container dependency export
@@ -83,10 +97,30 @@ jobs:
           mkdir /tmp/oralsight-inference-lock
           cp services/inference/pyproject.toml services/inference/README.md services/inference/uv.lock /tmp/oralsight-inference-lock/
           uv lock --directory /tmp/oralsight-inference-lock --check
+      - name: Verify standalone platform and worker locks
+        run: |
+          mkdir /tmp/oralsight-platform-lock /tmp/oralsight-worker-lock
+          cp services/platform-api/pyproject.toml services/platform-api/README.md services/platform-api/uv.lock /tmp/oralsight-platform-lock/
+          cp services/worker/pyproject.toml services/worker/README.md services/worker/uv.lock /tmp/oralsight-worker-lock/
+          uv lock --directory /tmp/oralsight-platform-lock --check
+          uv lock --directory /tmp/oralsight-worker-lock --check
       - name: Run all Python tests
         run: >-
           uv run --frozen --all-packages --no-sync pytest
           services/inference/tests services/platform-api/tests services/worker/tests ml/tests
+      - name: Import the Vercel inference entry point
+        working-directory: services/inference
+        env:
+          ORALSIGHT_DEPLOYMENT_MODE: development
+          ORALSIGHT_REQUIRE_RESPONSE_SIGNING: "false"
+          ORALSIGHT_ENABLE_DEMO_FIXTURES: "false"
+        run: >-
+          uv run --frozen --package oralsight-inference --no-sync python -c
+          "from vercel_entrypoint import app; assert app.title == 'OralSight Inference Service'"
+      - name: Verify checked platform OpenAPI contract
+        run: |
+          uv run --frozen --package oralsight-platform-api --no-sync python services/platform-api/scripts/generate_openapi.py
+          git diff --exit-code -- services/platform-api/openapi.json
       - name: Apply and inspect PostgreSQL migrations
         env:
           ORALSIGHT_PLATFORM_DATABASE_URL: postgresql+asyncpg://oralsight:local-development-only@127.0.0.1:5432/oralsight
@@ -127,6 +161,7 @@ jobs:
       - name: Validate and build the complete container stack
         run: |
           docker compose config --quiet
+          docker compose --env-file deploy/production/production.env.example -f compose.production.yaml config --quiet
           docker build --tag oralsight-platform-api:ci services/platform-api
           docker build --tag oralsight-worker:ci services/worker
 

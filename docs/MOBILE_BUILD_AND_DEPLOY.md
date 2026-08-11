@@ -62,12 +62,20 @@ See Expo's official [build setup](https://docs.expo.dev/build/setup/) and
 Copy `apps/mobile/.env.example` to a local `.env` for local work. Never commit
 the populated file.
 
-The checked-in `preview` and `production` profiles already contain the two
-public values used by the live service:
+The checked-in `preview` and `production` profiles contain the currently verified
+inference origin and public response-verification key. A full account-enabled build
+also requires the platform, identity, web, and share values in the matching EAS
+environment:
 
 ```text
 EXPO_PUBLIC_INFERENCE_URL=https://oralsight-inference.vercel.app/api
 EXPO_PUBLIC_RESPONSE_SIGNING_PUBLIC_KEY_B64=O1GBNCptNbSyxbsWBSCdlkSWK9+lY7KJKW2J41h7+98=
+EXPO_PUBLIC_PLATFORM_URL=https://api.example.org
+EXPO_PUBLIC_OIDC_ISSUER=https://example.us.auth0.com
+EXPO_PUBLIC_OIDC_CLIENT_ID=replace-with-public-native-client-id
+EXPO_PUBLIC_OIDC_AUDIENCE=oralsight-platform-api
+EXPO_PUBLIC_WEB_URL=https://app.example.org
+EXPO_PUBLIC_SHARE_VIEWER_URL=https://app.example.org/shared
 ```
 
 `EXPO_PUBLIC_*` values are compiled into the app and are visible to anyone who
@@ -88,9 +96,11 @@ in an Expo variable, app file, Git commit, build log, or Vercel public
 environment variable. OralSight verifies the exact signed response bytes with
 the pinned public key before it accepts the response.
 
-Development builds still default to the local loopback service. If the deployed
-API or signing key is rotated, update both EAS profiles and
-`apps/mobile/.env.production.example` together, then rebuild. See Expo's
+Development builds still default to local loopback services. Configure preview and
+production values in the owner's EAS environments instead of committing tenant IDs or
+secrets. If an origin, audience, client ID, or public signing key changes, update the
+corresponding EAS environment and `apps/mobile/.env.production.example`, then rebuild.
+See Expo's
 [environment-variable guide](https://docs.expo.dev/eas/environment-variables/).
 
 ## Run against a local backend
@@ -170,30 +180,34 @@ Vercel cannot host or install the iOS/Android binary. A custom web domain can
 point to a public information site or the HTTPS API, but opening that domain is
 not the same as installing OralSight.
 
-The repository includes the production-tested Vercel Services configuration in
-`vercel.json`. The service root is `services/inference`, so Vercel installs its
-actual FastAPI/OpenCV dependencies, and the entry point is mounted at `/api`:
+The repository includes a root Vercel Services configuration for the web app and
+stateless inference API, plus a standalone inference configuration. Both are validated
+against Vercel's current configuration schema. Vercel Services is still a beta release
+surface; the deployment guide also describes separate stable web and inference projects.
 
 ```text
 https://oralsight-inference.vercel.app/api/healthz
 https://oralsight-inference.vercel.app/api/v1/model-card
 ```
 
-The Vercel project stores the production mode, required signing key, key ID,
-disabled fixture flag, and concurrency limit as protected variables. The
-signing private key is server-only.
+The selected Vercel project must store the production mode, required signing key, key
+ID, disabled fixture flag, inference limits, web Auth0 values, site origin, audience,
+and platform origin as protected variables. The signing private key and web client
+secret are server-only.
 
 Every mobile image is re-encoded below 1.75 MB. Two comparison images plus
 multipart metadata therefore remain below Vercel's 4.5 MB function request-body
 ceiling. The API enforces the same per-image limit for non-mobile callers.
 
-The production deployment passed health, model-card, live analyze, and
-fail-closed compare requests. Every response was signed with the pinned key and
-returned `Cache-Control: no-store`; both released model artifacts loaded from
-their hash-pinned manifest. Its direct runtime dependencies are exact-pinned in
-the service package metadata. Proxy-level body-log and temporary-storage
-behavior still belongs in the final host review. The container route remains
-available when encrypted `tmpfs` and tighter host controls are required.
+An older inference-only deployment passed health, model-card, live analyze, and
+fail-closed compare requests on July 28, 2026. That is not evidence that the current
+combined tree is deployed. Build a fresh preview, inspect its file inventory, and run the
+full acceptance flow before promotion. Proxy-level body logging, temporary storage,
+connection limits, and rate limits still belong in the final host review. The container
+route remains available when encrypted `tmpfs` and tighter host controls are required.
+
+Follow [`DEPLOYMENT.md`](DEPLOYMENT.md) for the current web, inference, platform,
+worker, DNS, OIDC, storage, migration, rollback, and ZIP handoff.
 
 ## External items still required
 
@@ -204,11 +218,15 @@ Code alone cannot supply these:
   physical iPhone UDIDs used for internal testing;
 - an Android signing keystore and, for store release, a Google Play Console
   developer account;
+- a real OIDC tenant, PostgreSQL, TLS Redis, private S3-compatible storage, DNS/TLS,
+  ingress limits, backup/lifecycle rules, and a container host for account features;
 - at least two physical iPhones and two physical Android devices for the planned
   quality, deletion, accessibility, interruption, and repeated-scan tests; and
 - licensed patient-disjoint data, trained model artifacts, locked evaluation
   evidence, and clinical review before any learned medical output may be
   released.
+- the owner's final iOS bundle ID, Android application ID, repository license, and
+  approval to redistribute every released model artifact.
 
 Until the model and review gates pass, the app must continue to abstain instead
 of inventing a result. A successful native build proves that the software can be

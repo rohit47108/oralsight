@@ -13,7 +13,10 @@ describe("captureGuideSpec", () => {
     expect(
       guides.every(
         (guide) =>
-          guide.outlinePath.startsWith("M") && guide.cue.trim().length > 0,
+          guide.outlinePath.startsWith("M") &&
+          guide.cue.trim().length > 0 &&
+          guide.targetWidthPercent >= 1 &&
+          guide.targetWidthPercent <= 100,
       ),
     ).toBe(true);
   });

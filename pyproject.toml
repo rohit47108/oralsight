@@ -6,10 +6,12 @@ requires-python = ">=3.12,<3.15"
 dependencies = []
 
 [tool.uv.workspace]
-members = ["services/inference", "services/platform-api", "ml"]
+members = ["services/inference", "services/platform-api", "services/worker", "ml"]
 
 [tool.uv]
 package = false
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
+addopts = "--import-mode=importlib"
+asyncio_mode = "auto"

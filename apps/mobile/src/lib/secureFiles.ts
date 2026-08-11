@@ -14,6 +14,7 @@ import {
   purgeOralSightTemporaryFiles,
   removeFileIfPresent,
 } from "@/lib/tempFiles";
+import { writeTemporaryBase64File } from "@/lib/safeTemporaryWrite";
 
 const VAULT_KEY_NAME = "oralsight.vault-key.v1";
 
@@ -98,11 +99,15 @@ export async function decryptToTemporaryFile(
   const tempKind = extension === "pdf" ? "share" : "preview";
   await ensureOralSightTempDirectory(tempKind);
   const destination = await createOralSightTempUri(tempKind, extension);
-  await FileSystem.writeAsStringAsync(
+  await writeTemporaryBase64File(
     destination,
     await decryptFileBase64(encryptedUri, binding),
     {
-      encoding: FileSystem.EncodingType.Base64,
+      writeBase64: (uri, value) =>
+        FileSystem.writeAsStringAsync(uri, value, {
+          encoding: FileSystem.EncodingType.Base64,
+        }),
+      delete: (uri) => FileSystem.deleteAsync(uri, { idempotent: true }),
     },
   );
   return destination;

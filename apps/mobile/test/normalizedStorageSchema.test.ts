@@ -11,6 +11,11 @@ import {
   NORMALIZED_STORAGE_CLEAR_ORDER,
   NORMALIZED_STORAGE_SCHEMA_VERSION,
   NORMALIZED_STORAGE_TABLES,
+  OLDEST_UPGRADABLE_NORMALIZED_STORAGE_SCHEMA_VERSION,
+  PREVIOUS_NORMALIZED_STORAGE_SCHEMA_VERSION,
+  UPGRADE_NORMALIZED_STORAGE_V3_TO_V4_SQL,
+  UPGRADE_NORMALIZED_STORAGE_V4_TO_V5_SQL,
+  UPGRADE_NORMALIZED_STORAGE_V5_TO_V6_SQL,
   entityIdentities,
   planStorageInitialization,
   reconcileNormalizedRows,
@@ -27,6 +32,7 @@ const earlierSession: ScanSession = {
   createdAt: "2026-01-01T12:00:00.000Z",
   demo: false,
   label: "Earlier scan",
+  protocol: "standard_eight_region",
 };
 
 const currentSession: ScanSession = {
@@ -34,6 +40,7 @@ const currentSession: ScanSession = {
   createdAt: "2026-02-01T12:00:00.000Z",
   demo: false,
   label: "Current scan",
+  protocol: "standard_eight_region",
   intakeProfile: {
     ageRange: "18_39",
     assisted: false,
@@ -58,6 +65,8 @@ function capture(
     id,
     sessionId,
     region: "left_buccal_mucosa",
+    angle: "primary",
+    mediaKind: "image",
     capturedAt,
     encryptedUri: `file:///protected/${id}.orsf`,
     mimeType: "image/jpeg",
@@ -65,6 +74,13 @@ function capture(
     captureSource: "camera",
     privacyConfirmedByUser: true,
     regionConfirmedByUser: true,
+    captureGuidance: {
+      stabilityPercent: 96,
+      tiltDegrees: -4.2,
+      rotationDegrees: 1.8,
+      targetWidthPercent: 53,
+      source: "live_camera",
+    },
     quality: {
       accepted: true,
       blurScore: 0.91,
@@ -148,16 +164,18 @@ function fullState(): PersistedAppState {
     "2026-02-01T12:01:00.000Z",
   );
   return {
-    schemaVersion: 2,
+    schemaVersion: 4,
     consentedAt: "2026-02-01T11:58:00.000Z",
     profile: currentSession.intakeProfile ?? null,
     settings: {
       highContrast: true,
       largeText: false,
       reducedMotion: true,
+      animationSpeed: "slow",
       haptics: true,
       voiceInstructions: false,
       caregiverMode: false,
+      analyticsOptIn: false,
     },
     sessions: [earlierSession, currentSession],
     captures: [earlier, current],
@@ -177,6 +195,7 @@ function fullState(): PersistedAppState {
         userConfirmed: true,
         firstObservedAt: earlier.capturedAt,
         status: "stable",
+        comparisonStatus: "stable",
         captureIds: [earlier.id, current.id],
       },
     ],
@@ -193,7 +212,7 @@ function fullState(): PersistedAppState {
 }
 
 describe("normalized encrypted storage planning", () => {
-  it("preserves every public schema-version 2 field during one-time migration", () => {
+  it("preserves every app schema-version 4 field during one-time migration", () => {
     const state = fullState();
     const plan = planStorageInitialization(
       null,
@@ -216,6 +235,57 @@ describe("normalized encrypted storage planning", () => {
         "2026-03-02T00:00:00.000Z",
       ),
     ).toEqual({ kind: "ready" });
+  });
+
+  it("plans the current additive normalized schema upgrade without reading legacy JSON", () => {
+    expect(
+      planStorageInitialization(
+        PREVIOUS_NORMALIZED_STORAGE_SCHEMA_VERSION,
+        "not valid JSON",
+        "2026-03-02T00:00:00.000Z",
+      ),
+    ).toEqual({ kind: "upgrade" });
+    expect(UPGRADE_NORMALIZED_STORAGE_V5_TO_V6_SQL).toContain(
+      "ADD COLUMN guidance_payload",
+    );
+  });
+
+  it("keeps a sequential upgrade path from normalized schema version 4", () => {
+    expect(
+      planStorageInitialization(
+        4,
+        "not valid JSON",
+        "2026-03-02T00:00:00.000Z",
+      ),
+    ).toEqual({ kind: "upgrade" });
+    expect(UPGRADE_NORMALIZED_STORAGE_V4_TO_V5_SQL).toContain(
+      "ADD COLUMN animation_speed",
+    );
+    expect(UPGRADE_NORMALIZED_STORAGE_V5_TO_V6_SQL).toContain(
+      "ADD COLUMN guidance_payload",
+    );
+  });
+
+  it("keeps a sequential upgrade path from normalized schema version 3", () => {
+    expect(
+      planStorageInitialization(
+        OLDEST_UPGRADABLE_NORMALIZED_STORAGE_SCHEMA_VERSION,
+        "not valid JSON",
+        "2026-03-02T00:00:00.000Z",
+      ),
+    ).toEqual({ kind: "upgrade" });
+    expect(UPGRADE_NORMALIZED_STORAGE_V3_TO_V4_SQL).toContain(
+      "ADD COLUMN protocol",
+    );
+    expect(UPGRADE_NORMALIZED_STORAGE_V3_TO_V4_SQL).toContain(
+      "ADD COLUMN media_kind",
+    );
+    expect(UPGRADE_NORMALIZED_STORAGE_V3_TO_V4_SQL).toContain(
+      "ADD COLUMN calibration_payload",
+    );
+    expect(UPGRADE_NORMALIZED_STORAGE_V3_TO_V4_SQL).toContain(
+      "ADD COLUMN analytics_opt_in",
+    );
   });
 
   it("rejects invalid legacy data without mutating the prior snapshot", () => {
@@ -293,5 +363,46 @@ describe("normalized encrypted storage planning", () => {
         `CREATE TABLE IF NOT EXISTS ${table}`,
       );
     }
+  });
+
+  it("groups three angles for one region into one capture set without losing views", () => {
+    const state = fullState();
+    const session = {
+      ...currentSession,
+      protocol: "detailed_multi_angle" as const,
+    };
+    const angles = ["straight", "left_oblique", "right_oblique"] as const;
+    const captures = angles.map((angle, index) => ({
+      ...capture(
+        `view-${angle}`,
+        session.id,
+        `2026-02-01T12:0${index + 1}:00.000Z`,
+      ),
+      angle,
+    }));
+    const multiView: PersistedAppState = {
+      ...state,
+      sessions: [session],
+      captures,
+      analyses: Object.fromEntries(
+        captures.map((item) => [item.id, analysis(item.id)]),
+      ),
+      comparisons: [],
+      pins: [],
+      reports: [],
+      activeSessionId: session.id,
+    };
+    const migrated = planStorageInitialization(
+      null,
+      JSON.stringify(multiView),
+      "2026-03-01T00:00:00.000Z",
+    );
+    if (migrated.kind !== "migrate") throw new Error("Expected migration");
+
+    expect(migrated.rows.captureSets).toHaveLength(1);
+    expect(migrated.rows.captureViews.map((row) => row.capture.angle)).toEqual(
+      angles,
+    );
+    expect(restorePersistedState(migrated.rows)).toEqual(multiView);
   });
 });

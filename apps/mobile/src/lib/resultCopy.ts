@@ -14,6 +14,32 @@ const RESULT_REASON_COPY: Readonly<Record<string, string>> = {
     "A face or identifying facial area was detected. Reframe to show mouth tissue only.",
   face_check_unavailable:
     "The privacy face check could not run, so the image was not accepted.",
+  quality_control_model_abstained:
+    "The learned quality check was not confident enough, so the image was not accepted.",
+  quality_control_inference_failed:
+    "The learned quality check could not finish, so the image was not accepted.",
+  learned_quality_blurry:
+    "The learned quality check found blur. Hold the phone steady and try again.",
+  learned_quality_too_dark:
+    "The learned quality check found that the image was too dark.",
+  learned_quality_too_bright:
+    "The learned quality check found that the image was too bright.",
+  learned_quality_glare_heavy:
+    "The learned quality check found too much glare.",
+  learned_quality_target_region_missing:
+    "The learned quality check could not find the selected mouth region.",
+  learned_quality_too_far:
+    "The learned quality check found that the camera was too far away.",
+  learned_quality_too_close:
+    "The learned quality check found that the camera was too close.",
+  learned_quality_obstructed:
+    "The learned quality check found that the selected tissue was blocked.",
+  out_of_distribution_model_abstained:
+    "The image-similarity check was not confident enough to continue.",
+  out_of_distribution_inference_failed:
+    "The image-similarity check could not finish.",
+  unsupported_image_distribution:
+    "This image does not sufficiently resemble the supported evaluation images.",
   anatomy_release_gate_unmet:
     "The automatic mouth-region check is currently unavailable.",
   anatomy_model_abstained:
@@ -25,6 +51,12 @@ const RESULT_REASON_COPY: Readonly<Record<string, string>> = {
   segmentation_release_gate_unmet:
     "The abnormal-area model has not passed its required accuracy checks, so no candidate outline was shown.",
   segmentation_inference_failed: "The abnormal-area analysis could not finish.",
+  oral_tissue_segmentation_inference_failed:
+    "The oral-tissue boundary check could not finish.",
+  secondary_segmentation_inference_failed:
+    "The independent outline check could not finish.",
+  segmentation_models_disagree:
+    "Two released outline models disagreed too much, so no candidate result was shown.",
   appearance_inference_failed:
     "The appearance-description analysis could not finish.",
   disease_research_inference_failed:

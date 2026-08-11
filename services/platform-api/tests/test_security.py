@@ -1,0 +1,92 @@
+from __future__ import annotations
+
+from datetime import UTC, datetime, timedelta
+
+import jwt
+import pytest
+from cryptography.hazmat.primitives.asymmetric.rsa import generate_private_key
+
+from oralsight_platform.security import (
+    TokenValidationError,
+    TokenValidator,
+    issue_local_test_token,
+)
+
+
+async def test_local_token_validates_required_claims(settings) -> None:
+    token = issue_local_test_token(
+        settings,
+        subject="auth0|patient-7",
+        roles=("patient", "ignored-future-role"),
+    )
+    claims = await TokenValidator(settings).validate(token)
+    assert claims.subject == "auth0|patient-7"
+    assert claims.roles == frozenset({"patient", "ignored-future-role"})
+
+
+@pytest.mark.parametrize("changed", ["issuer", "audience", "expired"])
+async def test_local_token_rejects_wrong_trust_boundary(settings, changed: str) -> None:
+    kwargs = {"subject": "auth0|patient-7"}
+    if changed == "issuer":
+        kwargs["issuer"] = "https://attacker.invalid"
+    elif changed == "audience":
+        kwargs["audience"] = "some-other-api"
+    else:
+        kwargs["lifetime"] = timedelta(seconds=-1)
+    token = issue_local_test_token(settings, **kwargs)
+    with pytest.raises(TokenValidationError):
+        await TokenValidator(settings).validate(token)
+
+
+async def test_local_token_helper_is_disabled_for_oidc(settings) -> None:
+    oidc_settings = settings.__class__(
+        _env_file=None,
+        environment=settings.environment,
+        database_url=settings.database_url,
+        auth_mode="oidc",
+        oidc_issuer_url="https://identity.example/",
+        oidc_jwks_url="https://identity.example/.well-known/jwks.json",
+    )
+    with pytest.raises(RuntimeError, match="disabled"):
+        issue_local_test_token(oidc_settings, subject="auth0|patient-7")
+
+
+async def test_remote_oidc_hook_uses_jwks_key_and_asymmetric_allowlist(
+    settings,
+) -> None:
+    oidc_settings = settings.__class__(
+        _env_file=None,
+        environment=settings.environment,
+        database_url=settings.database_url,
+        auth_mode="oidc",
+        oidc_issuer_url="https://identity.example/",
+        oidc_jwks_url="https://identity.example/.well-known/jwks.json",
+        oidc_algorithms=("RS256",),
+        jwt_leeway_seconds=0,
+    )
+    private_key = generate_private_key(public_exponent=65537, key_size=2048)
+    now = datetime.now(UTC)
+    token = jwt.encode(
+        {
+            "sub": "auth0|remote-patient",
+            "iss": oidc_settings.oidc_issuer_url,
+            "aud": oidc_settings.oidc_audience,
+            "iat": now,
+            "exp": now + timedelta(minutes=5),
+        },
+        private_key,
+        algorithm="RS256",
+        headers={"kid": "test-key"},
+    )
+
+    class SigningKey:
+        key = private_key.public_key()
+
+    class JwksClient:
+        def get_signing_key_from_jwt(self, _token: str):
+            return SigningKey()
+
+    validator = TokenValidator(oidc_settings)
+    validator._jwks_client = JwksClient()
+    claims = await validator.validate(token)
+    assert claims.subject == "auth0|remote-patient"

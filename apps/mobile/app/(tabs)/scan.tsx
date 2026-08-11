@@ -2,12 +2,22 @@ import { useMemo, useState } from "react";
 import { router } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { MOUTH_REGION_DETAILS, type MouthRegion } from "@oralsight/contracts";
+import {
+  MOUTH_REGION_DETAILS,
+  type CaptureAngle,
+  type MouthRegion,
+} from "@oralsight/contracts";
 
 import { OralObservationMap } from "@/components/OralObservationMap";
 import { Screen } from "@/components/Screen";
 import { Button, Card, EmptyState, SectionTitle } from "@/components/Ui";
-import { scanProgress, acceptedRegions } from "@/lib/scanLogic";
+import {
+  acceptedAngles,
+  acceptedRegions,
+  detailedScanProgress,
+  requiredAnglesForProtocol,
+  scanProgress,
+} from "@/lib/scanLogic";
 import { useOralSightStore } from "@/store/useOralSightStore";
 import { useAppTheme } from "@/theme";
 
@@ -30,9 +40,23 @@ export default function ScanRoute() {
     [activeSessionId, captures],
   );
 
-  const openCapture = (region: MouthRegion) => {
+  const detailProgress = useMemo(
+    () =>
+      activeSessionId
+        ? detailedScanProgress(
+            captures,
+            activeSessionId,
+            session?.protocol ?? "standard_eight_region",
+          )
+        : null,
+    [activeSessionId, captures, session?.protocol],
+  );
+  const openCapture = (region: MouthRegion, angle?: CaptureAngle) => {
     setSelectedRegion(region);
-    router.push({ pathname: "/capture/[region]", params: { region } });
+    router.push({
+      pathname: "/capture/[region]",
+      params: { region, ...(angle ? { angle } : {}) },
+    });
   };
 
   if (!session || !progress) {
@@ -62,36 +86,43 @@ export default function ScanRoute() {
     );
   }
 
+  const protocolComplete =
+    detailProgress !== null &&
+    detailProgress.completedViews === detailProgress.totalViews;
+  const selectedAcceptedAngles = selectedRegion
+    ? acceptedAngles(captures, session.id, selectedRegion)
+    : [];
+
   return (
     <Screen title="Structured mouth scan" eyebrow="Private session">
-      <Card accent={progress.completed === 8 ? "teal" : "amber"}>
+      <Card accent={protocolComplete ? "teal" : "amber"}>
         <View style={styles.progressHeading}>
           <View>
             <Text style={[styles.progressNumber, { color: theme.text }]}>
-              {progress.completed} of {progress.total}
+              {detailProgress?.completedViews ?? progress.completed} of{" "}
+              {detailProgress?.totalViews ?? progress.total}
             </Text>
             <Text
               style={[styles.progressLabel, { color: theme.secondaryText }]}
             >
-              quality-accepted regions
+              {session.protocol === "standard_eight_region"
+                ? "quality-accepted regions"
+                : "quality-accepted views"}
             </Text>
           </View>
           <View
             style={[
               styles.progressBadge,
               {
-                backgroundColor:
-                  progress.completed === 8 ? theme.mint : theme.warningSurface,
+                backgroundColor: protocolComplete
+                  ? theme.mint
+                  : theme.warningSurface,
               },
             ]}
           >
             <Ionicons
-              name={
-                progress.completed === 8
-                  ? "checkmark-circle"
-                  : "hourglass-outline"
-              }
-              color={progress.completed === 8 ? theme.primary : theme.amber}
+              name={protocolComplete ? "checkmark-circle" : "hourglass-outline"}
+              color={protocolComplete ? theme.primary : theme.amber}
               size={25}
             />
           </View>
@@ -102,13 +133,13 @@ export default function ScanRoute() {
               styles.fill,
               {
                 backgroundColor: theme.primary,
-                width: `${progress.percent * 100}%`,
+                width: `${((detailProgress?.completedViews ?? progress.completed) / (detailProgress?.totalViews ?? progress.total)) * 100}%`,
               },
             ]}
           />
         </View>
         <Text style={[styles.sessionLabel, { color: theme.secondaryText }]}>
-          {session.label}
+          {session.label} · {protocolLabel(session.protocol)}
         </Text>
       </Card>
 
@@ -118,11 +149,38 @@ export default function ScanRoute() {
         onSelectRegion={setSelectedRegion}
       />
       {selectedRegion ? (
-        <Button
-          label={`Capture ${MOUTH_REGION_DETAILS.find((item) => item.id === selectedRegion)?.shortLabel ?? selectedRegion}`}
-          icon="camera-outline"
-          onPress={() => openCapture(selectedRegion)}
-        />
+        session.protocol === "detailed_multi_angle" ? (
+          <Card accent="teal">
+            <SectionTitle
+              title={`Views for ${MOUTH_REGION_DETAILS.find((item) => item.id === selectedRegion)?.shortLabel ?? selectedRegion}`}
+              subtitle="Capture each named angle. A check marks views already accepted."
+              icon="layers-outline"
+            />
+            {requiredAnglesForProtocol(session.protocol).map((angle) => (
+              <Button
+                key={angle}
+                label={`${selectedAcceptedAngles.includes(angle) ? "✓ " : ""}${angleLabel(angle)}`}
+                icon="camera-outline"
+                variant={
+                  selectedAcceptedAngles.includes(angle)
+                    ? "secondary"
+                    : "primary"
+                }
+                onPress={() => openCapture(selectedRegion, angle)}
+              />
+            ))}
+          </Card>
+        ) : (
+          <Button
+            label={`${session.protocol === "guided_video_sweep" ? "Record guided sweep" : "Capture"} · ${MOUTH_REGION_DETAILS.find((item) => item.id === selectedRegion)?.shortLabel ?? selectedRegion}`}
+            icon={
+              session.protocol === "guided_video_sweep"
+                ? "videocam-outline"
+                : "camera-outline"
+            }
+            onPress={() => openCapture(selectedRegion)}
+          />
+        )
       ) : null}
 
       <Card>
@@ -133,13 +191,28 @@ export default function ScanRoute() {
         />
         <View style={styles.regionList}>
           {MOUTH_REGION_DETAILS.map((region, index) => {
-            const done = completed.includes(region.id);
+            const acceptedForRegion = acceptedAngles(
+              captures,
+              session.id,
+              region.id,
+            );
+            const requiredForRegion = requiredAnglesForProtocol(
+              session.protocol,
+            );
+            const done = requiredForRegion.every((angle) =>
+              acceptedForRegion.includes(angle),
+            );
             return (
               <Pressable
                 key={region.id}
                 accessibilityRole="button"
                 accessibilityLabel={`${region.label}. ${done ? "Accepted" : "Not captured"}`}
-                onPress={() => openCapture(region.id)}
+                onPress={() => {
+                  setSelectedRegion(region.id);
+                  if (session.protocol !== "detailed_multi_angle") {
+                    openCapture(region.id);
+                  }
+                }}
                 style={({ pressed }) => [
                   styles.regionRow,
                   { borderBottomColor: theme.border },
@@ -176,6 +249,9 @@ export default function ScanRoute() {
                     ]}
                   >
                     {region.captureInstruction}
+                    {session.protocol === "standard_eight_region"
+                      ? ""
+                      : ` · ${acceptedForRegion.length} of ${requiredForRegion.length} views`}
                   </Text>
                 </View>
                 <Ionicons
@@ -188,7 +264,7 @@ export default function ScanRoute() {
           })}
         </View>
       </Card>
-      {progress.completed === 8 ? (
+      {protocolComplete ? (
         <Button
           label="Generate local clinician report"
           icon="document-text-outline"
@@ -211,6 +287,25 @@ export default function ScanRoute() {
       ) : null}
     </Screen>
   );
+}
+
+function protocolLabel(
+  protocol: ReturnType<
+    typeof useOralSightStore.getState
+  >["sessions"][number]["protocol"],
+): string {
+  if (protocol === "detailed_multi_angle") return "Detailed photos";
+  if (protocol === "guided_video_sweep") return "Guided sweeps";
+  return "Standard photos";
+}
+
+function angleLabel(angle: CaptureAngle): string {
+  if (angle === "straight") return "Straight view";
+  if (angle === "left_oblique") return "Left view";
+  if (angle === "right_oblique") return "Right view";
+  if (angle === "superior") return "Upper view";
+  if (angle === "inferior") return "Lower view";
+  return "Primary view";
 }
 
 function SessionList({
@@ -238,14 +333,14 @@ function SessionList({
         .slice()
         .reverse()
         .map((item) => {
-          const progress = scanProgress(captures, item.id);
+          const detail = detailedScanProgress(captures, item.id, item.protocol);
           const active = item.id === activeSessionId;
           return (
             <Pressable
               key={item.id}
               accessibilityRole="button"
               accessibilityState={{ selected: active }}
-              accessibilityLabel={`${new Date(item.createdAt).toLocaleString()}, ${progress.completed} of 8 regions${active ? ", active session" : ""}`}
+              accessibilityLabel={`${new Date(item.createdAt).toLocaleString()}, ${detail.completedViews} of ${detail.totalViews} accepted views${active ? ", active session" : ""}`}
               onPress={() => onSelect(item.id)}
               style={({ pressed }) => [
                 styles.sessionRow,
@@ -260,8 +355,11 @@ function SessionList({
                 <Text
                   style={[styles.sessionMeta, { color: theme.secondaryText }]}
                 >
-                  {progress.completed} of 8 regions
-                  {progress.completed === 8 ? " - report ready" : ""}
+                  {protocolLabel(item.protocol)} · {detail.completedViews} of{" "}
+                  {detail.totalViews} views
+                  {detail.completedViews === detail.totalViews
+                    ? " · report ready"
+                    : ""}
                 </Text>
               </View>
               <Ionicons

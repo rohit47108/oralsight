@@ -20,6 +20,10 @@ import type { Group } from "three";
 
 import { ORAL_MAP_ASSET_VERSION } from "@/constants";
 import {
+  nextIntroRegion,
+  nextIntroRotation,
+} from "@/components/oralObservationIntro";
+import {
   derivePinWorldPosition,
   deriveRegionWorldPosition,
   deriveScanPhonePose,
@@ -336,6 +340,247 @@ const confidenceCopy = (summary: RegionObservationSummary): string => {
   }
   return `${Math.round(summary.averageAnalysisConfidence * 100)}% analysis confidence`;
 };
+
+function IntroMouthScene({
+  selectedRegion,
+  rotation,
+  reducedMotion,
+  regionColor,
+  selectedColor,
+  onSelectRegion,
+}: {
+  selectedRegion: MouthRegion;
+  rotation: number;
+  reducedMotion: boolean;
+  regionColor: string;
+  selectedColor: string;
+  onSelectRegion: (region: MouthRegion) => void;
+}) {
+  const group = useRef<Group>(null);
+
+  useEffect(() => {
+    if (group.current) group.current.rotation.y = rotation;
+  }, [rotation]);
+
+  useFrame((_, delta) => {
+    if (!group.current || reducedMotion) return;
+    group.current.rotation.y += Math.min(delta, 0.05) * 0.16;
+  });
+
+  return (
+    <group ref={group} rotation={[0.06, rotation, 0]}>
+      <MouthAnatomySupport exploded={false} showTeeth translucent={false} />
+      {MOUTH_REGION_DETAILS.map((detail) => (
+        <RegionMesh
+          key={detail.id}
+          id={detail.id}
+          meshId={detail.meshId}
+          position={deriveRegionWorldPosition(detail.id, false)}
+          scale={REGION_SCALES[detail.id]}
+          color={detail.id === selectedRegion ? selectedColor : regionColor}
+          opacity={detail.id === selectedRegion ? 0.98 : 0.7}
+          selected={detail.id === selectedRegion}
+          onSelect={onSelectRegion}
+        />
+      ))}
+    </group>
+  );
+}
+
+export function OralObservationMapIntroduction() {
+  const theme = useAppTheme();
+  const reducedMotion = useShouldReduceMotion();
+  const [selectedRegion, setSelectedRegion] =
+    useState<MouthRegion>("dorsal_tongue");
+  const [rotation, setRotation] = useState(0);
+  const [renderFailed, setRenderFailed] = useState(false);
+  const [renderAttempt, setRenderAttempt] = useState(0);
+  const selectedDetail = detailFor(selectedRegion)!;
+  const regionIndex = MOUTH_REGION_DETAILS.findIndex(
+    (detail) => detail.id === selectedRegion,
+  );
+
+  return (
+    <View
+      style={[
+        styles.introContainer,
+        { backgroundColor: theme.surface, borderColor: theme.border },
+      ]}
+    >
+      <View style={styles.introHeading}>
+        <View style={styles.introHeadingCopy}>
+          <Text
+            accessibilityRole="header"
+            style={[
+              styles.introTitle,
+              { color: theme.text, fontSize: 18 * theme.fontScale },
+            ]}
+          >
+            Your oral observation map
+          </Text>
+          <Text
+            style={[
+              styles.introBody,
+              {
+                color: theme.secondaryText,
+                fontSize: 13 * theme.fontScale,
+              },
+            ]}
+          >
+            Eight named regions keep every capture and later observation in the
+            same place. This is a standard map, not a scan of your anatomy.
+          </Text>
+        </View>
+        <View
+          accessible
+          accessibilityLabel="Eight named regions"
+          style={[styles.introCount, { backgroundColor: theme.mint }]}
+        >
+          <Text style={[styles.introCountNumber, { color: theme.primary }]}>
+            8
+          </Text>
+          <Text style={[styles.introCountLabel, { color: theme.text }]}>
+            regions
+          </Text>
+        </View>
+      </View>
+
+      <View
+        style={[
+          styles.introShell,
+          { backgroundColor: theme.navy, borderColor: theme.border },
+        ]}
+      >
+        <MapRenderBoundary
+          key={renderAttempt}
+          onError={() => setRenderFailed(true)}
+          fallback={
+            <View style={styles.introFallback}>
+              <Ionicons
+                accessible={false}
+                name="cube-outline"
+                size={30}
+                color={theme.onCamera}
+              />
+              <Text
+                style={[styles.introFallbackText, { color: theme.onCamera }]}
+              >
+                The 3D introduction is unavailable. The scan still uses the same
+                eight named regions.
+              </Text>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Retry 3D oral observation map introduction"
+                onPress={() => {
+                  setRenderFailed(false);
+                  setRenderAttempt((value) => value + 1);
+                }}
+                style={({ pressed }) => [
+                  styles.introRetry,
+                  { borderColor: theme.onCamera },
+                  pressed && styles.controlPressed,
+                ]}
+              >
+                <Text style={{ color: theme.onCamera, fontWeight: "800" }}>
+                  Retry 3D view
+                </Text>
+              </Pressable>
+            </View>
+          }
+        >
+          <View
+            accessible={false}
+            importantForAccessibility="no-hide-descendants"
+            style={styles.canvas}
+          >
+            <Canvas camera={{ position: [0, 0, 4.4], fov: 46 }}>
+              <ambientLight intensity={1.55} />
+              <directionalLight position={[2, 3, 4]} intensity={2.25} />
+              <directionalLight position={[-2, -1, 2]} intensity={0.55} />
+              <IntroMouthScene
+                selectedRegion={selectedRegion}
+                rotation={rotation}
+                reducedMotion={reducedMotion}
+                regionColor={theme.aqua}
+                selectedColor={theme.pin}
+                onSelectRegion={setSelectedRegion}
+              />
+            </Canvas>
+          </View>
+        </MapRenderBoundary>
+        {!renderFailed ? (
+          <>
+            <View pointerEvents="none" style={styles.introReadout}>
+              <Text
+                style={[styles.introReadoutStep, { color: theme.onCamera }]}
+              >
+                Region {regionIndex + 1} of 8
+              </Text>
+              <Text
+                style={[styles.introReadoutTitle, { color: theme.onCamera }]}
+              >
+                {selectedDetail.shortLabel}
+              </Text>
+            </View>
+            <View style={styles.introControls}>
+              <MapControl
+                label="Rotate introduction left"
+                icon="arrow-back"
+                onPress={() =>
+                  setRotation((value) => nextIntroRotation(value, -1))
+                }
+              />
+              <MapControl
+                label="Show next named mouth region"
+                icon="navigate-outline"
+                onPress={() =>
+                  setSelectedRegion((value) => nextIntroRegion(value))
+                }
+              />
+              <MapControl
+                label="Rotate introduction right"
+                icon="arrow-forward"
+                onPress={() =>
+                  setRotation((value) => nextIntroRotation(value, 1))
+                }
+              />
+            </View>
+          </>
+        ) : null}
+      </View>
+
+      <View
+        accessible
+        accessibilityLabel={`${selectedDetail.label}. Region ${regionIndex + 1} of 8. ${selectedDetail.captureInstruction}`}
+        style={styles.introCaption}
+      >
+        <View
+          accessible={false}
+          style={[styles.introRegionNumber, { backgroundColor: theme.primary }]}
+        >
+          <Text style={[styles.introRegionNumberText, { color: theme.white }]}>
+            {regionIndex + 1}
+          </Text>
+        </View>
+        <View style={styles.introCaptionCopy}>
+          <Text style={[styles.introCaptionTitle, { color: theme.text }]}>
+            {selectedDetail.label}
+          </Text>
+          <Text
+            style={[styles.introCaptionBody, { color: theme.secondaryText }]}
+          >
+            {selectedDetail.captureInstruction}
+          </Text>
+          <Text style={[styles.introMotionNote, { color: theme.primary }]}>
+            {reducedMotion
+              ? "Automatic rotation is off. Use the controls to explore."
+              : "Rotates slowly. Tap a region or use the controls to explore."}
+          </Text>
+        </View>
+      </View>
+    </View>
+  );
+}
 
 export function OralObservationMap({
   completedRegions,
@@ -1153,6 +1398,104 @@ function MapControlLight({
 
 const styles = StyleSheet.create({
   container: { gap: 12 },
+  introContainer: {
+    borderWidth: 1,
+    borderRadius: 20,
+    padding: 14,
+    gap: 12,
+    shadowColor: "#102A43",
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 2,
+  },
+  introHeading: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  introHeadingCopy: { flex: 1, gap: 4 },
+  introTitle: { fontWeight: "900" },
+  introBody: { lineHeight: 19 },
+  introCount: {
+    minWidth: 62,
+    minHeight: 58,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 9,
+  },
+  introCountNumber: {
+    fontSize: 21,
+    lineHeight: 24,
+    fontWeight: "900",
+    fontVariant: ["tabular-nums"],
+  },
+  introCountLabel: { fontSize: 10, fontWeight: "800" },
+  introShell: {
+    height: 310,
+    borderWidth: 1,
+    borderRadius: 17,
+    overflow: "hidden",
+  },
+  introReadout: {
+    position: "absolute",
+    top: 12,
+    left: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    backgroundColor: "rgba(7,26,43,0.88)",
+    borderRadius: 11,
+  },
+  introReadoutStep: { fontSize: 10, lineHeight: 13, fontWeight: "700" },
+  introReadoutTitle: { fontSize: 14, lineHeight: 18, fontWeight: "900" },
+  introControls: {
+    position: "absolute",
+    right: 12,
+    bottom: 12,
+    left: 12,
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 8,
+  },
+  introFallback: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 12,
+    padding: 24,
+  },
+  introFallbackText: { maxWidth: 330, textAlign: "center", lineHeight: 19 },
+  introRetry: {
+    minHeight: 48,
+    paddingHorizontal: 17,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderRadius: 14,
+  },
+  introCaption: { flexDirection: "row", alignItems: "center", gap: 11 },
+  introRegionNumber: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  introRegionNumberText: {
+    fontSize: 13,
+    fontWeight: "900",
+    fontVariant: ["tabular-nums"],
+  },
+  introCaptionCopy: { flex: 1, gap: 2 },
+  introCaptionTitle: { fontSize: 14, fontWeight: "900" },
+  introCaptionBody: { fontSize: 12, lineHeight: 17 },
+  introMotionNote: {
+    marginTop: 2,
+    fontSize: 10,
+    lineHeight: 14,
+    fontWeight: "800",
+  },
   surfaceHeader: {
     borderWidth: 1,
     borderRadius: 16,

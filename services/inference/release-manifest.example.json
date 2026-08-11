@@ -43,6 +43,38 @@
       "unmetRequirements": [
         "No re-identification artifact has passed held-out matched and hard-negative evaluation."
       ]
+    },
+    {
+      "head": "quality_control",
+      "enabled": false,
+      "version": "not-deployed",
+      "unmetRequirements": [
+        "No learned quality-control artifact has passed patient-disjoint and physical-device evaluation."
+      ]
+    },
+    {
+      "head": "oral_tissue_segmentation",
+      "enabled": false,
+      "version": "not-deployed",
+      "unmetRequirements": [
+        "No separate oral-tissue segmentation artifact has passed its release gate."
+      ]
+    },
+    {
+      "head": "out_of_distribution",
+      "enabled": false,
+      "version": "not-deployed",
+      "unmetRequirements": [
+        "No out-of-distribution artifact has passed supported and hard-negative evaluation."
+      ]
+    },
+    {
+      "head": "secondary_segmentation",
+      "enabled": false,
+      "version": "not-deployed",
+      "unmetRequirements": [
+        "No independently trained secondary segmentation artifact has passed evaluation."
+      ]
     }
   ]
 }

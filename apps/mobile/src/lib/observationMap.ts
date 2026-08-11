@@ -92,7 +92,8 @@ const SCAN_PHONE_POSES: Record<MouthRegion, ScanPhonePose> = {
 
 const SCAN_PATH_CUES: Record<MouthRegion, ScanPathCue> = {
   dorsal_tongue: {
-    phonePosition: "Hold the phone level and point toward the center of the tongue.",
+    phonePosition:
+      "Hold the phone level and point toward the center of the tongue.",
     tissuePosition: "Extend the tongue gently and keep its top surface flat.",
     camera: "Rear camera recommended",
     helperRecommended: false,
@@ -116,13 +117,15 @@ const SCAN_PATH_CUES: Record<MouthRegion, ScanPathCue> = {
     helperRecommended: true,
   },
   upper_lip: {
-    phonePosition: "Raise the phone slightly and keep the lens parallel to the lip.",
+    phonePosition:
+      "Raise the phone slightly and keep the lens parallel to the lip.",
     tissuePosition: "Lift the upper lip so the inner surface is visible.",
     camera: "Rear camera recommended",
     helperRecommended: true,
   },
   lower_lip: {
-    phonePosition: "Lower the phone slightly and keep the lens parallel to the lip.",
+    phonePosition:
+      "Lower the phone slightly and keep the lens parallel to the lip.",
     tissuePosition: "Pull the lower lip down so the inner surface is visible.",
     camera: "Rear camera recommended",
     helperRecommended: true,

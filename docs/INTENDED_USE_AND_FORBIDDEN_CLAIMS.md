@@ -2,18 +2,19 @@
 
 ## Fixed intended use
 
-The following is the proposed competition intended use, not a statement that every
-capability is released in the current working tree. OralSight is a student-directed,
-AI-assisted, non-diagnostic research prototype intended to help a person:
+OralSight is a student-directed, AI-assisted, non-diagnostic research product
+intended to help a person:
 
 - follow a structured eight-region oral photography workflow;
 - recognize and retake visibly poor photographs and, only after a validated release gate,
   anatomically mismatched photographs;
 - view candidate regions and approximate visual descriptors with uncertainty;
 - compare user-confirmed observations over time when images are sufficiently comparable;
-- organize those observations on a generic oral observation map; and
-- prepare a local observation report and questions for discussion with a dentist or
-  physician.
+- organize those observations on a generic oral observation map;
+- prepare an observation report and questions for discussion with a dentist or
+  physician; and
+- optionally sync explicitly selected records to a private account for reports,
+  time-limited sharing, generated observation artifacts, and clinician review.
 
 It is not a substitute for a dentist, physician, biopsy, pathology, or clinical
 examination. Image findings and symptoms can support communication, but they cannot
@@ -23,14 +24,19 @@ diagnose an oral condition. Every result screen and report must include:
 
 ## Audience and operating limits
 
-- Competition demonstration and supervised research-prototype evaluation only.
+- Competition demonstration and supervised research-product evaluation. A public or
+  clinical release requires the separate deployment, privacy, device, data-license,
+  and professional-review checks in `docs/DEPLOYMENT.md`.
 - Smartphone photographs of the fixed eight visible oral regions.
-- One accepted image per region in v1; no video sweeps, depth reconstruction, physical
-  calibration, or millimeter measurements.
-- Generic anatomical mapping only. Use “oral observation map,” never “personalized
-  digital twin.”
-- Approximate normalized measurements only, always paired with image-quality,
-  registration, and uncertainty limitations.
+- One primary accepted image per region, with optional left/right views or a short
+  best-frame sweep. Raw sweeps are discarded after selected frames are retained.
+- Optional ArUco reference-card calibration may produce approximate millimeter and
+  square-millimeter estimates only when the marker and same-plane checks pass.
+- The in-app geometry is a generic oral observation map. A private generated GLB may
+  project the user's selected images and confirmed pins onto that generic geometry; it
+  is not a reconstruction of the person's anatomy or a digital twin.
+- Approximate normalized and calibrated measurements are always paired with
+  image-quality, registration, calibration, and uncertainty limitations.
 
 ## Forbidden public, in-app, report, and judge-demo claims
 
@@ -42,9 +48,10 @@ Never state or imply that OralSight:
 - is clinically accurate, clinically validated, FDA approved/cleared, or a medical
   device exempt from oversight;
 - is HIPAA compliant, privacy certified, secure under every threat, or legally compliant;
-- measures lesion dimensions in millimeters without a validated physical reference;
+- measures dimensions in millimeters without a valid in-frame physical reference and
+  explicit approximate-estimate wording;
 - automatically knows two observations are the same lesion;
-- produces a personalized anatomical reconstruction in the competition version; or
+- claims that the projected-color observation surface reconstructs patient anatomy; or
 - offers treatment, medication, triage, or emergency-care instructions from an ML class.
 
 Do not present a test-set threshold as a population performance claim. Do not use

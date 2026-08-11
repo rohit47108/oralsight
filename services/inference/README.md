@@ -7,7 +7,17 @@ hash-pinned anatomy and segmentation models. Anatomy rejects mismatched mouth re
 segmentation outlines one possible candidate region. Neither model diagnoses disease.
 Appearance, disease-category research, and re-identification remain disabled.
 
-> **This result is not a diagnosis.** Candidate masks, normalized areas, and changes are approximate research outputs without a physical scale.
+> **This result is not a diagnosis.** Candidate masks and changes are approximate
+> research outputs. Millimeter estimates appear only when the versioned physical
+> marker and same-plane checks pass, and they remain approximate.
+
+The bundled segmentation weight used the Autooral training split under
+academic-research/non-commercial terms. A SMART-OM-only CC BY 4.0 replacement
+was evaluated on a fresh patient holdout and rejected because Dice `0.6809` and
+boundary F1 `0.5616` missed the fixed `0.70`/`0.60` gate. The current weight is
+therefore limited to the documented academic competition/research scope unless
+broader written permission is obtained. See the checked release review and
+[SMART-OM-only attempt evidence](../../docs/licenses-model-cards/SEGMENTATION_SMART_OM_ONLY_ATTEMPT.json).
 
 ## Run locally
 
@@ -111,7 +121,16 @@ loader. A head is enabled only when its declared artifact exists, matches its pi
 SHA-256, parses as ONNX, and passes a startup dummy inference with the declared
 input/output names and shapes. A version label is never presented as an artifact hash.
 
-Comparison uses ORB features, cross-checked Hamming matches, RANSAC homography, an inlier-ratio gate of 0.60, and a reprojection-error gate of 3% of the current image diagonal. Registration diagnostics remain available, but live `candidateMatchScore`, `comparable`, and `normalizedChange` fail closed while re-identification is disabled and the release has no approved repeated-capture area-error evidence at 10% or less. Caller-supplied prior-analysis areas never drive a live measurement; the service recomputes both areas from the sanitized comparison images. User confirmation remains mandatory.
+Comparison uses ORB features, cross-checked Hamming matches, RANSAC homography, an
+inlier-ratio gate of 0.60, and a reprojection-error gate of 3% of the current image
+diagonal. Automatic learned re-identification remains disabled, but a user-selected
+same-region proposal can be confirmed and compared. The service recomputes both masks
+from the sanitized images; caller-supplied areas never drive a measurement. Comparable
+results require confirmation, registration thresholds, and the configured repeated-
+capture evidence. They may include approximate normalized width, height, area,
+perimeter, border, color, texture, and ulceration-like contrast changes. Paired
+millimeter changes appear only when both images pass the same physical-calibration
+contract. Failed gates return explicit suppression reasons and no change value.
 
 ## Model release manifest
 

@@ -91,6 +91,7 @@ export function assertComparisonResult(
       !expected.userConfirmedMatch ||
       result.analysisOrigin === "unavailable" ||
       result.normalizedChange === null ||
+      result.descriptorChanges == null ||
       result.registrationConfidence <= 0 ||
       result.inlierRatio < 0.6 ||
       result.reprojectionErrorRatio > 0.03 ||
@@ -102,6 +103,8 @@ export function assertComparisonResult(
     }
   } else if (
     result.normalizedChange !== null ||
+    result.descriptorChanges != null ||
+    result.calibratedMeasurementChanges != null ||
     result.suppressionReasons.length === 0
   ) {
     throw new Error(

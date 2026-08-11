@@ -31,6 +31,7 @@ ml/mlruns/
 .env.*
 !.env.example
 !apps/mobile/.env.production.example
+!deploy/production/production.env.example
 *.db
 *.sqlite*
 *.pem

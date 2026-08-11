@@ -8,47 +8,27 @@ import { useAppTheme } from "@/theme";
 const roadmap = [
   [
     "NeuroSight",
-    "A future multimodal neurological-pattern research module. No assessment is implemented in this release.",
+    "A separate future neurological-pattern research product. Parkinson-related assessment is not part of OralSight.",
   ],
   [
-    "Personalized 3D reconstruction",
-    "Research into multi-view mapping; the current oral observation map remains generic and region-based.",
+    "Independent clinical study",
+    "Prospective evaluation with external clinicians, representative participants, locked models, and published methods. Engineering tests cannot substitute for this evidence.",
   ],
   [
-    "Clinician portal and annotations",
-    "Future human-review workflows after privacy, consent, and governance design.",
+    "Regulated clinical claims",
+    "Any future diagnostic or clinical-accuracy claim would require the evidence, quality system, legal review, and regulatory path appropriate to its intended use.",
   ],
   [
-    "Expiring QR sharing",
-    "Deferred. This release creates an encrypted local PDF and uses the operating system share sheet only on request.",
+    "Deformable anatomical reconstruction",
+    "OralSight can build a personalized multi-view observation surface for coverage and location. Reconstructing a true patient-specific, deformable mouth anatomy remains a research problem.",
   ],
   [
-    "Scan-summary video",
-    "Deferred until the core capture, explanation, comparison, and report experience is validated.",
+    "Expanded model releases",
+    "Appearance, disease-category, and automated re-identification heads stay behind their published evidence gates until suitable patient-disjoint data and clinical review exist.",
   ],
   [
-    "Expanded capture and measurement",
-    "Multi-angle capture, video sweeps, physical calibration references, and millimeter measurements are deferred beyond this one-image-per-region release.",
-  ],
-  [
-    "Expanded scan guidance",
-    "Automatic stability capture, mirrored directions, an animated virtual-phone scan path, and camera-pose scoring remain future usability research.",
-  ],
-  [
-    "Expanded longitudinal views",
-    "Time-lapse morphing, change animations, trajectory connections without passed comparison gates, and adaptive reminder scheduling are not active in this release.",
-  ],
-  [
-    "Symptom body map",
-    "An interactive head-and-neck symptom diagram is deferred. The current intake stores structured symptoms and includes them in the local report.",
-  ],
-  [
-    "Education modules",
-    "The oral anatomy atlas, normal-variation gallery, scan simulator, and knowledge challenges are deferred until licensed content can be clinically reviewed.",
-  ],
-  [
-    "3D heatmap",
-    "A surface heatmap is deferred. The current map shows only user-confirmed, versioned observation pins.",
+    "Language packs and reviewed education",
+    "Additional written languages and larger licensed education libraries can be added after native-speaker and clinician review.",
   ],
 ] as const;
 
@@ -57,16 +37,18 @@ export default function RoadmapRoute() {
   return (
     <Screen
       title="Research roadmap"
-      eyebrow="Static, not implemented"
+      eyebrow="Beyond the OralSight product"
       action={
         <Button label="Back" variant="ghost" onPress={() => router.back()} />
       }
     >
       <Card accent="amber">
-        <SectionTitle title="OralSight first" icon="flag-outline" />
+        <SectionTitle title="What remains research" icon="flag-outline" />
         <Text style={[styles.body, { color: theme.text }]}>
-          Future concepts are shown for transparency only. None are represented
-          as working medical capabilities.
+          Capture, comparison, reporting, sharing, clinician review, the
+          observation map, and the education tools belong to OralSight. The
+          items below require work outside that product build or evidence that
+          cannot be created in software alone.
         </Text>
       </Card>
       {roadmap.map(([title, body]) => (

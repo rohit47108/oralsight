@@ -8,14 +8,17 @@ import numpy as np
 import pytest
 
 from oralsight_api import processing
+from oralsight_api.calibration import CalibrationEstimate
 from oralsight_api.contracts import (
     AnalysisOrigin,
     AnalysisStatus,
     AnalyzeMetadata,
     CompareMetadata,
+    DistributionClass,
     InputOrigin,
     ModelHead,
     MouthRegion,
+    QualityClass,
     QualityResult,
 )
 from oralsight_api.model_adapters import (
@@ -143,6 +146,24 @@ def _anatomy_prediction(
     )
 
 
+def _classification_prediction(
+    labels: tuple[str, ...],
+    top_label: str,
+    *,
+    confidence: float = 0.9,
+) -> ClassificationPrediction:
+    remainder = (1.0 - confidence) / (len(labels) - 1)
+    probabilities = [remainder] * len(labels)
+    probabilities[labels.index(top_label)] = confidence
+    return ClassificationPrediction(
+        labels=labels,
+        probabilities=tuple(probabilities),
+        top_label=top_label,
+        confidence=confidence,
+        abstained=False,
+    )
+
+
 def _segmentation(
     *,
     x_stop: int = 10,
@@ -170,35 +191,43 @@ def _analyze_metadata(
     )
 
 
-def _compare_metadata() -> CompareMetadata:
-    return CompareMetadata.model_validate(
-        {
-            "contractVersion": "1.1.0",
-            "baselineCaptureId": "baseline-model-test",
-            "currentCaptureId": "current-model-test",
+def _compare_metadata(*, with_calibration: bool = False) -> CompareMetadata:
+    payload: dict[str, object] = {
+        "contractVersion": "1.1.0",
+        "baselineCaptureId": "baseline-model-test",
+        "currentCaptureId": "current-model-test",
+        "region": "lower_lip",
+        "userConfirmedMatch": True,
+        "inputOrigin": "live_capture",
+        "baselineAnalysis": {
+            "captureId": "baseline-model-test",
             "region": "lower_lip",
-            "userConfirmedMatch": True,
-            "inputOrigin": "live_capture",
-            "baselineAnalysis": {
-                "captureId": "baseline-model-test",
-                "region": "lower_lip",
-                "status": "complete",
-                "analysisOrigin": "live_model",
-                "qualityAccepted": True,
-                "candidateNormalizedArea": 0.1,
-                "modelVersions": {"segmentation": "old"},
-            },
-            "currentAnalysis": {
-                "captureId": "current-model-test",
-                "region": "lower_lip",
-                "status": "complete",
-                "analysisOrigin": "live_model",
-                "qualityAccepted": True,
-                "candidateNormalizedArea": 0.9,
-                "modelVersions": {"segmentation": "old"},
-            },
+            "status": "complete",
+            "analysisOrigin": "live_model",
+            "qualityAccepted": True,
+            "candidateNormalizedArea": 0.1,
+            "modelVersions": {"segmentation": "old"},
+        },
+        "currentAnalysis": {
+            "captureId": "current-model-test",
+            "region": "lower_lip",
+            "status": "complete",
+            "analysisOrigin": "live_model",
+            "qualityAccepted": True,
+            "candidateNormalizedArea": 0.9,
+            "modelVersions": {"segmentation": "old"},
+        },
+    }
+    if with_calibration:
+        request = {
+            "cardVersion": "oralsight-calibration-v1",
+            "markerId": 17,
+            "markerSideMm": 20,
+            "planeConfirmed": True,
         }
-    )
+        payload["baselineCalibration"] = request
+        payload["currentCalibration"] = request
+    return CompareMetadata.model_validate(payload)
 
 
 def test_real_adapter_outputs_complete_primary_analysis_and_mask_descriptors(
@@ -270,6 +299,180 @@ def test_anatomy_mismatch_prevents_segmentation_and_exposes_no_candidate(
     assert result.candidate_mask is None
     assert "selected_region_anatomy_mismatch" in result.abstention_reasons
     assert segmentation.calls == 0
+
+
+def test_released_quality_and_distribution_safety_heads_fail_closed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(processing, "assess_quality", _accepted_quality)
+    anatomy = _FakeAdapter(
+        ModelHead.ANATOMY,
+        [_anatomy_prediction(MouthRegion.LOWER_LIP)],
+    )
+    quality_labels = tuple(item.value for item in QualityClass)
+    runtime = _runtime(
+        {
+            ModelHead.QUALITY_CONTROL: _FakeAdapter(
+                ModelHead.QUALITY_CONTROL,
+                [_classification_prediction(quality_labels, QualityClass.TOO_FAR)],
+            ),
+            ModelHead.ANATOMY: anatomy,
+            ModelHead.SEGMENTATION: _FakeAdapter(
+                ModelHead.SEGMENTATION, [_segmentation()]
+            ),
+        }
+    )
+    result = analyze_sanitized_image(
+        _image(),
+        _analyze_metadata(
+            requested_heads=[
+                ModelHead.SEGMENTATION,
+                ModelHead.ANATOMY,
+                ModelHead.QUALITY_CONTROL,
+            ]
+        ),
+        runtime,
+    )
+    assert result.status is AnalysisStatus.ABSTAINED
+    assert result.quality.accepted is False
+    assert "learned_quality_too_far" in result.quality.reasons
+    assert anatomy.calls == 0
+
+    distribution_labels = tuple(item.value for item in DistributionClass)
+    anatomy = _FakeAdapter(
+        ModelHead.ANATOMY,
+        [_anatomy_prediction(MouthRegion.LOWER_LIP)],
+    )
+    runtime = _runtime(
+        {
+            ModelHead.OUT_OF_DISTRIBUTION: _FakeAdapter(
+                ModelHead.OUT_OF_DISTRIBUTION,
+                [
+                    _classification_prediction(
+                        distribution_labels,
+                        DistributionClass.UNSUPPORTED,
+                    )
+                ],
+            ),
+            ModelHead.ANATOMY: anatomy,
+            ModelHead.SEGMENTATION: _FakeAdapter(
+                ModelHead.SEGMENTATION, [_segmentation()]
+            ),
+        }
+    )
+    result = analyze_sanitized_image(
+        _image(),
+        _analyze_metadata(
+            requested_heads=[
+                ModelHead.SEGMENTATION,
+                ModelHead.ANATOMY,
+                ModelHead.OUT_OF_DISTRIBUTION,
+            ]
+        ),
+        runtime,
+    )
+    assert result.status is AnalysisStatus.UNSUPPORTED
+    assert result.uncertainty.dataset_similarity == pytest.approx(0.1)
+    assert "unsupported_image_distribution" in result.abstention_reasons
+    assert anatomy.calls == 0
+
+
+def test_tissue_mask_and_independent_segmentation_agreement_are_applied(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(processing, "assess_quality", _accepted_quality)
+    tissue = _segmentation(x_stop=8)
+    primary = _segmentation(x_stop=12)
+    secondary = _segmentation(x_stop=12)
+    distribution_labels = tuple(item.value for item in DistributionClass)
+    runtime = _runtime(
+        {
+            ModelHead.ANATOMY: _FakeAdapter(
+                ModelHead.ANATOMY,
+                [_anatomy_prediction(MouthRegion.LOWER_LIP)],
+            ),
+            ModelHead.OUT_OF_DISTRIBUTION: _FakeAdapter(
+                ModelHead.OUT_OF_DISTRIBUTION,
+                [
+                    _classification_prediction(
+                        distribution_labels,
+                        DistributionClass.SUPPORTED,
+                    )
+                ],
+            ),
+            ModelHead.ORAL_TISSUE_SEGMENTATION: _FakeAdapter(
+                ModelHead.ORAL_TISSUE_SEGMENTATION,
+                [tissue],
+            ),
+            ModelHead.SEGMENTATION: _FakeAdapter(
+                ModelHead.SEGMENTATION,
+                [primary],
+            ),
+            ModelHead.SECONDARY_SEGMENTATION: _FakeAdapter(
+                ModelHead.SECONDARY_SEGMENTATION,
+                [secondary],
+            ),
+        }
+    )
+    result = analyze_sanitized_image(
+        _image(),
+        _analyze_metadata(
+            requested_heads=[
+                ModelHead.SEGMENTATION,
+                ModelHead.ANATOMY,
+                ModelHead.ORAL_TISSUE_SEGMENTATION,
+                ModelHead.OUT_OF_DISTRIBUTION,
+                ModelHead.SECONDARY_SEGMENTATION,
+            ]
+        ),
+        runtime,
+    )
+    assert result.status is AnalysisStatus.COMPLETE
+    assert result.candidate_mask is not None
+    assert result.uncertainty.dataset_similarity == pytest.approx(0.9)
+    assert result.uncertainty.model_agreement == pytest.approx(1.0)
+    assert result.model_versions["oral_tissue_segmentation"]
+    assert result.model_versions["secondary_segmentation"]
+
+
+def test_released_secondary_segmentation_disagreement_withholds_candidate(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(processing, "assess_quality", _accepted_quality)
+    secondary = _segmentation(x_stop=8)
+    secondary.probabilities[:, :] = 0.05
+    secondary.probabilities[4:12, 10:14] = 0.95
+    runtime = _runtime(
+        {
+            ModelHead.ANATOMY: _FakeAdapter(
+                ModelHead.ANATOMY,
+                [_anatomy_prediction(MouthRegion.LOWER_LIP)],
+            ),
+            ModelHead.SEGMENTATION: _FakeAdapter(
+                ModelHead.SEGMENTATION,
+                [_segmentation(x_stop=8)],
+            ),
+            ModelHead.SECONDARY_SEGMENTATION: _FakeAdapter(
+                ModelHead.SECONDARY_SEGMENTATION,
+                [secondary],
+            ),
+        }
+    )
+    result = analyze_sanitized_image(
+        _image(),
+        _analyze_metadata(
+            requested_heads=[
+                ModelHead.SEGMENTATION,
+                ModelHead.ANATOMY,
+                ModelHead.SECONDARY_SEGMENTATION,
+            ]
+        ),
+        runtime,
+    )
+    assert result.status is AnalysisStatus.ABSTAINED
+    assert result.candidate_mask is None
+    assert result.uncertainty.model_agreement == pytest.approx(0.0)
+    assert "segmentation_models_disagree" in result.abstention_reasons
 
 
 def test_request_time_model_exception_fails_closed(
@@ -399,6 +602,12 @@ def test_compare_uses_model_masks_and_embeddings_not_prior_areas(
     assert result.candidate_match_score == pytest.approx(1.0)
     assert result.normalized_change is not None
     assert result.normalized_change > 0
+    assert result.descriptor_changes is not None
+    assert result.descriptor_changes.normalized_width_change > 0
+    assert result.descriptor_changes.normalized_perimeter_change > 0
+    assert result.descriptor_changes.measurement_label == (
+        "approximate image-normalized change"
+    )
     # Caller-provided 0.1 -> 0.9 would imply +800%; the model masks do not.
     assert result.normalized_change < 2
 
@@ -482,3 +691,153 @@ def test_comparison_normalizes_candidate_area_with_registration_homography(
 
     assert result.comparable is True
     assert result.normalized_change == pytest.approx(0.0, abs=0.08)
+    assert result.descriptor_changes is not None
+    assert result.descriptor_changes.normalized_width_change == pytest.approx(
+        0.0, abs=0.08
+    )
+
+
+def test_comparison_exposes_millimeters_only_after_both_calibrations_pass(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(processing, "assess_quality", _accepted_quality)
+    monkeypatch.setattr(
+        processing,
+        "_orb_registration",
+        lambda _baseline, _current: (
+            0.8,
+            0.01,
+            0.9,
+            [],
+            np.eye(3, dtype=np.float64),
+        ),
+    )
+    estimates = iter(
+        [
+            CalibrationEstimate(
+                card_version="oralsight-calibration-v1",
+                marker_id=17,
+                marker_side_mm=20.0,
+                valid=True,
+                plane_confirmed=True,
+                scale_uncertainty=0.02,
+                estimated_width_mm=4.0,
+                estimated_height_mm=3.0,
+                estimated_area_mm2=12.0,
+                confidence=0.9,
+                suppression_reasons=(),
+            ),
+            CalibrationEstimate(
+                card_version="oralsight-calibration-v1",
+                marker_id=17,
+                marker_side_mm=20.0,
+                valid=True,
+                plane_confirmed=True,
+                scale_uncertainty=0.03,
+                estimated_width_mm=4.5,
+                estimated_height_mm=3.2,
+                estimated_area_mm2=14.4,
+                confidence=0.88,
+                suppression_reasons=(),
+            ),
+        ]
+    )
+    monkeypatch.setattr(
+        processing,
+        "estimate_calibrated_bounding_box",
+        lambda *_args, **_kwargs: next(estimates),
+    )
+    runtime = _runtime(
+        {
+            ModelHead.SEGMENTATION: _FakeAdapter(
+                ModelHead.SEGMENTATION,
+                [_segmentation(), _segmentation()],
+            ),
+        },
+        repeated_capture_area_error=0.08,
+    )
+
+    result = compare_sanitized_images(
+        _image(),
+        _image(),
+        _compare_metadata(with_calibration=True),
+        runtime,
+    )
+
+    assert result.comparable is True
+    assert result.calibration_suppression_reasons == []
+    assert result.calibrated_measurement_changes is not None
+    assert result.calibrated_measurement_changes.width_change_mm == pytest.approx(0.5)
+    assert result.calibrated_measurement_changes.height_change_mm == pytest.approx(0.2)
+    assert result.calibrated_measurement_changes.area_change_mm2 == pytest.approx(2.4)
+
+
+def test_comparison_suppresses_millimeters_when_either_calibration_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(processing, "assess_quality", _accepted_quality)
+    monkeypatch.setattr(
+        processing,
+        "_orb_registration",
+        lambda _baseline, _current: (
+            0.8,
+            0.01,
+            0.9,
+            [],
+            np.eye(3, dtype=np.float64),
+        ),
+    )
+    valid = CalibrationEstimate(
+        card_version="oralsight-calibration-v1",
+        marker_id=17,
+        marker_side_mm=20.0,
+        valid=True,
+        plane_confirmed=True,
+        scale_uncertainty=0.02,
+        estimated_width_mm=4.0,
+        estimated_height_mm=3.0,
+        estimated_area_mm2=12.0,
+        confidence=0.9,
+        suppression_reasons=(),
+    )
+    invalid = CalibrationEstimate(
+        card_version="oralsight-calibration-v1",
+        marker_id=None,
+        marker_side_mm=20.0,
+        valid=False,
+        plane_confirmed=True,
+        scale_uncertainty=None,
+        estimated_width_mm=None,
+        estimated_height_mm=None,
+        estimated_area_mm2=None,
+        confidence=0.0,
+        suppression_reasons=("calibration_marker_not_found",),
+    )
+    estimates = iter([valid, invalid])
+    monkeypatch.setattr(
+        processing,
+        "estimate_calibrated_bounding_box",
+        lambda *_args, **_kwargs: next(estimates),
+    )
+    runtime = _runtime(
+        {
+            ModelHead.SEGMENTATION: _FakeAdapter(
+                ModelHead.SEGMENTATION,
+                [_segmentation(), _segmentation()],
+            ),
+        },
+        repeated_capture_area_error=0.08,
+    )
+
+    result = compare_sanitized_images(
+        _image(),
+        _image(),
+        _compare_metadata(with_calibration=True),
+        runtime,
+    )
+
+    assert result.comparable is True
+    assert result.calibrated_measurement_changes is None
+    assert result.calibration_suppression_reasons == [
+        "current_calibration_marker_not_found"
+    ]

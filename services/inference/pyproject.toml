@@ -9,7 +9,7 @@ description = "Stateless, non-diagnostic image analysis service for the OralSigh
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-  "cryptography==48.0.1",
+  "cryptography==50.0.0",
   "fastapi==0.139.2",
   "numpy==2.5.1",
   "opencv-python-headless==4.13.0.92",
@@ -29,12 +29,15 @@ dev = [
 [project.scripts]
 oralsight-evaluate-repeat-capture = "oralsight_api.comparison_evaluation:main"
 
+[tool.vercel]
+entrypoint = "vercel_entrypoint:app"
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/oralsight_api"]
 
 [tool.pytest.ini_options]
 addopts = "-q --strict-markers"
-pythonpath = ["src"]
+pythonpath = ["src", "../.."]
 testpaths = ["tests"]
 
 [tool.coverage.run]

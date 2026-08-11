@@ -72,6 +72,8 @@ def test_segmentation_candidate_can_skip_locked_test_evaluation() -> None:
             "presence_gated_unetplusplus_efficientnet_b4",
             "--segmentation-loss-version",
             "tolerant_boundary_v2",
+            "--segmentation-positive-repeat",
+            "2",
             "--validation-only",
         ]
     )
@@ -79,6 +81,7 @@ def test_segmentation_candidate_can_skip_locked_test_evaluation() -> None:
     assert args.validation_only is True
     assert args.segmentation_architecture == "presence_gated_unetplusplus_efficientnet_b4"
     assert args.segmentation_loss_version == "tolerant_boundary_v2"
+    assert args.segmentation_positive_repeat == 2
 
 
 def test_segmentation_can_evaluate_exact_frozen_validation_checkpoint() -> None:

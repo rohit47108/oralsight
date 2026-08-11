@@ -9,11 +9,13 @@ import {
 } from "react-native";
 import {
   MOUTH_REGION_DETAILS,
+  type ComparisonCalibrationRequest,
   type ComparisonResult,
   type MouthRegion,
 } from "@oralsight/contracts";
 
 import { ComparisonViewer } from "@/components/ComparisonViewer";
+import { CaptureGuidanceMetrics } from "@/components/CaptureGuidanceMetrics";
 import { Screen } from "@/components/Screen";
 import {
   Button,
@@ -258,7 +260,12 @@ export default function CompareRoute() {
   }, [analyses, pair, previewEpoch]);
 
   const runComparison = async (userConfirmedMatch: boolean) => {
-    if (!prepared || !selectedRegion || (userConfirmedMatch && !confirmed)) {
+    if (
+      !prepared ||
+      !pair ||
+      !selectedRegion ||
+      (userConfirmedMatch && !confirmed)
+    ) {
       return;
     }
     setBusy(true);
@@ -284,6 +291,8 @@ export default function CompareRoute() {
         currentAnalysis: prepared.currentAnalysis,
         inputOrigin: "live_capture",
         userConfirmedMatch,
+        baselineCalibration: calibrationRequest(pair[0]),
+        currentCalibration: calibrationRequest(pair[1]),
       });
       if (requestToken.current !== currentRequestToken) return;
       if (userConfirmedMatch) {
@@ -459,10 +468,29 @@ export default function CompareRoute() {
           </View>
         ) : null}
         {prepared ? (
-          <ComparisonViewer
-            baselineUri={prepared.baselineUri}
-            currentUri={prepared.currentUri}
-          />
+          <>
+            <ComparisonViewer
+              baselineUri={prepared.baselineUri}
+              currentUri={prepared.currentUri}
+            />
+            {pair?.[1].captureGuidance ? (
+              <View style={styles.guidanceComparison}>
+                <CaptureGuidanceMetrics
+                  snapshot={pair[1].captureGuidance}
+                  exposureScore={pair[1].quality.exposureScore}
+                  baselineSnapshot={pair[0].captureGuidance ?? null}
+                  baselineExposureScore={pair[0].quality.exposureScore}
+                  baselineMillimetersPerPixel={calibratedScale(pair[0])}
+                  currentMillimetersPerPixel={calibratedScale(pair[1])}
+                />
+              </View>
+            ) : (
+              <Text style={[styles.note, { color: theme.secondaryText }]}>
+                Capture-condition matching is unavailable because the newer
+                image predates saved device guidance readings.
+              </Text>
+            )}
+          </>
         ) : null}
       </Card>
 
@@ -573,6 +601,148 @@ export default function CompareRoute() {
                     approximate normalized area change
                   </Text>
                 </View>
+                {result.descriptorChanges ? (
+                  <>
+                    <Text style={[styles.groupLabel, { color: theme.text }]}>
+                      Approximate visible changes
+                    </Text>
+                    <Text style={[styles.note, { color: theme.secondaryText }]}>
+                      Size and perimeter are normalized to the aligned images.
+                      Color and texture values are image-statistic changes, not
+                      disease scores.
+                    </Text>
+                    <View style={styles.changeGrid}>
+                      <ChangeMetric
+                        label="Width"
+                        value={signedPercent(
+                          result.descriptorChanges.normalizedWidthChange,
+                        )}
+                      />
+                      <ChangeMetric
+                        label="Height"
+                        value={signedPercent(
+                          result.descriptorChanges.normalizedHeightChange,
+                        )}
+                      />
+                      <ChangeMetric
+                        label="Perimeter"
+                        value={signedPercent(
+                          result.descriptorChanges.normalizedPerimeterChange,
+                        )}
+                      />
+                      <ChangeMetric
+                        label="Border irregularity"
+                        value={signedNumber(
+                          result.descriptorChanges.borderIrregularityChange,
+                        )}
+                      />
+                      <ChangeMetric
+                        label="Redness"
+                        value={signedPoints(
+                          result.descriptorChanges.meanRednessChange,
+                        )}
+                      />
+                      <ChangeMetric
+                        label="Brightness"
+                        value={signedPoints(
+                          result.descriptorChanges.meanBrightnessChange,
+                        )}
+                      />
+                      <ChangeMetric
+                        label="Texture contrast"
+                        value={signedPoints(
+                          result.descriptorChanges.textureContrastChange,
+                        )}
+                      />
+                      <ChangeMetric
+                        label="Ulceration-like contrast"
+                        value={
+                          result.descriptorChanges
+                            .ulcerationLikeContrastChange === null
+                            ? "Not assessed"
+                            : signedPoints(
+                                result.descriptorChanges
+                                  .ulcerationLikeContrastChange,
+                              )
+                        }
+                        detail="Center-to-edge image contrast only"
+                      />
+                    </View>
+                  </>
+                ) : (
+                  <Text style={[styles.note, { color: theme.secondaryText }]}>
+                    Detailed descriptor changes were not stored for this older
+                    comparison.
+                  </Text>
+                )}
+                {result.calibratedMeasurementChanges ? (
+                  <View
+                    style={[
+                      styles.calibratedPanel,
+                      {
+                        borderColor: theme.border,
+                        backgroundColor: theme.background,
+                      },
+                    ]}
+                  >
+                    <Text style={[styles.groupLabel, { color: theme.text }]}>
+                      Calibrated estimate
+                    </Text>
+                    <Text style={[styles.note, { color: theme.secondaryText }]}>
+                      Shown only because the versioned 20 mm marker and
+                      same-plane checks passed in both images. These are not
+                      clinical measurements.
+                    </Text>
+                    <View style={styles.changeGrid}>
+                      <ChangeMetric
+                        label="Width"
+                        value={signedUnit(
+                          result.calibratedMeasurementChanges.widthChangeMm,
+                          "mm",
+                        )}
+                        detail={`${result.calibratedMeasurementChanges.baselineWidthMm.toFixed(1)} to ${result.calibratedMeasurementChanges.currentWidthMm.toFixed(1)} mm`}
+                      />
+                      <ChangeMetric
+                        label="Height"
+                        value={signedUnit(
+                          result.calibratedMeasurementChanges.heightChangeMm,
+                          "mm",
+                        )}
+                        detail={`${result.calibratedMeasurementChanges.baselineHeightMm.toFixed(1)} to ${result.calibratedMeasurementChanges.currentHeightMm.toFixed(1)} mm`}
+                      />
+                      <ChangeMetric
+                        label="Bounding-box area"
+                        value={signedUnit(
+                          result.calibratedMeasurementChanges.areaChangeMm2,
+                          "mm²",
+                        )}
+                        detail={`${result.calibratedMeasurementChanges.baselineAreaMm2.toFixed(1)} to ${result.calibratedMeasurementChanges.currentAreaMm2.toFixed(1)} mm²`}
+                      />
+                    </View>
+                  </View>
+                ) : result.calibrationSuppressionReasons?.length ? (
+                  <View
+                    style={[
+                      styles.calibratedPanel,
+                      {
+                        borderColor: theme.border,
+                        backgroundColor: theme.background,
+                      },
+                    ]}
+                  >
+                    <Text style={[styles.groupLabel, { color: theme.text }]}>
+                      Millimeter change unavailable
+                    </Text>
+                    {result.calibrationSuppressionReasons.map((reason) => (
+                      <Text
+                        key={reason}
+                        style={[styles.note, { color: theme.secondaryText }]}
+                      >
+                        • {humanizeResultReason(reason)}
+                      </Text>
+                    ))}
+                  </View>
+                ) : null}
               </>
             ) : (
               result.suppressionReasons.map((reason) => (
@@ -611,16 +781,111 @@ function captureLabel(capture: CaptureRecord, index: number): string {
   return `Observation ${index + 1}: ${formatted}`;
 }
 
+function calibrationRequest(
+  capture: CaptureRecord,
+): ComparisonCalibrationRequest | null {
+  if (
+    capture.calibrationRequested !== true ||
+    capture.calibrationPlaneConfirmed !== true ||
+    capture.calibrationCardVersion !== "oralsight-calibration-v1"
+  ) {
+    return null;
+  }
+  return {
+    cardVersion: "oralsight-calibration-v1",
+    markerId: 17,
+    markerSideMm: 20,
+    planeConfirmed: true,
+  };
+}
+
+function calibratedScale(capture: CaptureRecord): number | null {
+  return capture.calibration?.status === "valid"
+    ? capture.calibration.millimetersPerPixel
+    : null;
+}
+
+function signedPercent(value: number): string {
+  return `${value >= 0 ? "+" : ""}${(value * 100).toFixed(1)}%`;
+}
+
+function signedPoints(value: number): string {
+  return `${value >= 0 ? "+" : ""}${(value * 100).toFixed(1)} points`;
+}
+
+function signedNumber(value: number): string {
+  return `${value >= 0 ? "+" : ""}${value.toFixed(2)}`;
+}
+
+function signedUnit(value: number, unit: string): string {
+  return `${value >= 0 ? "+" : ""}${value.toFixed(1)} ${unit}`;
+}
+
+function ChangeMetric({
+  label,
+  value,
+  detail,
+}: {
+  label: string;
+  value: string;
+  detail?: string;
+}) {
+  const theme = useAppTheme();
+  return (
+    <View
+      accessible
+      accessibilityLabel={`${label}: ${value}${detail ? `. ${detail}` : ""}`}
+      style={[
+        styles.changeMetric,
+        { backgroundColor: theme.surface, borderColor: theme.border },
+      ]}
+    >
+      <Text style={[styles.changeMetricValue, { color: theme.primary }]}>
+        {value}
+      </Text>
+      <Text style={[styles.changeMetricLabel, { color: theme.text }]}>
+        {label}
+      </Text>
+      {detail ? (
+        <Text
+          style={[styles.changeMetricDetail, { color: theme.secondaryText }]}
+        >
+          {detail}
+        </Text>
+      ) : null}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   selectionGroup: { gap: 8 },
   note: { fontSize: 13, lineHeight: 20 },
   error: { fontSize: 13, fontWeight: "700", textAlign: "center" },
   errorGroup: { gap: 10 },
   previewLoading: { alignItems: "center", gap: 9, paddingVertical: 16 },
+  guidanceComparison: { marginTop: 14 },
   change: { alignItems: "center", padding: 10 },
   changeValue: {
     fontSize: 30,
     fontWeight: "900",
     fontVariant: ["tabular-nums"],
   },
+  groupLabel: { fontSize: 15, fontWeight: "900", marginTop: 8 },
+  changeGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  changeMetric: {
+    width: "48%",
+    minHeight: 82,
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: 11,
+    gap: 3,
+  },
+  changeMetricValue: {
+    fontSize: 18,
+    fontWeight: "900",
+    fontVariant: ["tabular-nums"],
+  },
+  changeMetricLabel: { fontSize: 12, fontWeight: "800" },
+  changeMetricDetail: { fontSize: 11, lineHeight: 15 },
+  calibratedPanel: { borderWidth: 1, borderRadius: 16, padding: 12, gap: 8 },
 });

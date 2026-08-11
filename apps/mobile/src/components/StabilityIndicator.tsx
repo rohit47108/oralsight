@@ -11,23 +11,38 @@ import { useAppTheme, useShouldReduceMotion } from "@/theme";
 
 interface StabilityIndicatorProps {
   progress: number;
+  available?: boolean | null;
 }
 
-export function StabilityIndicator({ progress }: StabilityIndicatorProps) {
+export function StabilityIndicator({
+  progress,
+  available = true,
+}: StabilityIndicatorProps) {
   const theme = useAppTheme();
   const reducedMotion = useShouldReduceMotion();
   const animatedProgress = useSharedValue(0);
   useEffect(() => {
-    animatedProgress.value = withTiming(Math.max(0, Math.min(1, progress)), {
-      duration: reducedMotion ? 0 : 160,
-      easing: Easing.bezier(0.23, 1, 0.32, 1),
-    });
-  }, [animatedProgress, progress, reducedMotion]);
+    animatedProgress.value = withTiming(
+      available === true ? Math.max(0, Math.min(1, progress)) : 0,
+      {
+        duration: reducedMotion ? 0 : 160,
+        easing: Easing.bezier(0.23, 1, 0.32, 1),
+      },
+    );
+  }, [animatedProgress, available, progress, reducedMotion]);
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scaleX: animatedProgress.value }],
   }));
-  const stable = progress >= 0.9;
+  const stable = available === true && progress >= 0.9;
   const percent = Math.round(progress * 100);
+  const statusText =
+    available === null
+      ? "Starting motion check."
+      : available === false
+        ? "Motion check unavailable."
+        : stable
+          ? "Stable. Ready to capture."
+          : `${percent} percent`;
   return (
     <View
       accessible
@@ -37,7 +52,7 @@ export function StabilityIndicator({ progress }: StabilityIndicatorProps) {
         min: 0,
         max: 100,
         now: percent,
-        text: stable ? "Stable. Ready to capture." : `${percent} percent`,
+        text: statusText,
       }}
       style={styles.container}
     >
@@ -47,13 +62,20 @@ export function StabilityIndicator({ progress }: StabilityIndicatorProps) {
             styles.fill,
             {
               backgroundColor: stable ? theme.aqua : theme.warningOnCamera,
+              opacity: available === false ? 0.38 : 1,
             },
             animatedStyle,
           ]}
         />
       </View>
       <Text style={styles.label}>
-        {stable ? "Steady and ready" : "Hold still"}
+        {available === null
+          ? "Starting motion check"
+          : available === false
+            ? "Motion check unavailable"
+            : stable
+              ? "Steady and ready"
+              : "Hold still"}
       </Text>
     </View>
   );

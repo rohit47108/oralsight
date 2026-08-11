@@ -133,6 +133,38 @@
       "unmetRequirements": [
         "SMART-OM is cross-sectional and cannot provide the required matched longitudinal and hard-negative pairs."
       ]
+    },
+    {
+      "head": "quality_control",
+      "enabled": false,
+      "version": "not-released",
+      "unmetRequirements": [
+        "No licensed patient-disjoint quality dataset and physical-device false-accept/false-reject evaluation are available."
+      ]
+    },
+    {
+      "head": "oral_tissue_segmentation",
+      "enabled": false,
+      "version": "not-released",
+      "unmetRequirements": [
+        "No separately labeled oral-tissue mask dataset or held-out boundary evaluation is available."
+      ]
+    },
+    {
+      "head": "out_of_distribution",
+      "enabled": false,
+      "version": "not-released",
+      "unmetRequirements": [
+        "No licensed supported-versus-unsupported evaluation set or validated operating threshold is available."
+      ]
+    },
+    {
+      "head": "secondary_segmentation",
+      "enabled": false,
+      "version": "not-released",
+      "unmetRequirements": [
+        "No independently trained and evaluated secondary segmentation artifact is available for model-agreement measurement."
+      ]
     }
   ]
 }

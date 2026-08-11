@@ -1,0 +1,158 @@
+name: oralsight-production
+
+# Production runs against managed PostgreSQL, TLS Redis, and a private S3 bucket.
+# This file intentionally starts no database or cache and publishes no host ports.
+# Attach an HTTPS reverse proxy to ORALSIGHT_INGRESS_NETWORK.
+
+x-service-hardening: &service-hardening
+  read_only: true
+  init: true
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+  restart: unless-stopped
+  networks:
+    - service-egress
+  logging:
+    driver: json-file
+    options:
+      max-size: 10m
+      max-file: "3"
+
+x-platform-environment: &platform-environment
+  ORALSIGHT_PLATFORM_ENVIRONMENT: production
+  ORALSIGHT_PLATFORM_CREATE_SCHEMA_ON_START: "false"
+  ORALSIGHT_PLATFORM_AUTH_MODE: oidc
+  ORALSIGHT_PLATFORM_DATABASE_URL: ${ORALSIGHT_PLATFORM_DATABASE_URL:?Set a TLS PostgreSQL URL}
+  ORALSIGHT_PLATFORM_OIDC_ISSUER_URL: ${ORALSIGHT_PLATFORM_OIDC_ISSUER_URL:?Set the HTTPS OIDC issuer}
+  ORALSIGHT_PLATFORM_OIDC_JWKS_URL: ${ORALSIGHT_PLATFORM_OIDC_JWKS_URL:?Set the HTTPS JWKS URL}
+  ORALSIGHT_PLATFORM_OIDC_AUDIENCE: ${ORALSIGHT_PLATFORM_OIDC_AUDIENCE:?Set the OIDC audience}
+  ORALSIGHT_PLATFORM_OIDC_ROLE_CLAIM: ${ORALSIGHT_PLATFORM_OIDC_ROLE_CLAIM:-https://oralsight.app/roles}
+  ORALSIGHT_PLATFORM_PENDING_UPLOAD_LIFETIME_SECONDS: ${ORALSIGHT_PLATFORM_PENDING_UPLOAD_LIFETIME_SECONDS:-3600}
+  ORALSIGHT_PLATFORM_SHARE_SECRET_DERIVATION_KEY: ${ORALSIGHT_PLATFORM_SHARE_SECRET_DERIVATION_KEY:?Set a random 32-byte-or-longer secret}
+  ORALSIGHT_PLATFORM_WORKER_SERVICE_HMAC_SECRET: ${ORALSIGHT_WORKER_SERVICE_HMAC_SECRET:?Set the shared worker HMAC secret}
+  ORALSIGHT_PLATFORM_OBJECT_STORAGE_BACKEND: s3
+  ORALSIGHT_PLATFORM_OBJECT_STORAGE_BUCKET: ${ORALSIGHT_S3_BUCKET:?Set the private S3 bucket}
+  ORALSIGHT_PLATFORM_OBJECT_STORAGE_REGION: ${ORALSIGHT_S3_REGION:?Set the S3 region}
+  ORALSIGHT_PLATFORM_OBJECT_STORAGE_PUBLIC_BASE_URL: ${ORALSIGHT_PUBLIC_PLATFORM_URL:?Set the public HTTPS platform URL}
+  ORALSIGHT_PLATFORM_OBJECT_STORAGE_SSE: ${ORALSIGHT_S3_SSE:-AES256}
+  ORALSIGHT_PLATFORM_OBJECT_STORAGE_KMS_KEY_ID: ${ORALSIGHT_S3_KMS_KEY_ID:-}
+  ORALSIGHT_PLATFORM_QUEUE_BACKEND: redis
+  ORALSIGHT_PLATFORM_REDIS_URL: ${ORALSIGHT_REDIS_URL:?Set a rediss TLS URL}
+  ORALSIGHT_PLATFORM_REDIS_STREAM_NAME: oralsight:jobs:v1
+  ORALSIGHT_PLATFORM_REDIS_CANCEL_PREFIX: "oralsight:job-cancelled:v1:"
+
+services:
+  platform-migrate:
+    <<: *service-hardening
+    image: ${ORALSIGHT_PLATFORM_IMAGE:?Set an immutable platform image reference}
+    command: ["alembic", "upgrade", "head"]
+    environment: *platform-environment
+    restart: "no"
+    tmpfs:
+      - /tmp:size=32m,mode=1777,noexec,nosuid,nodev
+
+  platform-api:
+    <<: *service-hardening
+    image: ${ORALSIGHT_PLATFORM_IMAGE:?Set an immutable platform image reference}
+    environment: *platform-environment
+    depends_on:
+      platform-migrate:
+        condition: service_completed_successfully
+    expose:
+      - "8080"
+    networks:
+      - service-egress
+      - ingress
+    tmpfs:
+      - /tmp:size=64m,mode=1777,noexec,nosuid,nodev
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/readyz', timeout=3).read()",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 20s
+    pids_limit: 256
+
+  inference:
+    <<: *service-hardening
+    image: ${ORALSIGHT_INFERENCE_IMAGE:?Set an immutable inference image reference}
+    environment:
+      ORALSIGHT_DEPLOYMENT_MODE: production
+      ORALSIGHT_ENABLE_DEMO_FIXTURES: "false"
+      ORALSIGHT_REQUIRE_RESPONSE_SIGNING: "true"
+      ORALSIGHT_RESPONSE_SIGNING_PRIVATE_KEY_B64: ${ORALSIGHT_RESPONSE_SIGNING_PRIVATE_KEY_B64:?Set the Ed25519 signing key}
+      ORALSIGHT_RESPONSE_SIGNING_KEY_ID: ${ORALSIGHT_RESPONSE_SIGNING_KEY_ID:?Set the signing key ID}
+      ORALSIGHT_RELEASE_MANIFEST_PATH: /app/release/release-manifest.json
+      ORALSIGHT_MAX_CONCURRENT_INFERENCE: ${ORALSIGHT_MAX_CONCURRENT_INFERENCE:-2}
+      ORALSIGHT_RATE_LIMIT_PER_CLIENT: ${ORALSIGHT_RATE_LIMIT_PER_CLIENT:-30}
+      ORALSIGHT_RATE_LIMIT_GLOBAL: ${ORALSIGHT_RATE_LIMIT_GLOBAL:-300}
+      ORALSIGHT_RATE_LIMIT_WINDOW_SECONDS: ${ORALSIGHT_RATE_LIMIT_WINDOW_SECONDS:-60}
+    expose:
+      - "8000"
+    networks:
+      - service-egress
+      - ingress
+    tmpfs:
+      - /tmp:size=256m,mode=1777,noexec,nosuid,nodev
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import json,sys,urllib.request; value=json.load(urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=3)); sys.exit(0 if value.get('productionReady') else 1)",
+        ]
+      interval: 20s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    pids_limit: 512
+
+  worker:
+    <<: *service-hardening
+    image: ${ORALSIGHT_WORKER_IMAGE:?Set an immutable worker image reference}
+    environment:
+      ORALSIGHT_WORKER_ENVIRONMENT: production
+      ORALSIGHT_WORKER_CONSUMER_NAME: ${ORALSIGHT_WORKER_CONSUMER_NAME:?Set a unique worker name}
+      ORALSIGHT_WORKER_REDIS_URL: ${ORALSIGHT_REDIS_URL:?Set a rediss TLS URL}
+      ORALSIGHT_WORKER_PLATFORM_API_URL: ${ORALSIGHT_PUBLIC_PLATFORM_URL:?Set the public HTTPS platform URL}
+      ORALSIGHT_WORKER_INFERENCE_API_URL: ${ORALSIGHT_PUBLIC_INFERENCE_URL:?Set the public HTTPS inference URL}
+      ORALSIGHT_WORKER_SERVICE_ID: oralsight-worker
+      ORALSIGHT_WORKER_SERVICE_HMAC_SECRET: ${ORALSIGHT_WORKER_SERVICE_HMAC_SECRET:?Set the shared worker HMAC secret}
+      ORALSIGHT_WORKER_CONCURRENCY: ${ORALSIGHT_WORKER_CONCURRENCY:-2}
+      ORALSIGHT_WORKER_HEALTH_PORT: "8010"
+    expose:
+      - "8010"
+    tmpfs:
+      - /tmp:size=256m,mode=1777,noexec,nosuid,nodev
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "/app/.venv/bin/python",
+          "-m",
+          "oralsight_worker.main",
+          "health",
+          "--url",
+          "http://127.0.0.1:8010/readyz",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 20s
+    pids_limit: 512
+
+networks:
+  service-egress:
+    driver: bridge
+  ingress:
+    external: true
+    name: ${ORALSIGHT_INGRESS_NETWORK:?Set the HTTPS proxy network name}

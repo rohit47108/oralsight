@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { FaceDetectionProvider } from "@infinitered/react-native-mlkit-face-detection";
+import * as Notifications from "expo-notifications";
 import { router, Stack, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import {
@@ -15,7 +16,12 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { DISCLAIMER } from "@/constants";
+import { useCloudStore } from "@/cloud/useCloudStore";
 import { routeRequiresConsent } from "@/lib/navigationPolicy";
+import {
+  configureLocalNotifications,
+  reminderCaptureId,
+} from "@/lib/notifications";
 import {
   purgeOralSightBackgroundTemporaryFiles,
   purgeOralSightTemporaryFiles,
@@ -34,6 +40,9 @@ function RootLayoutContent() {
   const [resetBusy, setResetBusy] = useState(false);
   const [resetError, setResetError] = useState<string | null>(null);
   const segments = useSegments();
+  const bootstrapCloud = useCloudStore((state) => state.bootstrap);
+  const cloudSessionStatus = useCloudStore((state) => state.sessionStatus);
+  const syncCloud = useCloudStore((state) => state.syncNow);
   const consentBlocked =
     hydrated && !storageError && !consentedAt && routeRequiresConsent(segments);
   useEffect(() => {
@@ -51,12 +60,56 @@ function RootLayoutContent() {
   }, [hydrate]);
 
   useEffect(() => {
+    if (hydrated) void bootstrapCloud();
+  }, [bootstrapCloud, hydrated]);
+
+  useEffect(() => {
     const subscription = AppState.addEventListener("change", (nextState) => {
-      if (nextState === "active") return;
+      if (nextState === "active") {
+        if (cloudSessionStatus === "signed_in") void syncCloud();
+        return;
+      }
       void purgeOralSightBackgroundTemporaryFiles().catch(() => {
         console.warn("[ORALSIGHT_BACKGROUND_TEMP_PURGE_FAILED]");
       });
     });
+    return () => subscription.remove();
+  }, [cloudSessionStatus, syncCloud]);
+
+  useEffect(() => {
+    void configureLocalNotifications().catch(() => {
+      console.warn("[ORALSIGHT_NOTIFICATION_SETUP_FAILED]");
+    });
+    const openReminder = (notification: Notifications.Notification) => {
+      const captureId = reminderCaptureId(notification);
+      if (
+        !captureId ||
+        !useOralSightStore
+          .getState()
+          .captures.some((capture) => capture.id === captureId)
+      ) {
+        return;
+      }
+      router.push({
+        pathname: "/result/[captureId]",
+        params: { captureId },
+      });
+    };
+    void Notifications.getLastNotificationResponseAsync()
+      .then((response) => {
+        if (response?.notification) openReminder(response.notification);
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        void Notifications.clearLastNotificationResponseAsync().catch(
+          () => undefined,
+        );
+      });
+    const subscription = Notifications.addNotificationResponseReceivedListener(
+      (response) => {
+        openReminder(response.notification);
+      },
+    );
     return () => subscription.remove();
   }, []);
 
@@ -193,10 +246,16 @@ function RootLayoutContent() {
         <Stack.Screen name="compare" />
         <Stack.Screen name="report" />
         <Stack.Screen name="learn/atlas" />
+        <Stack.Screen name="learn/normal-variations" />
         <Stack.Screen name="learn/scan-practice" />
         <Stack.Screen name="learn/questions" />
         <Stack.Screen name="roadmap" />
         <Stack.Screen name="model-card" />
+        <Stack.Screen name="account" />
+        <Stack.Screen name="cloud-sync" />
+        <Stack.Screen name="shares" />
+        <Stack.Screen name="access-history" />
+        <Stack.Screen name="jobs" />
       </Stack>
     </>
   );

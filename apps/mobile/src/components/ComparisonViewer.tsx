@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Image,
   PanResponder,
@@ -15,7 +15,10 @@ import {
   comparisonBlendAfterDrag,
   comparisonBlendFromTrackPosition,
 } from "@/lib/comparisonSlider";
+import { animationDurationMs } from "@/lib/motionPreferences";
+import { useOralSightStore } from "@/store/useOralSightStore";
 import { useAppTheme } from "@/theme";
+import { useShouldReduceMotion } from "@/theme";
 
 interface ComparisonViewerProps {
   baselineUri: string;
@@ -27,7 +30,12 @@ export function ComparisonViewer({
   currentUri,
 }: ComparisonViewerProps) {
   const theme = useAppTheme();
+  const reduceMotion = useShouldReduceMotion();
+  const animationSpeed = useOralSightStore(
+    (state) => state.settings.animationSpeed,
+  );
   const [blend, setBlend] = useState(0.5);
+  const [playing, setPlaying] = useState(false);
   const blendRef = useRef(0.5);
   const dragStartBlend = useRef(0.5);
   const trackWidthRef = useRef(1);
@@ -71,6 +79,25 @@ export function ComparisonViewer({
     )
       adjust(event.nativeEvent.actionName);
   };
+
+  useEffect(() => {
+    if (!playing || reduceMotion) return undefined;
+    let frame = 0;
+    const startedAt = Date.now();
+    const cycleDuration = animationDurationMs(4_000, animationSpeed);
+    const animate = () => {
+      const elapsed = Date.now() - startedAt;
+      const phase = (elapsed % cycleDuration) / cycleDuration;
+      setBlendValue((1 - Math.cos(phase * Math.PI * 2)) / 2);
+      frame = requestAnimationFrame(animate);
+    };
+    frame = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(frame);
+  }, [animationSpeed, playing, reduceMotion]);
+
+  useEffect(() => {
+    if (reduceMotion) setPlaying(false);
+  }, [reduceMotion]);
 
   return (
     <View style={styles.container}>
@@ -183,6 +210,32 @@ export function ComparisonViewer({
         the same observation. This preview does not apply server alignment or
         image warping.
       </Text>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={
+          playing ? "Pause time-lapse crossfade" : "Play time-lapse crossfade"
+        }
+        accessibilityHint="Animates only the visual blend between the two original images"
+        accessibilityState={{ disabled: reduceMotion }}
+        disabled={reduceMotion}
+        onPress={() => setPlaying((value) => !value)}
+        style={({ pressed }) => [
+          styles.playButton,
+          {
+            borderColor: theme.border,
+            backgroundColor: theme.surface,
+            opacity: reduceMotion ? 0.55 : pressed ? 0.82 : 1,
+          },
+        ]}
+      >
+        <Text style={[styles.playButtonText, { color: theme.primary }]}>
+          {reduceMotion
+            ? "Time-lapse off for Reduce Motion"
+            : playing
+              ? "Pause time-lapse"
+              : "Play time-lapse"}
+        </Text>
+      </Pressable>
     </View>
   );
 }
@@ -242,4 +295,13 @@ const styles = StyleSheet.create({
     marginLeft: -13,
   },
   hint: { fontSize: 11, lineHeight: 16, textAlign: "center" },
+  playButton: {
+    minHeight: 46,
+    borderWidth: 1,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 16,
+  },
+  playButtonText: { fontSize: 13, fontWeight: "800", textAlign: "center" },
 });

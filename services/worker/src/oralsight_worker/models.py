@@ -71,6 +71,10 @@ class ModelHead(StrEnum):
     APPEARANCE = "appearance"
     DISEASE_RESEARCH = "disease_research"
     LESION_REIDENTIFICATION = "lesion_reidentification"
+    QUALITY_CONTROL = "quality_control"
+    ORAL_TISSUE_SEGMENTATION = "oral_tissue_segmentation"
+    OUT_OF_DISTRIBUTION = "out_of_distribution"
+    SECONDARY_SEGMENTATION = "secondary_segmentation"
 
 
 class AnalysisStatus(StrEnum):
@@ -139,7 +143,7 @@ class AnalyzePayload(StrictModel):
     capture_id: UUID
     image: AssetPointer
     selected_region: MouthRegion
-    requested_heads: list[ModelHead] = Field(min_length=1, max_length=5)
+    requested_heads: list[ModelHead] = Field(min_length=1, max_length=9)
     input_origin: Literal["live_capture"] = "live_capture"
     calibration: CalibrationRequest | None = None
 
@@ -298,11 +302,37 @@ class ReconstructionPayload(StrictModel):
         return value
 
 
+class ReportPatientProfile(StrictModel):
+    age_range: Literal["under_18", "18_39", "40_64", "65_plus", "prefer_not_to_say"]
+    assisted: bool
+
+
+class ReportIntakeSummary(StrictModel):
+    first_noticed: str = Field(max_length=500)
+    duration_days: int | None = Field(default=None, ge=0, le=36_500)
+    symptoms: list[Annotated[str, Field(min_length=1, max_length=100)]] = Field(
+        default_factory=list, max_length=30
+    )
+    bleeding_frequency: Literal["once", "occasionally", "often"] | None = None
+    bleeding_duration: str | None = Field(default=None, max_length=500)
+    change: Literal["not_sure", "no_change", "slow_change", "rapid_change"]
+    tobacco_exposure: Literal["none", "past", "current", "prefer_not_to_say"]
+    alcohol_exposure: Literal["none", "some", "frequent", "prefer_not_to_say"]
+    previous_conditions: str = Field(max_length=2_000)
+    professionally_examined: bool
+
+
 class ReportPayload(StrictModel):
     kind: Literal[JobType.REPORT] = JobType.REPORT
     scan_session_id: UUID
+    consent_record_id: UUID
     observation_ids: list[UUID] = Field(min_length=1, max_length=256)
     comparison_ids: list[UUID] = Field(default_factory=list, max_length=256)
+    patient_profile: ReportPatientProfile | None = None
+    intake_summary: ReportIntakeSummary | None = None
+    appointment_questions: list[Annotated[str, Field(min_length=1, max_length=240)]] = (
+        Field(default_factory=list, max_length=8)
+    )
     locale: Literal["en-US"] = "en-US"
     include_experimental_research_output: bool = False
     disclaimer: Literal["This result is not a diagnosis."] = (
@@ -357,7 +387,7 @@ class SummaryVideoObservation(StrictModel):
             "ulcer-like",
             "mixed",
             "pigmented",
-            "none detected",
+            "none-detected",
             "unsupported",
         ]
         | None

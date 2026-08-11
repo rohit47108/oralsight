@@ -1,0 +1,10 @@
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Exact non-secret identifiers used by contract and signing code"
+regexTarget = "secret"
+regexes = [
+  '''^idempotency-key-1$''',
+  '''^Ed25519PrivateKey$''',
+]

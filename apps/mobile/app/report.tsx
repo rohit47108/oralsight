@@ -149,7 +149,8 @@ export default function ReportRoute() {
         </Text>
         <Text style={[styles.body, { color: theme.secondaryText }]}>
           The PDF repeats the non-diagnostic statement and labels every
-          image-normalized measurement approximate.
+          image-normalized measurement approximate. Millimeter values appear
+          only as a calibrated estimate when the reference-card check passes.
         </Text>
       </Card>
       <Button
@@ -192,8 +193,8 @@ export default function ReportRoute() {
           />
           <Text style={[styles.small, { color: theme.secondaryText }]}>
             The app decrypts a temporary copy only for the operating-system
-            share sheet and deletes it afterward. No QR link or cloud portal is
-            created.
+            share sheet and deletes it afterward. This button does not create a
+            cloud link. Revocable QR sharing remains a separate account action.
           </Text>
         </Card>
       ) : null}

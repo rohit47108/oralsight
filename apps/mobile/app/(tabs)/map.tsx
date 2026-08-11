@@ -11,6 +11,7 @@ import {
   buildObservationReplayFrames,
   buildRegionObservationSummaries,
 } from "@/lib/observationMap";
+import { animationDurationMs } from "@/lib/motionPreferences";
 import { useOralSightStore } from "@/store/useOralSightStore";
 import { useAppTheme, useShouldReduceMotion } from "@/theme";
 
@@ -33,6 +34,9 @@ const statusLabel = (status: string) =>
 export default function MapRoute() {
   const theme = useAppTheme();
   const reduceMotion = useShouldReduceMotion();
+  const animationSpeed = useOralSightStore(
+    (state) => state.settings.animationSpeed,
+  );
   const captures = useOralSightStore((state) => state.captures);
   const analyses = useOralSightStore((state) => state.analyses);
   const pins = useOralSightStore((state) => state.pins);
@@ -53,17 +57,20 @@ export default function MapRoute() {
 
   useEffect(() => {
     if (!replaying || reduceMotion || frames.length < 2) return undefined;
-    const interval = setInterval(() => {
-      setReplayIndex((current) => {
-        if (current >= frames.length - 1) {
-          setReplaying(false);
-          return current;
-        }
-        return current + 1;
-      });
-    }, 1250);
+    const interval = setInterval(
+      () => {
+        setReplayIndex((current) => {
+          if (current >= frames.length - 1) {
+            setReplaying(false);
+            return current;
+          }
+          return current + 1;
+        });
+      },
+      animationDurationMs(1_250, animationSpeed),
+    );
     return () => clearInterval(interval);
-  }, [frames.length, reduceMotion, replaying]);
+  }, [animationSpeed, frames.length, reduceMotion, replaying]);
 
   const latestSummaries = useMemo(
     () => buildRegionObservationSummaries(captures, analyses, pins),

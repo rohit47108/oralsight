@@ -18,11 +18,17 @@ Trust boundaries:
 4. Request parser into bounded multipart handling, temporary spooling where FastAPI uses
    it, in-memory image decoding, and model execution.
 5. Signed/versioned response back into schema validation and encrypted local storage.
-6. User-initiated PDF export into the operating-system share surface.
+6. Optional OIDC sign-in into the stateful platform API and consented sync to private
+   object storage, PostgreSQL metadata, and a durable Redis-backed job queue.
+7. Worker processing into reports, videos, projected-color GLBs, encrypted exports, and
+   retention/deletion records.
+8. Expiring fragment-secret sharing and explicit clinician grants into the web portal.
+9. User-initiated local export into the operating-system share surface.
 
-The service has no account database, object store, analytics pipeline, retained job
-queue, or model-improvement ingestion path. A future clinician portal, QR link, or cloud
-sync crosses new trust boundaries and is out of scope.
+The inference service has no account database, object store, analytics pipeline,
+retained job queue, or model-improvement ingestion path. The separate optional platform
+does retain consented account records and artifacts under the published schedule. Cloud
+records are never silently enrolled into model training.
 
 ## Threats and required controls
 
@@ -43,7 +49,10 @@ sync crosses new trust boundaries and is out of scope.
 | Malicious model or rule artifact              | Pin checksum/version; load only approved local artifact; rule digest must match clinician approval                                                                                                         | Checksum mismatch disables head/guidance                                                                    |
 | User believes output is a diagnosis           | Persistent disclaimer, descriptive wording, uncertainty/limitations, gated experimental panel                                                                                                              | Screen-reader and exported-report content tests                                                             |
 | Delete-all leaves recoverable records         | Delete rows/blobs/reports, clear pending shares/exports, rotate install key, vacuum where appropriate                                                                                                      | Before/after inventory plus failed decryption with prior key                                                |
-| Shared PDF escapes app controls               | Explicit confirmation, local-only generation, warning that recipient controls copies; no background upload                                                                                                 | Share-cancel/share-complete tests and network inspection                                                    |
+| Shared report escapes app controls            | Explicit selection, fragment secret, short-lived HTTP-only exchange cookie, expiry, revocation, access history, `no-store`, and `noindex`; warn that a recipient can still save a copy                     | Exchange/content/revoke tests, browser cookie-path test, and deployed header inspection                     |
+| Forged or replayed cloud action               | OIDC access-token validation, database plus token-role checks, consent gates, stable idempotency keys, and immutable audit events                                                                          | Wrong issuer/audience/key/role tests plus retry tests                                                       |
+| Abandoned upload retains private bytes        | Exact size and SHA-256 checksum binding, pending-upload expiry, lifecycle sweep, and private bucket policy                                                                                                 | Wrong checksum/size, expired finalize, and sweep tests; production lifecycle evidence                       |
+| Cloud delete is incomplete                    | Revoke access, cancel work, delete live rows/objects, create a short-lived keyed deletion receipt, and prevent backup resurrection                                                                         | Idempotent delete, same-subject receipt polling, isolation, object inventory, and restore drill             |
 
 ## Data lifecycle
 
@@ -62,7 +71,10 @@ camera preview
   -> accepted quality with unavailable learned analysis: preserve the encrypted
      observation for an explicit retry
   -> accepted result: persist encrypted metadata/blob locally
-  -> explicit local report export or delete-all/key rotation
+  -> optional account consent and authenticated sync to private platform storage
+  -> durable job creates selected report/video/GLB/export; every artifact remains scoped
+  -> optional expiring share or explicit clinician grant with audit history
+  -> local or cloud delete-all; revoke access, remove live objects, rotate install key
 ```
 
 No capture is reused for training. Any future model-improvement program requires a new,
@@ -84,6 +96,10 @@ separate, informed consent flow, data governance, and threat review.
 - The service enforces byte/pixel/concurrency bounds without storing user
   identity; production ingress must still add and verify connection, timeout,
   and rate limits.
+- A missing or invalid OIDC token fails closed. The mobile client treats access tokens as
+  opaque and saves one only after the platform's signed-token boundary accepts `/v2/me`.
+- Sharing, clinician review, analytics, and artifact generation require separate consent
+  and authorization; local capture continues to work when the platform is unavailable.
 
 ## Release-blocking privacy tests
 
@@ -98,6 +114,8 @@ separate, informed consent flow, data governance, and threat review.
   timeout.
 - Exact-hash fixture isolation and provenance labels.
 - Full delete with filesystem/database inventory and prior-key decryption failure.
+- Cloud authorization, idempotent retries, expiring upload cleanup, share revocation,
+  deletion receipt isolation, and backup no-resurrection drills.
 - Git/CI scan for medical images, manifests, keys, databases, and model artifacts.
 
 Unverified control status must remain "not verified"; it must not be converted

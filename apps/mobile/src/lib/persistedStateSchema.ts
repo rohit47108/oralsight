@@ -1,5 +1,8 @@
 import {
   analysisResultSchema,
+  calibrationResultSchema,
+  captureAngleSchema,
+  captureProtocolSchema,
   comparisonResultSchema,
   CONTRACT_VERSION,
   inputOriginSchema,
@@ -18,9 +21,11 @@ const settingsSchema = z
     highContrast: z.boolean(),
     largeText: z.boolean(),
     reducedMotion: z.boolean(),
+    animationSpeed: z.enum(["slow", "standard"]),
     haptics: z.boolean(),
     voiceInstructions: z.boolean(),
     caregiverMode: z.boolean(),
+    analyticsOptIn: z.boolean(),
   })
   .strict();
 
@@ -53,6 +58,7 @@ const sessionSchema = z
     createdAt: isoDateSchema,
     demo: z.boolean(),
     label: z.string().trim().min(1).max(200),
+    protocol: captureProtocolSchema,
     intakeProfile: intakeProfileSchema.nullable().optional(),
     consentedAt: isoDateSchema.nullable().optional(),
   })
@@ -63,6 +69,8 @@ const captureSchema = z
     id: idSchema,
     sessionId: idSchema,
     region: mouthRegionSchema,
+    angle: captureAngleSchema,
+    mediaKind: z.enum(["image", "video_frame"]),
     capturedAt: isoDateSchema,
     encryptedUri: z.string().min(1).max(4_096).nullable(),
     mimeType: z.enum(["image/jpeg", "image/png"]),
@@ -72,14 +80,91 @@ const captureSchema = z
       .regex(/^[a-f0-9]{64}$/)
       .optional(),
     captureSource: z
-      .enum(["camera", "photo_library", "developer_demo"])
+      .enum(["camera", "photo_library", "video_sweep", "developer_demo"])
       .optional(),
+    sourceVideoDurationMs: z.number().int().positive().max(60_000).optional(),
+    frameTimeMs: z.number().int().nonnegative().max(60_000).optional(),
+    calibrationRequested: z.boolean().optional(),
+    calibrationPlaneConfirmed: z.boolean().optional(),
+    calibrationCardVersion: z.literal("oralsight-calibration-v1").optional(),
+    calibration: calibrationResultSchema.optional(),
     privacyConfirmedByUser: z.boolean().optional(),
     regionConfirmedByUser: z.boolean().optional(),
+    captureGuidance: z
+      .object({
+        stabilityPercent: z.number().int().min(0).max(100).nullable(),
+        tiltDegrees: z.number().min(-180).max(180).nullable(),
+        rotationDegrees: z.number().min(-180).max(180).nullable(),
+        targetWidthPercent: z.number().int().min(1).max(100),
+        source: z.enum(["live_camera", "sweep_start", "imported_photo"]),
+      })
+      .strict()
+      .optional(),
     quality: qualityResultSchema,
     samplePlaceholder: z.boolean().optional(),
   })
-  .strict();
+  .strict()
+  .superRefine((capture, context) => {
+    const isVideoFrame = capture.mediaKind === "video_frame";
+    if (
+      isVideoFrame !==
+      (capture.captureSource === "video_sweep" &&
+        capture.sourceVideoDurationMs !== undefined &&
+        capture.frameTimeMs !== undefined)
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["mediaKind"],
+        message:
+          "Video frames require their sweep source, duration, and frame time.",
+      });
+    }
+    if (
+      capture.frameTimeMs !== undefined &&
+      capture.sourceVideoDurationMs !== undefined &&
+      capture.frameTimeMs > capture.sourceVideoDurationMs
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["frameTimeMs"],
+        message: "A frame time cannot exceed its source sweep duration.",
+      });
+    }
+    const calibrationFieldsPresent =
+      capture.calibrationPlaneConfirmed !== undefined ||
+      capture.calibrationCardVersion !== undefined ||
+      capture.calibration !== undefined;
+    if (capture.calibrationRequested !== true && calibrationFieldsPresent) {
+      context.addIssue({
+        code: "custom",
+        path: ["calibrationRequested"],
+        message:
+          "Calibration evidence requires an explicit calibration request.",
+      });
+    }
+    if (
+      capture.calibrationRequested === true &&
+      (capture.calibrationPlaneConfirmed !== true ||
+        capture.calibrationCardVersion !== "oralsight-calibration-v1")
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["calibrationPlaneConfirmed"],
+        message:
+          "A calibration request requires same-plane confirmation and the versioned card.",
+      });
+    }
+    if (
+      capture.calibration &&
+      capture.calibration.captureViewId !== capture.id
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["calibration", "captureViewId"],
+        message: "Calibration evidence belongs to a different capture view.",
+      });
+    }
+  });
 
 const pinSchema = z
   .object({
@@ -98,6 +183,16 @@ const pinSchema = z
       "visually_changed",
       "review_unavailable",
     ]),
+    comparisonStatus: z
+      .enum([
+        "stable",
+        "increased_estimated_size",
+        "decreased_estimated_size",
+        "color_or_texture_changed",
+        "shape_changed",
+        "insufficient_comparable_data",
+      ])
+      .optional(),
     captureIds: z.array(idSchema).max(100),
   })
   .strict();
@@ -113,7 +208,7 @@ const reportSchema = z
 
 export const persistedAppStateSchema = z
   .object({
-    schemaVersion: z.literal(2),
+    schemaVersion: z.literal(4),
     consentedAt: isoDateSchema.nullable(),
     profile: intakeProfileSchema.nullable(),
     settings: settingsSchema,
@@ -167,24 +262,63 @@ function migrateLegacyComparison(value: unknown): unknown {
 }
 
 function migratePersistedAppState(value: unknown): unknown {
-  const state = objectRecord(value);
-  if (!state || state.schemaVersion !== 1) return value;
-  const analyses = objectRecord(state.analyses);
-  return {
-    ...state,
-    schemaVersion: 2,
-    analyses: analyses
-      ? Object.fromEntries(
-          Object.entries(analyses).map(([captureId, analysis]) => [
-            captureId,
-            migrateLegacyAnalysis(analysis),
-          ]),
-        )
-      : state.analyses,
-    comparisons: Array.isArray(state.comparisons)
-      ? state.comparisons.map(migrateLegacyComparison)
-      : state.comparisons,
-  };
+  let state = objectRecord(value);
+  if (!state) return value;
+  if (state.schemaVersion === 1) {
+    const analyses = objectRecord(state.analyses);
+    state = {
+      ...state,
+      schemaVersion: 2,
+      analyses: analyses
+        ? Object.fromEntries(
+            Object.entries(analyses).map(([captureId, analysis]) => [
+              captureId,
+              migrateLegacyAnalysis(analysis),
+            ]),
+          )
+        : state.analyses,
+      comparisons: Array.isArray(state.comparisons)
+        ? state.comparisons.map(migrateLegacyComparison)
+        : state.comparisons,
+    };
+  }
+  if (state.schemaVersion === 2) {
+    state = {
+      ...state,
+      schemaVersion: 3,
+      sessions: Array.isArray(state.sessions)
+        ? state.sessions.map((session) => ({
+            ...(objectRecord(session) ?? {}),
+            protocol: "standard_eight_region",
+          }))
+        : state.sessions,
+      captures: Array.isArray(state.captures)
+        ? state.captures.map((capture) => ({
+            ...(objectRecord(capture) ?? {}),
+            angle: "primary",
+            mediaKind: "image",
+          }))
+        : state.captures,
+    };
+  }
+  if (state.schemaVersion === 3) {
+    const settings = objectRecord(state.settings);
+    state = {
+      ...state,
+      schemaVersion: 4,
+      settings: settings
+        ? {
+            ...settings,
+            analyticsOptIn:
+              typeof settings.analyticsOptIn === "boolean"
+                ? settings.analyticsOptIn
+                : false,
+            animationSpeed: "standard",
+          }
+        : state.settings,
+    };
+  }
+  return state;
 }
 
 export function parsePersistedAppState(value: unknown): PersistedAppState {

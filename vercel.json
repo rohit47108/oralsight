@@ -1,18 +1,37 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "services": {
+    "web": {
+      "root": "apps/web",
+      "framework": "nextjs"
+    },
     "inference": {
       "root": "services/inference",
       "framework": "fastapi",
       "entrypoint": "vercel_entrypoint:app",
+      "functions": {
+        "**/*.py": {
+          "maxDuration": 60
+        }
+      },
       "routes": [
         {
-          "src": "/api/(.*)",
+          "src": "/api/v1/(.*)",
           "transforms": [
             {
               "type": "request.path",
               "op": "set",
-              "args": "/$1"
+              "args": "/v1/$1"
+            }
+          ]
+        },
+        {
+          "src": "/api/healthz",
+          "transforms": [
+            {
+              "type": "request.path",
+              "op": "set",
+              "args": "/healthz"
             }
           ]
         }
@@ -21,8 +40,16 @@
   },
   "rewrites": [
     {
-      "source": "/api/(.*)",
+      "source": "/api/v1/(.*)",
       "destination": { "service": "inference" }
+    },
+    {
+      "source": "/api/healthz",
+      "destination": { "service": "inference" }
+    },
+    {
+      "source": "/:path*",
+      "destination": { "service": "web" }
     }
   ]
 }

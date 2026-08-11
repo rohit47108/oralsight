@@ -2,6 +2,7 @@ import * as Crypto from "expo-crypto";
 import { create } from "zustand";
 import type {
   AnalysisResult,
+  CaptureProtocol,
   ComparisonResult,
   MouthRegion,
 } from "@oralsight/contracts";
@@ -13,6 +14,7 @@ import {
   assertLiveResultOrigin,
 } from "@/lib/liveInputPolicy";
 import { isChronologicalComparison } from "@/lib/longitudinalPolicy";
+import { cancelAllOralSightReminders } from "@/lib/notifications";
 import { pinsAfterConfirmedComparison } from "@/lib/observationPins";
 import { comparisonsWithoutCaptureIds } from "@/lib/scanLogic";
 import {
@@ -39,12 +41,21 @@ interface OralSightState extends PersistedAppState {
   storageError: string | null;
   hydrate: () => Promise<void>;
   finishConsent: (profile: IntakeProfile) => void;
-  finishConsentAndStartSession: (profile: IntakeProfile) => Promise<string>;
-  startFreshSession: () => string;
+  finishConsentAndStartSession: (
+    profile: IntakeProfile,
+    protocol: CaptureProtocol,
+  ) => Promise<string>;
+  startFreshSession: (protocol?: CaptureProtocol) => string;
   setActiveSession: (sessionId: string) => void;
   addCapture: (
     capture: CaptureRecord,
     analysis: AnalysisResult,
+  ) => Promise<void>;
+  addCaptures: (
+    entries: readonly {
+      capture: CaptureRecord;
+      analysis: AnalysisResult;
+    }[],
   ) => Promise<void>;
   updateCaptureAnalysis: (
     captureId: string,
@@ -55,6 +66,7 @@ interface OralSightState extends PersistedAppState {
   addComparison: (comparison: ComparisonResult) => Promise<void>;
   addReport: (report: ReportRecord) => Promise<void>;
   updateSettings: (settings: Partial<AccessibilitySettings>) => void;
+  applyCloudState: (state: PersistedAppState) => Promise<void>;
   deleteEverything: () => Promise<void>;
 }
 
@@ -62,14 +74,16 @@ const DEFAULT_SETTINGS: AccessibilitySettings = {
   highContrast: false,
   largeText: false,
   reducedMotion: false,
+  animationSpeed: "standard",
   haptics: true,
   voiceInstructions: false,
   caregiverMode: false,
+  analyticsOptIn: false,
 };
 
 function initialPersistedState(): PersistedAppState {
   return {
-    schemaVersion: 2,
+    schemaVersion: 4,
     consentedAt: null,
     profile: null,
     settings: DEFAULT_SETTINGS,
@@ -85,7 +99,7 @@ function initialPersistedState(): PersistedAppState {
 
 function persistedSnapshot(state: OralSightState): PersistedAppState {
   return {
-    schemaVersion: 2,
+    schemaVersion: 4,
     consentedAt: state.consentedAt,
     profile: state.profile,
     settings: state.settings,
@@ -315,7 +329,7 @@ export const useOralSightStore = create<OralSightState>((set, get) => ({
     persist(get(), (message) => set({ storageError: message }));
   },
 
-  finishConsentAndStartSession: async (profile) => {
+  finishConsentAndStartSession: async (profile, protocol) => {
     const stateBeforeCommit = get();
     const consentedAt = new Date().toISOString();
     const id = Crypto.randomUUID();
@@ -324,6 +338,7 @@ export const useOralSightStore = create<OralSightState>((set, get) => ({
       createdAt: consentedAt,
       demo: false,
       label: "Structured mouth scan",
+      protocol,
       intakeProfile: snapshotProfile(profile),
       consentedAt,
     };
@@ -345,13 +360,14 @@ export const useOralSightStore = create<OralSightState>((set, get) => ({
     return id;
   },
 
-  startFreshSession: () => {
+  startFreshSession: (protocol = "standard_eight_region") => {
     const id = Crypto.randomUUID();
     const session: ScanSession = {
       id,
       createdAt: new Date().toISOString(),
       demo: false,
       label: "New structured scan",
+      protocol,
       intakeProfile: snapshotProfile(get().profile),
       consentedAt: get().consentedAt,
     };
@@ -371,40 +387,107 @@ export const useOralSightStore = create<OralSightState>((set, get) => ({
   },
 
   addCapture: async (capture, analysis) => {
+    await get().addCaptures([{ capture, analysis }]);
+  },
+
+  addCaptures: async (entries) => {
+    if (entries.length === 0 || entries.length > 12) {
+      throw new Error("A capture save must contain between one and 12 views.");
+    }
     const stateBeforeCommit = get();
-    const targetSession = stateBeforeCommit.sessions.find(
-      (session) => session.id === capture.sessionId,
-    );
-    assertLiveMobileInput(capture.inputOrigin);
-    assertLiveResultOrigin(analysis.analysisOrigin);
-    if (!targetSession || targetSession.demo) {
-      throw new Error("A live capture requires a valid non-demo scan session.");
-    }
-    if (
-      analysis.captureId !== capture.id ||
-      analysis.region !== capture.region ||
-      analysis.inputOrigin !== capture.inputOrigin
-    ) {
-      throw new Error("The analysis identity does not match this capture.");
-    }
-    if (
-      !capture.encryptedUri ||
-      !capture.quality.accepted ||
-      capture.privacyConfirmedByUser !== true ||
-      capture.regionConfirmedByUser !== true ||
-      (capture.captureSource !== "camera" &&
-        capture.captureSource !== "photo_library")
-    ) {
-      throw new Error(
-        "Only a protected, accepted, user-confirmed camera or photo-library capture can be saved.",
+    const incomingIds = new Set<string>();
+    const incomingViewKeys = new Set<string>();
+    for (const { capture, analysis } of entries) {
+      const targetSession = stateBeforeCommit.sessions.find(
+        (session) => session.id === capture.sessionId,
       );
+      assertLiveMobileInput(capture.inputOrigin);
+      assertLiveResultOrigin(analysis.analysisOrigin);
+      if (!targetSession || targetSession.demo) {
+        throw new Error(
+          "A live capture requires a valid non-demo scan session.",
+        );
+      }
+      if (
+        analysis.captureId !== capture.id ||
+        analysis.region !== capture.region ||
+        analysis.inputOrigin !== capture.inputOrigin
+      ) {
+        throw new Error("The analysis identity does not match this capture.");
+      }
+      const sourceAccepted =
+        capture.captureSource === "camera" ||
+        capture.captureSource === "photo_library" ||
+        capture.captureSource === "video_sweep";
+      if (
+        !capture.encryptedUri ||
+        !capture.quality.accepted ||
+        capture.privacyConfirmedByUser !== true ||
+        capture.regionConfirmedByUser !== true ||
+        !sourceAccepted
+      ) {
+        throw new Error(
+          "Only a protected, accepted, user-confirmed live capture can be saved.",
+        );
+      }
+      if (
+        targetSession.protocol === "standard_eight_region" &&
+        (capture.angle !== "primary" || capture.mediaKind !== "image")
+      ) {
+        throw new Error("A standard scan keeps one primary image per region.");
+      }
+      if (
+        targetSession.protocol === "guided_video_sweep" &&
+        (capture.captureSource !== "video_sweep" ||
+          capture.mediaKind !== "video_frame" ||
+          capture.angle === "primary")
+      ) {
+        throw new Error(
+          "A guided sweep may save only traceable frames extracted from that sweep.",
+        );
+      }
+      if (
+        targetSession.protocol === "detailed_multi_angle" &&
+        (capture.mediaKind !== "image" || capture.angle === "primary")
+      ) {
+        throw new Error(
+          "A detailed scan requires a named non-primary camera angle.",
+        );
+      }
+      if (
+        capture.calibrationRequested === true &&
+        (capture.calibrationPlaneConfirmed !== true ||
+          capture.calibrationCardVersion !== "oralsight-calibration-v1")
+      ) {
+        throw new Error(
+          "A physical scale request requires the versioned card and same-plane confirmation.",
+        );
+      }
+      if (
+        capture.calibration &&
+        capture.calibration.captureViewId !== capture.id
+      ) {
+        throw new Error(
+          "Calibration evidence does not belong to this capture.",
+        );
+      }
+      const viewKey = `${capture.sessionId}\u0000${capture.region}\u0000${capture.angle}`;
+      if (incomingIds.has(capture.id) || incomingViewKeys.has(viewKey)) {
+        throw new Error("A capture batch cannot repeat an ID or region angle.");
+      }
+      incomingIds.add(capture.id);
+      incomingViewKeys.add(viewKey);
     }
-    const supersededCaptures = stateBeforeCommit.captures.filter(
-      (item) =>
-        item.sessionId === capture.sessionId && item.region === capture.region,
+    const supersededCaptures = stateBeforeCommit.captures.filter((item) =>
+      incomingViewKeys.has(
+        `${item.sessionId}\u0000${item.region}\u0000${item.angle}`,
+      ),
     );
-    const invalidatedReports = stateBeforeCommit.reports.filter(
-      (report) => report.sessionId === capture.sessionId,
+    const affectedSessionIds = new Set(
+      entries.map(({ capture }) => capture.sessionId),
+    );
+    const invalidatedReports = stateBeforeCommit.reports.filter((report) =>
+      affectedSessionIds.has(report.sessionId),
     );
     set((state) => {
       const replacedCaptureIds = supersededCaptures
@@ -431,12 +514,20 @@ export const useOralSightStore = create<OralSightState>((set, get) => ({
         replacedCaptureIds,
       );
       return {
-        captures: [...retainedCaptures, capture],
-        analyses: { ...retainedAnalyses, [capture.id]: analysis },
+        captures: [
+          ...retainedCaptures,
+          ...entries.map(({ capture }) => capture),
+        ],
+        analyses: {
+          ...retainedAnalyses,
+          ...Object.fromEntries(
+            entries.map(({ capture, analysis }) => [capture.id, analysis]),
+          ),
+        },
         pins: retainedPins,
         comparisons: retainedComparisons,
         reports: state.reports.filter(
-          (report) => report.sessionId !== capture.sessionId,
+          (report) => !affectedSessionIds.has(report.sessionId),
         ),
       };
     });
@@ -444,9 +535,11 @@ export const useOralSightStore = create<OralSightState>((set, get) => ({
       await queuePersistedState(persistedSnapshot(get()));
     } catch {
       set(stateBeforeCommit);
-      await removeProtectedFile(capture.encryptedUri);
+      await Promise.all(
+        entries.map(({ capture }) => removeProtectedFile(capture.encryptedUri)),
+      );
       throw new Error(
-        "The protected capture was not saved. The previous capture is unchanged.",
+        "The protected capture set was not saved. The previous views are unchanged.",
       );
     }
     const cleanupResults = await Promise.allSettled([
@@ -644,7 +737,49 @@ export const useOralSightStore = create<OralSightState>((set, get) => ({
     persist(get(), (message) => set({ storageError: message }));
   },
 
+  applyCloudState: async (state) => {
+    const stateBeforeCommit = get();
+    assertPersistedReferences(state);
+    const retainedUris = new Set([
+      ...state.captures.flatMap((capture) =>
+        capture.encryptedUri ? [capture.encryptedUri] : [],
+      ),
+      ...state.reports.map((report) => report.encryptedUri),
+    ]);
+    const removedUris = [
+      ...stateBeforeCommit.captures.flatMap((capture) =>
+        capture.encryptedUri && !retainedUris.has(capture.encryptedUri)
+          ? [capture.encryptedUri]
+          : [],
+      ),
+      ...stateBeforeCommit.reports.flatMap((report) =>
+        !retainedUris.has(report.encryptedUri) ? [report.encryptedUri] : [],
+      ),
+    ];
+    set({ ...state, hydrated: true, storageError: null });
+    try {
+      await queuePersistedState(persistedSnapshot(get()));
+    } catch {
+      set(stateBeforeCommit);
+      throw new Error(
+        "Synced changes could not be saved in the protected workspace.",
+      );
+    }
+    const cleanup = await Promise.allSettled(
+      [...new Set(removedUris)].map((uri) => removeProtectedFile(uri)),
+    );
+    if (cleanup.some((result) => result.status === "rejected")) {
+      console.warn("[ORALSIGHT_SYNCED_FILE_CLEANUP_FAILED]");
+    }
+  },
+
   deleteEverything: async () => {
+    let reminderCleanupFailed = false;
+    try {
+      await cancelAllOralSightReminders();
+    } catch {
+      reminderCleanupFailed = true;
+    }
     await deleteAllLocalDataAndRotateKeys();
     set({
       ...initialPersistedState(),
@@ -656,6 +791,11 @@ export const useOralSightStore = create<OralSightState>((set, get) => ({
     } catch {
       throw new Error(
         "Local data was removed, but the empty protected state could not be initialized.",
+      );
+    }
+    if (reminderCleanupFailed) {
+      throw new Error(
+        "Local data was removed, but the device could not confirm that scheduled OralSight reminders were canceled. Review notification settings on this device.",
       );
     }
   },

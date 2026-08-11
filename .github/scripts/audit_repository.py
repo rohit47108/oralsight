@@ -31,8 +31,20 @@ EXPECTED_FIXTURE_IMAGE_SHA256 = (
 # Exact, deliberately reviewed repository assets. Any content change requires a new
 # checksum in the inventory and this allowlist; silently accepting drift is forbidden.
 AUDITED_FILE_SHA256 = {
+    ".impeccable/mocks/public-direction-a-editorial-lightbox.png": (
+        "db7842485de8316ddb643f6ad84abd176c1d3a28d50da6a624f1b3a8342fc048"
+    ),
+    ".impeccable/mocks/public-direction-b-guided-scan.png": (
+        "78e5ea2cc269a745a30a2394bf42ebd074f13a732d266dc31284c3d956042431"
+    ),
+    ".impeccable/mocks/public-direction-c-observation-archive.png": (
+        "5267d20ba11091590d89186ad065b85fd703241cbdab89bd79a684f95aecb99b"
+    ),
+    "apps/web/src/app/icon.svg": (
+        "73c118539f03fa5e54047ecd9f19408d781b1a847be89fe94d18709301d98d90"
+    ),
     "apps/mobile/src/components/OralObservationMap.tsx": (
-        "3f8fc8e321134598299772f32b3048e4e6a49ff19f0bb336651de4f1e0d6d854"
+        "b653a1c864c7c22cdf908fc10f4d2602d0e9b26ebf96ab8c84d47e435f1a4d95"
     ),
     "apps/mobile/assets/oralsight-adaptive-foreground.png": (
         "0ef561cfc7d2fbcc18be62de2403a709559b4bd995885d7b964b31614e5f4ce3"
@@ -41,7 +53,25 @@ AUDITED_FILE_SHA256 = {
         "279dc14ae6a284ee35758c4ce29d66c3a5b8b83ad686726a2c10688d21a83e91"
     ),
     "assets/mouth/manifest.json": (
-        "aa1a178353f9b1d5893cf4933f20ae0bb48abed4d667030f1b2c8df6bb14a1a9"
+        "bf4e74bbfa2e719d224bebb64ad215765b8ac96059ea3635a5777ba98f2fbb10"
+    ),
+    "assets/mouth/calibration/oralsight-calibration-a4.pdf": (
+        "48de2473442af9b68cb1e6e965b332054576d452c3fc79edf8f2d50914f7e92f"
+    ),
+    "assets/mouth/calibration/oralsight-calibration-letter.pdf": (
+        "1d40839a8095667b2ce9b4ddb3dc72b5ae505b90f8e55e4143f4f524d0f80514"
+    ),
+    "assets/mouth/calibration/oralsight-calibration-preview.png": (
+        "a89f32d03e823f17a7e57f32d03e7188e0b5b4e3aef3b4ced96b6bbd3314d26e"
+    ),
+    "apps/web/public/calibration/oralsight-calibration-a4.pdf": (
+        "48de2473442af9b68cb1e6e965b332054576d452c3fc79edf8f2d50914f7e92f"
+    ),
+    "apps/web/public/calibration/oralsight-calibration-letter.pdf": (
+        "1d40839a8095667b2ce9b4ddb3dc72b5ae505b90f8e55e4143f4f524d0f80514"
+    ),
+    "apps/web/public/calibration/oralsight-calibration-preview.png": (
+        "a89f32d03e823f17a7e57f32d03e7188e0b5b4e3aef3b4ced96b6bbd3314d26e"
     ),
     "packages/contracts/fixtures/bundled-demo.json": (
         "29f536ce044e49303f2a48f66ee15ff1611b081ebf01745ef75dd86097137727"
@@ -58,10 +88,20 @@ AUDITED_FILE_SHA256 = {
 }
 
 AUDITED_FILE_LICENSE = {
+    ".impeccable/mocks/public-direction-a-editorial-lightbox.png": "CC0-1.0",
+    ".impeccable/mocks/public-direction-b-guided-scan.png": "CC0-1.0",
+    ".impeccable/mocks/public-direction-c-observation-archive.png": "CC0-1.0",
+    "apps/web/src/app/icon.svg": "CC0-1.0",
     "apps/mobile/src/components/OralObservationMap.tsx": "CC0-1.0",
     "apps/mobile/assets/oralsight-adaptive-foreground.png": ("OpenAI generated output"),
     "apps/mobile/assets/oralsight-icon.png": "OpenAI generated output",
     "assets/mouth/manifest.json": "CC0-1.0",
+    "assets/mouth/calibration/oralsight-calibration-a4.pdf": "CC0-1.0",
+    "assets/mouth/calibration/oralsight-calibration-letter.pdf": "CC0-1.0",
+    "assets/mouth/calibration/oralsight-calibration-preview.png": "CC0-1.0",
+    "apps/web/public/calibration/oralsight-calibration-a4.pdf": "CC0-1.0",
+    "apps/web/public/calibration/oralsight-calibration-letter.pdf": "CC0-1.0",
+    "apps/web/public/calibration/oralsight-calibration-preview.png": "CC0-1.0",
     "packages/contracts/fixtures/bundled-demo.json": "CC0-1.0",
     "services/inference/release/anatomy.onnx": "CC BY 4.0",
     "services/inference/release/segmentation.onnx": (
@@ -120,7 +160,6 @@ FORBIDDEN_EXTENSIONS = {
 }
 
 FORBIDDEN_DIRECTORY_NAMES = {
-    "artifacts",
     "captures",
     "data",
     "datasets",

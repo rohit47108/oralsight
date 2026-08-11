@@ -1,145 +1,142 @@
 # OralSight implementation status
 
-Last updated: 2026-07-28
+Last updated: 2026-08-10
 
-> **This result is not a diagnosis.** OralSight is a non-diagnostic research
-> application. No result establishes that an area is cancerous or harmless.
+> **This result is not a diagnosis.** Passing software and model engineering
+> tests does not establish clinical accuracy, safety, effectiveness, regulatory
+> clearance, or harmlessness.
 
-## What is working
+## Plain-language result
 
-The installed mobile app uses real camera or photo-library input. It does not
-contain a sample mouth photo or substitute a fixture result for a live failure.
+OralSight is a real, local-first mouth-observation product, not a fixture-driven
+photo demo. The repository contains the complete eight-region mobile workflow,
+the public and authenticated web product, the account/cloud/clinician platform,
+the private artifact worker, and the stateless image-analysis service. Normal
+installed-app use never substitutes bundled results for a live capture.
 
-The working flow is:
+All source-level checks that can run on this machine are green. The remaining
+items are external release setup, physical-device evidence, clinician approval,
+and one model-license boundary described below. Docker container builds and the
+PostgreSQL migration smoke are also waiting for an elevated or hosted Docker
+environment because this Windows session cannot start Docker Desktop.
 
-1. Record consent and symptom context.
-2. Start a scan with the fixed eight mouth regions.
-3. Capture or choose one photo per region.
-4. Re-encode the photo without source metadata.
-5. Run local image-quality and face-presence checks.
-6. Require the user to confirm mouth-only framing and the selected region.
-7. Encrypt the accepted photo locally.
-8. Send only the sanitized copy to the stateless service.
-9. Verify the signed response, request ID, schema, region, capture ID, and
-   provenance before saving it.
-10. Reopen or retry the protected observation.
-11. Compare confirmed observations from separate scan sessions.
-12. Show history on the oral observation map and create an encrypted local PDF
-    after all eight regions are complete.
-13. Delete all local data and rotate both installation keys.
+## Complete software paths
 
-Two separate real 8/8 sessions completed on the Android emulator. Each accepted
-photo passed the phone checks and the live FastAPI service. A deliberately
-mismatched mouth-region photo was rejected and did not count. The app then
-completed a real user-confirmed comparison, stored its honest suppression
-reasons, rendered the timeline and oral map, and generated an eight-image PDF.
+### Mobile
 
-After segmentation promotion, a separately licensed right-inner-cheek image
-also completed the installed-app flow. The phone reported 100% focus and
-exposure scores, required privacy and region confirmation, returned a live
-candidate outline and approximate area `16.1%`, saved a confirmed observation
-pin, and preserved the result after app restart. The raw picker files were
-removed from the emulator afterward.
+- Versioned consent, adaptive symptom intake, the fixed eight-region scan, and
+  one quality-accepted capture per region.
+- Standard, multi-angle, and video-sweep capture; live motion stability; saved
+  photo review; post-capture focus, exposure, glare, obstruction, privacy, size,
+  and anatomy checks; retake and interruption recovery.
+- Metadata stripping, sanitized upload, signed-response validation, SQLCipher
+  metadata, encrypted files, SecureStore keys, offline retry, and delete-all
+  with installation-key rotation.
+- Oral observation map with eight selectable regions, confirmed pins, timeline,
+  comparison states, capture replay guidance, and a reduced-motion/list fallback.
+- User-confirmed re-identification proposals, registration diagnostics, image
+  slider, rich normalized changes, and paired-marker calibrated width/height/area
+  changes only when the physical calibration gates pass.
+- Expandable explanation tree, six honest confidence factors with unavailable
+  reasons, local PDF, reminders, learning atlas, accessibility settings, and
+  normal-variation education.
+- Optional OIDC account, explicit cloud consent, encrypted sync, resumable
+  assets, reports, artifacts, shares, access history, jobs, recovery, and cloud
+  deletion. Local-only use remains available.
 
-## Learned model state
+### Web, platform, and worker
 
-The anatomy model is enabled for one narrow job: checking that the photo matches
-the selected mouth region. Its patient-disjoint locked test passed:
+- Responsive public site plus authenticated patient, clinician, and administrator
+  workspaces. No fake patient records are inserted when an account has no data.
+- Patient scan/report/artifact history, QR sharing, fragment-secret exchange,
+  expiry, revocation, access history, clinician grants, eight annotation kinds,
+  review status, verification, and privacy-thresholded opt-in analytics.
+- PostgreSQL data model and migrations, OIDC/JWKS verification, database plus IdP
+  role checks, encrypted sync, private S3/local storage, Redis Streams, a database
+  outbox, retries, cancellation, dead letters, retention, deletion receipts, and
+  no-resurrection cleanup.
+- Server-rendered clinician PDF, captioned H.264 summary video with a rotating
+  generic observation map, projected-color/pinned private GLB, and recipient-
+  encrypted portable export.
+- Strict CSP nonces, no-index/no-store private surfaces, stable form idempotency
+  keys, bounded request bodies, checksums, rate limits, safe logging, and hardened
+  production configuration.
 
-- macro F1: `0.9842`;
-- lowest region recall: `0.9302`;
-- calibration error: `0.0123`;
-- test set: 376 images from 47 held-out patients.
+### Inference and model controls
 
-The lesion-segmentation model is enabled only for non-diagnostic candidate
-outlining and approximate visual descriptors. Its exact frozen,
-patient-disjoint test passed the required aggregate gate:
+- Stateless FastAPI/OpenCV/PyTorch service with only analyze, compare, model-card,
+  and health routes.
+- Real anatomy validation, candidate segmentation, descriptors, uncertainty,
+  abstention, registration, comparison, and paired ArUco calibration.
+- Implemented fail-closed adapters and model-card contracts for appearance,
+  disease research, learned quality, oral-tissue masks, OOD, secondary-model
+  agreement, and automated re-identification. Those heads stay disabled without
+  the required licensed artifacts and untouched release evidence.
+- No request-body or exception-detail logging, no retained inference jobs, and
+  exact hash-bound fixtures only in isolated tests.
 
-- Dice: `0.7192`, above the required `0.70`;
-- boundary F1: `0.6256`, above the required `0.60`;
-- positive-image Dice: `0.5138`;
-- positive-image boundary F1: `0.3266`;
-- test set: 106 images from 39 held-out patients.
+## Released learned outputs
 
-The lower positive-image scores and same-dataset evaluation remain important
-limitations. A missing candidate mask is never presented as reassurance.
-Earlier failed candidates had already been evaluated on the same SMART-OM test
-split, so it remains patient-disjoint but is not a pristine project-wide test.
+| Output                                                   | Runtime state                                       | Evidence and limit                                                                                                                                               |
+| -------------------------------------------------------- | --------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Eight-region anatomy match                               | Enabled                                             | Macro F1 `0.9842`, minimum region recall `0.9302`, calibration error `0.0123`; 376 images from 47 held-out patients; SMART-OM CC BY 4.0                          |
+| Candidate segmentation                                   | Enabled for the academic competition/research build | Dice `0.7192`, boundary F1 `0.6256`; 106 images from 39 held-out patients; the artifact used Autooral training data under academic-research/non-commercial terms |
+| Appearance                                               | Disabled                                            | Required seven-class labels and held-out support are unavailable                                                                                                 |
+| Disease-category research                                | Disabled                                            | Macro F1 `0.3596`, calibration error `0.0827`, inadequate per-class support, and no signed clinical review                                                       |
+| Learned re-identification                                | Disabled                                            | Required longitudinal matched and hard-negative evidence is unavailable                                                                                          |
+| Learned quality, tissue, OOD, and secondary segmentation | Disabled                                            | Runtime paths exist, but licensed artifacts and release evidence do not                                                                                          |
 
-The disease-category research model is not enabled. Its final locked test also
-failed:
+The attempt to remove the segmentation licensing constraint was completed
+honestly. A SMART-OM-only CC BY 4.0 replacement was selected on a fresh validation
+split and evaluated once on a fresh patient holdout that excluded every earlier
+holdout patient. It reached Dice `0.6809` and boundary F1 `0.5616`, below the fixed
+`0.70`/`0.60` gates. It was rejected and is not bundled. See
+[`SEGMENTATION_SMART_OM_ONLY_ATTEMPT.json`](licenses-model-cards/SEGMENTATION_SMART_OM_ONLY_ATTEMPT.json).
 
-- macro F1: `0.3596`, below `0.80`;
-- calibration error: `0.0827`, above `0.05`;
-- held-out patients: normal 43, variation 17, OPMD 9, oral cancer 2;
-- no signed clinical review.
+The shipped segmentation weight is therefore suitable only for the documented
+academic competition/research scope until written broader permission is obtained
+or a future properly licensed model passes a new untouched evaluation.
 
-SMART-OM does not provide the required seven-class appearance labels or
-longitudinal re-identification pairs. Appearance and re-identification therefore
-remain disabled. The app can show a released candidate mask and lesion pin, but
-it shows no appearance class, disease class, automated lesion identity, or
-numeric longitudinal change while those gates are closed.
+## Current verification
 
-## Privacy and failure checks completed
+| Check                                       | Current result                                                                                                          |
+| ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| TypeScript tests                            | 206 passed: contracts 28, mobile 132, web 46                                                                            |
+| Type checking and web lint                  | Passed                                                                                                                  |
+| Python tests                                | 229 passed across inference, platform, worker, and ML                                                                   |
+| Ruff and Prettier                           | Passed after final formatting                                                                                           |
+| Web production build                        | Passed; 31 application routes; missing production credentials fail before compilation                                   |
+| Mobile bundle exports                       | Android and iOS exports passed                                                                                          |
+| Contract/OpenAPI generation                 | Idempotent; checked platform OpenAPI snapshot passes                                                                    |
+| Repository safety audit                     | Passed                                                                                                                  |
+| JavaScript and Python dependency audits     | Passed                                                                                                                  |
+| Standalone inference/platform/worker locks  | Passed                                                                                                                  |
+| Vercel and Compose configuration            | Passed schema and parse checks                                                                                          |
+| GitHub workflow hardening                   | Zizmor reported no findings; immutable action pins and non-persisted checkout credentials are present                   |
+| Docker image and PostgreSQL migration smoke | Not run locally: Docker Desktop Linux engine is unavailable and its Windows service cannot be started from this session |
 
-On the Android emulator:
+The exact commands and boundaries are recorded in
+[`FINAL_VERIFICATION.md`](FINAL_VERIFICATION.md).
 
-- the database and image/report files were confirmed encrypted;
-- no plaintext private JPG, PNG, or PDF remained after leaving its screen;
-- picker, capture, preview, and share temporary files were removed;
-- a signed API response was accepted and a signed malformed response was
-  rejected;
-- offline, timeout, camera-denied, canceled-picker, mismatched-region, and retry
-  paths kept or removed data as specified;
-- a failed live request produced `Analysis unavailable` and no substitute
-  fixture result;
-- delete-all removed 18 encrypted blobs, replaced the database, cleared consent
-  and history, rotated both keys, and stayed empty after restart;
-- large system text, the app's larger-text option, high contrast, and reduced
-  motion remained usable together;
-- accessible labels were present for switches, scan regions, map controls,
-  comparison controls, and deletion.
+## External release requirements
 
-## Software verification
+These cannot be manufactured inside the source tree:
 
-- 9 contract tests passed.
-- 66 mobile tests passed.
-- 88 inference and ML tests passed; 1 optional Torch-only test was skipped in
-  the lightweight verification environment.
-- TypeScript type checking passed.
-- Prettier passed.
-- Ruff lint and format checks passed.
-- Expo Doctor passed 20/20 checks.
-- Fresh Android and iOS production JavaScript exports passed.
-- Neither mobile export contains the backend test fixture.
-- The production API is live and all four signed routes passed remote checks.
-- Repository and dependency audits passed.
+- Owner-selected repository license and written confirmation for any public or
+  commercial redistribution of the Autooral-assisted segmentation weight. A
+  private academic competition repository does not require that broader grant.
+- Owner-registered iOS and Android identifiers, Expo/EAS project and signing
+  accounts, Apple and Google credentials, and store records.
+- Real OIDC tenant/roles, PostgreSQL, TLS Redis, private S3, secrets/KMS, worker
+  host, DNS, TLS, ingress/WAF limits, backups, alerts, and retention policies.
+- Green hosted CI, production container builds, migration apply/check, and a
+  deployed full-stack acceptance run with consenting test accounts.
+- Three complete scans on each of two physical iPhones and two physical Android
+  phones, the planned false-accept/false-reject calculation, printed-card
+  repeatability, VoiceOver/TalkBack, low-storage, interruption, backup/restore,
+  sharing, and delete-all evidence.
+- A clinician-approved guidance rule if urgency is to be enabled. Without it,
+  urgency stays disabled and only neutral seek-care information is shown.
 
-See `FINAL_VERIFICATION.md` for the exact snapshot.
-See `REQUIREMENT_AUDIT.md` for the requirement-by-requirement verdict.
-
-## Work that still requires external access or evidence
-
-The code is implemented, but competition release still requires:
-
-1. Runs on two physical iPhones and two physical Android phones, including
-   VoiceOver/TalkBack, camera thresholds, GPU rendering, low storage, sharing,
-   backup behavior, interruption, and complete deletion.
-2. A clinician-approved review-priority rule file. Until then, urgency levels
-   remain disabled and the app gives neutral seek-care information.
-3. Human review of final wording, demo cases, source licensing, and third-party
-   license inventory.
-4. Platform-level ingress, upload-spool, and proxy-log review for the live API.
-5. Expo, Apple, and Google credentials for installable signed store builds.
-6. Better licensed data and passed locked gates before appearance,
-   disease-category, or re-identification output can be enabled.
-
-The live Vercel deployment hosts the FastAPI service. It cannot replace the
-installed iOS/Android app; native builds still come from Expo/EAS or the
-platform build tools.
-
-## Parkinson feature
-
-NeuroSight and every Parkinson-related capture, model, score, report, and care
-flow remain unimplemented. The app contains only the requested static roadmap.
-That work starts only after OralSight's remaining release checks are complete.
+NeuroSight/Parkinson work remains a static roadmap by the requested sequencing.
+It is not part of this OralSight source-release verdict.

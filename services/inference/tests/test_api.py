@@ -26,6 +26,7 @@ from cryptography.hazmat.primitives.serialization import (
 )
 from fastapi.testclient import TestClient
 from PIL import Image, ImageDraw
+from starlette.requests import Request
 
 from oralsight_api import processing as processing_module
 from oralsight_api import signing as signing_module
@@ -37,9 +38,15 @@ from oralsight_api.main import (
     VERCEL_REQUEST_BODY_LIMIT_BYTES,
     app,
 )
+from oralsight_api.rate_limit import (
+    EphemeralRequestRateLimiter,
+    RateLimitConfiguration,
+    load_rate_limit_configuration,
+)
 from oralsight_api.processing import MAX_IMAGE_BYTES, sanitize_image
 from oralsight_api.runtime import (
     DEFAULT_MAX_CONCURRENT_INFERENCE,
+    InferenceCapacityError,
     MAX_CONCURRENT_INFERENCE_ENV,
     BoundedInferenceExecutor,
     load_max_concurrent_inference,
@@ -170,6 +177,59 @@ def test_only_four_public_routes_are_exposed() -> None:
     }
 
 
+def test_ephemeral_rate_limit_is_bounded_and_expires() -> None:
+    limiter = EphemeralRequestRateLimiter(
+        RateLimitConfiguration(
+            per_client_requests=2,
+            global_requests=3,
+            window_seconds=10,
+        ),
+        salt=b"test-salt",
+    )
+    assert limiter.check("198.51.100.1", now=100) is None
+    assert limiter.check("198.51.100.1", now=101) is None
+    assert limiter.check("198.51.100.1", now=102) == 8
+    assert limiter.check("198.51.100.2", now=102) is None
+    assert limiter.check("198.51.100.3", now=102) == 8
+    assert limiter.check("198.51.100.1", now=111) is None
+
+
+def test_rate_limit_configuration_is_strict() -> None:
+    production = load_rate_limit_configuration(production=True, environment={})
+    assert production.per_client_requests == 30
+    assert production.global_requests == 300
+    assert production.window_seconds == 60
+    with pytest.raises(RuntimeError):
+        load_rate_limit_configuration(
+            production=True,
+            environment={"ORALSIGHT_RATE_LIMIT_PER_CLIENT": "0"},
+        )
+
+
+def test_analysis_rate_limit_rejects_before_multipart_parsing(monkeypatch) -> None:
+    from oralsight_api import main as main_module
+
+    monkeypatch.setattr(
+        main_module,
+        "REQUEST_RATE_LIMITER",
+        EphemeralRequestRateLimiter(
+            RateLimitConfiguration(
+                per_client_requests=1,
+                global_requests=10,
+                window_seconds=60,
+            ),
+            salt=b"integration-test-salt",
+        ),
+    )
+    first = client.post("/v1/analyze", content=b"not multipart")
+    second = client.post("/v1/analyze", content=b"not multipart")
+    assert first.status_code == 422
+    assert second.status_code == 429
+    assert second.json()["error"]["code"] == "rate_limit_exceeded"
+    assert second.headers["retry-after"] == "60"
+    assert second.headers["cache-control"] == "no-store"
+
+
 def test_health_and_errors_have_privacy_headers_and_request_ids() -> None:
     client_request_id = "0f9f24c2-bac8-4b4d-a3f6-fce22630d96b"
     response = client.get("/healthz", headers={"X-Request-ID": client_request_id})
@@ -222,6 +282,10 @@ def test_model_card_keeps_all_research_release_gates_closed() -> None:
         "appearance",
         "disease_research",
         "lesion_reidentification",
+        "quality_control",
+        "oral_tissue_segmentation",
+        "out_of_distribution",
+        "secondary_segmentation",
     }
     assert all(gate["passed"] is False for gate in card["releaseGates"])
     assert all(gate["reviewerApproved"] is False for gate in card["releaseGates"])
@@ -241,6 +305,10 @@ def test_model_card_keeps_all_research_release_gates_closed() -> None:
     assert card["artifactHashes"]["appearance_weights"] is None
     assert card["artifactHashes"]["disease_research_weights"] is None
     assert card["artifactHashes"]["lesion_reidentification_weights"] is None
+    assert card["artifactHashes"]["quality_control_weights"] is None
+    assert card["artifactHashes"]["oral_tissue_segmentation_weights"] is None
+    assert card["artifactHashes"]["out_of_distribution_weights"] is None
+    assert card["artifactHashes"]["secondary_segmentation_weights"] is None
 
 
 def test_release_gate_datetime_matches_utc_z_contract() -> None:
@@ -327,6 +395,61 @@ def test_request_logging_omits_body_filename_and_capture_identifier(
     assert secret_capture_id not in "\n".join(
         record.getMessage() for record in caplog.records
     )
+
+
+def test_runtime_exception_details_never_enter_logs(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    api_main = importlib.import_module("oralsight_api.main")
+    marker = "SENSITIVE_RUNTIME_MARKER"
+
+    def fail_analysis(*_args, **_kwargs):
+        raise RuntimeError(marker)
+
+    def fail_comparison(*_args, **_kwargs):
+        raise ValueError(marker)
+
+    monkeypatch.setattr(api_main, "analyze_sanitized_image", fail_analysis)
+    monkeypatch.setattr(api_main, "compare_sanitized_images", fail_comparison)
+    caplog.clear()
+    with caplog.at_level(logging.WARNING, logger="oralsight_api"):
+        analysis = _post_analyze(_synthetic_capture(), _analyze_metadata())
+        comparison = _post_compare(
+            _synthetic_capture(), _compare_metadata(userConfirmedMatch=True)
+        )
+
+    assert analysis.status_code == comparison.status_code == 200
+    rendered = "\n".join(
+        logging.Formatter().format(record) for record in caplog.records
+    )
+    assert "analysis_runtime_failed exception_type=RuntimeError" in rendered
+    assert "comparison_runtime_failed exception_type=ValueError" in rendered
+    assert marker not in rendered
+
+    caplog.clear()
+    request = Request(
+        {
+            "type": "http",
+            "method": "GET",
+            "path": "/test-error",
+            "headers": [],
+            "query_string": b"",
+            "scheme": "https",
+            "server": ("inference.test", 443),
+            "client": ("127.0.0.1", 1),
+            "state": {},
+        }
+    )
+    with caplog.at_level(logging.ERROR, logger="oralsight_api"):
+        response = asyncio.run(
+            api_main.unhandled_error_handler(request, RuntimeError(marker))
+        )
+    assert response.status_code == 500
+    rendered = "\n".join(
+        logging.Formatter().format(record) for record in caplog.records
+    )
+    assert "unhandled_service_error exception_type=RuntimeError" in rendered
+    assert marker not in rendered
 
 
 def test_quality_rejection_abstains_before_candidate_analysis() -> None:
@@ -616,6 +739,17 @@ def test_manual_comparison_is_also_exact_hash_only(
     assert exact.status_code == 200
     assert exact.json()["analysisOrigin"] == "manual_fixture"
     assert exact.json()["comparable"] is True
+    assert exact.json()["descriptorChanges"] == {
+        "normalizedWidthChange": 0.0,
+        "normalizedHeightChange": 0.0,
+        "normalizedPerimeterChange": 0.0,
+        "borderIrregularityChange": 0.0,
+        "meanRednessChange": 0.0,
+        "meanBrightnessChange": 0.0,
+        "textureContrastChange": 0.0,
+        "ulcerationLikeContrastChange": 0.0,
+        "measurementLabel": "approximate image-normalized change",
+    }
 
     manual_metadata = json.loads(json.dumps(exact_metadata))
     for key in ("baselineAnalysis", "currentAnalysis"):
@@ -631,6 +765,7 @@ def test_manual_comparison_is_also_exact_hash_only(
     assert blocked.status_code == 200
     assert blocked.json()["comparable"] is False
     assert blocked.json()["normalizedChange"] is None
+    assert blocked.json()["descriptorChanges"] is None
     assert "current_prior_analysis_not_complete" in blocked.json()["suppressionReasons"]
 
     arbitrary = _post_compare(
@@ -764,5 +899,25 @@ def test_cancelled_inference_holds_its_slot_until_worker_exits() -> None:
             await first
         assert await second == "second"
         assert second_started.is_set()
+
+    asyncio.run(exercise())
+
+
+def test_inference_queue_rejects_when_capacity_stays_busy() -> None:
+    executor = BoundedInferenceExecutor(max_concurrency=1, queue_timeout_seconds=0.01)
+    started = threading.Event()
+    release = threading.Event()
+
+    def blocking_work() -> None:
+        started.set()
+        assert release.wait(timeout=2)
+
+    async def exercise() -> None:
+        first = asyncio.create_task(executor.run(blocking_work))
+        assert await asyncio.to_thread(started.wait, 1)
+        with pytest.raises(InferenceCapacityError):
+            await executor.run(lambda: None)
+        release.set()
+        await first
 
     asyncio.run(exercise())

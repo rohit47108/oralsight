@@ -10,6 +10,9 @@ on:
       - "pnpm-workspace.yaml"
       - "tsconfig.base.json"
       - ".github/workflows/typescript.yml"
+      - ".prettierignore"
+      - ".vercelignore"
+      - "vercel.json"
   push:
     branches: [main]
     paths:
@@ -20,6 +23,9 @@ on:
       - "pnpm-workspace.yaml"
       - "tsconfig.base.json"
       - ".github/workflows/typescript.yml"
+      - ".prettierignore"
+      - ".vercelignore"
+      - "vercel.json"
   workflow_dispatch:
 
 permissions:
@@ -34,11 +40,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
         with:
           version: 11.9.0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 22
           cache: pnpm
@@ -53,11 +61,22 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
       - name: Lint and build the web product
+        env:
+          CI: "true"
+          ORALSIGHT_ALLOW_CI_DUMMY_WEB_ENV: "true"
+          AUTH0_DOMAIN: ci-identity.invalid
+          AUTH0_CLIENT_ID: ci-public-client
+          AUTH0_CLIENT_SECRET: ci-client-secret
+          AUTH0_SECRET: "0000000000000000000000000000000000000000000000000000000000000000"
+          AUTH0_AUDIENCE: oralsight-platform-api
+          APP_BASE_URL: https://ci-web.invalid
+          NEXT_PUBLIC_SITE_URL: https://ci-web.invalid
+          ORALSIGHT_PLATFORM_API_URL: https://ci-platform.invalid
         run: |
           pnpm --filter @oralsight/web lint
           pnpm --filter @oralsight/web build
       - name: Audit JavaScript dependencies
-        run: pnpm audit --audit-level high
+        run: pnpm audit:dependencies
       - name: Validate Expo public configuration
         run: pnpm --filter @oralsight/mobile config:public
       - name: Build production Expo bundles

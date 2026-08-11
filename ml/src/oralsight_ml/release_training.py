@@ -33,6 +33,7 @@ from .constants import (
 )
 from .manifest import load_manifest, resolve_data_path, validate_manifest
 from .metrics import classification_metrics, expected_calibration_error
+from .smart_om import SMART_OM_DATASET_ID, SMART_OM_LICENSE
 
 IMAGE_NET_MEAN = (0.485, 0.456, 0.406)
 IMAGE_NET_STD = (0.229, 0.224, 0.225)
@@ -1224,6 +1225,7 @@ def _train_segmentation(
     supplemental_data_root: Path | None = None,
     supplemental_manifest_sha256: str | None = None,
     refit_source_run: Path | None = None,
+    positive_sample_repeat: int = 1,
 ) -> dict[str, object]:
     torch, _, torchvision, Image = _dependencies()
     _seed_everything(torch, seed)
@@ -1249,6 +1251,7 @@ def _train_segmentation(
             "seed": seed,
             "pretrained_imagenet": pretrained,
             "segmentation_loss_version": segmentation_loss_version,
+            "positive_sample_repeat": positive_sample_repeat,
         }
         mismatches = [
             key
@@ -1328,15 +1331,25 @@ def _train_segmentation(
     )
     training_negative_count = len(train_dataset) - training_positive_count
     presence_positive_weight = _presence_positive_weight(
-        training_positive_count,
+        training_positive_count * positive_sample_repeat,
         training_negative_count,
     )
     generator = torch.Generator().manual_seed(seed)
+    positive_indices = [
+        index
+        for index, (_, mask) in enumerate(train_dataset.cached_pairs)
+        if mask.getbbox() is not None
+    ]
+    training_indices = list(range(len(train_dataset))) + positive_indices * (
+        positive_sample_repeat - 1
+    )
     train_loader = torch.utils.data.DataLoader(
         train_dataset,
         batch_size=batch_size,
-        shuffle=True,
-        generator=generator,
+        sampler=torch.utils.data.SubsetRandomSampler(
+            training_indices,
+            generator=generator,
+        ),
         num_workers=_workers(),
         pin_memory=torch.cuda.is_available(),
     )
@@ -1704,6 +1717,8 @@ def _train_segmentation(
             "cache_preprocessed_images": True,
             "metric_device": device.type,
             "presence_positive_weight": presence_positive_weight,
+            "positive_sample_repeat": positive_sample_repeat,
+            "effective_training_sample_count": len(training_indices),
             "selected_training_epochs": selected_training_epochs,
             "selected_validation_epoch": best_epoch,
             "training_splits": (["train", "validation"] if refit_source is not None else ["train"]),
@@ -1759,6 +1774,7 @@ def _evaluate_frozen_segmentation(
     frozen_source_run: Path,
     supplemental_rows: Sequence[Mapping[str, str]] = (),
     supplemental_manifest_sha256: str | None = None,
+    positive_sample_repeat: int = 1,
 ) -> dict[str, object]:
     """Evaluate the exact validation-selected checkpoint without retraining it."""
 
@@ -1793,6 +1809,7 @@ def _evaluate_frozen_segmentation(
         "seed": seed,
         "pretrained_imagenet": pretrained,
         "segmentation_loss_version": segmentation_loss_version,
+        "positive_sample_repeat": positive_sample_repeat,
     }
     mismatches = [
         key
@@ -2017,6 +2034,8 @@ def _write_evidence(
     license_terms = sorted(
         {row["license_terms"] for row in manifest_rows if row.get("license_terms")}
     )
+    if not license_terms and source_datasets == [SMART_OM_DATASET_ID]:
+        license_terms = [SMART_OM_LICENSE]
     evidence: dict[str, object] = {
         "schema_version": "1.0",
         "evaluation_id": f"smart-om-{task}-locked-test-2026",
@@ -2153,6 +2172,16 @@ def _build_parser() -> argparse.ArgumentParser:
         default="candidate_boundary_v1",
     )
     parser.add_argument(
+        "--segmentation-positive-repeat",
+        type=int,
+        choices=(1, 2, 3, 4),
+        default=1,
+        help=(
+            "Repeat licensed positive-mask training rows without copying files. "
+            "Validation and test rows are never repeated."
+        ),
+    )
+    parser.add_argument(
         "--validation-only",
         action="store_true",
         help=(
@@ -2204,6 +2233,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 2
     if args.epochs < 1 or args.batch_size < 1 or args.image_size < 64:
         print("Training refused: invalid epochs, batch size, or image size.", file=sys.stderr)
+        return 2
+    if args.task != "segmentation" and args.segmentation_positive_repeat != 1:
+        print(
+            "Training refused: positive-mask repetition is only valid for segmentation.",
+            file=sys.stderr,
+        )
         return 2
     if not math.isfinite(args.learning_rate) or args.learning_rate <= 0:
         print("Training refused: learning rate must be positive and finite.", file=sys.stderr)
@@ -2356,6 +2391,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                     frozen_source_run=args.evaluate_frozen_run,
                     supplemental_rows=supplemental_rows,
                     supplemental_manifest_sha256=supplemental_manifest_sha256,
+                    positive_sample_repeat=args.segmentation_positive_repeat,
                 )
             else:
                 result = _train_segmentation(
@@ -2367,6 +2403,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                     supplemental_data_root=args.supplemental_segmentation_data_root,
                     supplemental_manifest_sha256=supplemental_manifest_sha256,
                     refit_source_run=args.refit_source_run,
+                    positive_sample_repeat=args.segmentation_positive_repeat,
                 )
         if args.validation_only:
             evidence = {

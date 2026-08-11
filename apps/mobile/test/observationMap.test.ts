@@ -143,18 +143,9 @@ describe("oral observation map model", () => {
       "2026-07-01T10:00:00.000Z",
       "dorsal_tongue",
     );
-    const summaries = buildRegionObservationSummaries(
-      [live],
-      {},
-      [
-        pin(
-          "changed",
-          "2026-07-01T10:00:00.000Z",
-          ["live"],
-          "visually_changed",
-        ),
-      ],
-    );
+    const summaries = buildRegionObservationSummaries([live], {}, [
+      pin("changed", "2026-07-01T10:00:00.000Z", ["live"], "visually_changed"),
+    ]);
 
     expect(summaries.dorsal_tongue.confirmedPinCount).toBe(1);
     expect(summaries.dorsal_tongue.visuallyChangedPinCount).toBe(1);

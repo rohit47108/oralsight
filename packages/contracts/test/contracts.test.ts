@@ -187,6 +187,95 @@ describe("OralSight contracts", () => {
     ).toThrow();
   });
 
+  it("accepts gated descriptor and calibrated changes for a comparable pair", () => {
+    const result = comparisonResultSchema.parse({
+      contractVersion: CONTRACT_VERSION,
+      baselineCaptureId: "baseline-1",
+      currentCaptureId: "current-1",
+      region: "left_buccal_mucosa",
+      candidateMatchScore: 0.97,
+      userConfirmedMatch: true,
+      registrationConfidence: 0.92,
+      inlierRatio: 0.81,
+      reprojectionErrorRatio: 0.01,
+      normalizedChange: 0.2,
+      descriptorChanges: {
+        normalizedWidthChange: 0.1,
+        normalizedHeightChange: 0.05,
+        normalizedPerimeterChange: 0.08,
+        borderIrregularityChange: 0.02,
+        meanRednessChange: 0.03,
+        meanBrightnessChange: -0.01,
+        textureContrastChange: 0.04,
+        ulcerationLikeContrastChange: null,
+        measurementLabel: "approximate image-normalized change",
+      },
+      calibratedMeasurementChanges: {
+        cardVersion: "oralsight-calibration-v1",
+        markerId: 17,
+        markerSideMm: 20,
+        baselineWidthMm: 4,
+        currentWidthMm: 4.5,
+        widthChangeMm: 0.5,
+        baselineHeightMm: 3,
+        currentHeightMm: 3.25,
+        heightChangeMm: 0.25,
+        baselineAreaMm2: 12,
+        currentAreaMm2: 14.625,
+        areaChangeMm2: 2.625,
+        baselineConfidence: 0.9,
+        currentConfidence: 0.88,
+        measurementLabel: "calibrated estimate",
+      },
+      calibrationSuppressionReasons: [],
+      comparable: true,
+      suppressionReasons: [],
+      modelVersions: { registration: "test" },
+      inputOrigin: "live_capture",
+      analysisOrigin: "live_model",
+      disclaimer: DISCLAIMER,
+    });
+
+    expect(result.descriptorChanges?.normalizedWidthChange).toBe(0.1);
+    expect(result.calibratedMeasurementChanges?.widthChangeMm).toBe(0.5);
+  });
+
+  it("rejects descriptor or calibrated changes when comparison is suppressed", () => {
+    expect(() =>
+      comparisonResultSchema.parse({
+        contractVersion: CONTRACT_VERSION,
+        baselineCaptureId: "baseline-1",
+        currentCaptureId: "current-1",
+        region: "left_buccal_mucosa",
+        candidateMatchScore: null,
+        userConfirmedMatch: true,
+        registrationConfidence: 0,
+        inlierRatio: 0,
+        reprojectionErrorRatio: 1,
+        normalizedChange: null,
+        descriptorChanges: {
+          normalizedWidthChange: 0,
+          normalizedHeightChange: 0,
+          normalizedPerimeterChange: 0,
+          borderIrregularityChange: 0,
+          meanRednessChange: 0,
+          meanBrightnessChange: 0,
+          textureContrastChange: 0,
+          ulcerationLikeContrastChange: null,
+          measurementLabel: "approximate image-normalized change",
+        },
+        calibratedMeasurementChanges: null,
+        calibrationSuppressionReasons: [],
+        comparable: false,
+        suppressionReasons: ["insufficient comparable data"],
+        modelVersions: {},
+        inputOrigin: "live_capture",
+        analysisOrigin: "unavailable",
+        disclaimer: DISCLAIMER,
+      }),
+    ).toThrow(/descriptor or calibrated change/i);
+  });
+
   it("rejects enabled model heads without complete release evidence", () => {
     expect(() =>
       modelCardSchema.parse({

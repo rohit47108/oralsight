@@ -1,6 +1,6 @@
 # OralSight current model release state
 
-Last updated: 2026-07-28  
+Last updated: 2026-08-10
 Threshold version: `2026.1`
 
 > **This result is not a diagnosis.** A passed engineering release gate does
@@ -40,6 +40,11 @@ Segmentation:
   is patient-disjoint, not a pristine project-wide test set.
 - SMART-OM is CC BY 4.0. The optional Autooral training supplement is subject
   to its authors' academic-research and non-commercial terms.
+- A SMART-OM-only replacement was frozen from a new validation split and tested
+  once on a fresh patient holdout. It scored Dice `0.6809` and boundary F1
+  `0.5616`, below the fixed `0.70`/`0.60` gates, so it was rejected and is not
+  bundled. This means the current Autooral-assisted weight remains limited to
+  the academic competition/research scope unless broader rights are confirmed.
 
 Both artifacts use patient-disjoint SMART-OM evaluation with zero
 train/validation/test patient overlap. OpenCV DNN verifies each pinned hash,
@@ -50,6 +55,7 @@ claims, or care guidance.
 ## Release evidence
 
 - `SEGMENTATION_LOCKED_EVALUATION.json`
+- `SEGMENTATION_SMART_OM_ONLY_ATTEMPT.json`
 - `DISEASE_RESEARCH_LOCKED_EVALUATION.json`
 - `ANATOMY_RELEASE_REVIEW.md`
 - `SEGMENTATION_RELEASE_REVIEW.md`

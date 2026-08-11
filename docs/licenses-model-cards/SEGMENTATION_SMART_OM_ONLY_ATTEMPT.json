@@ -1,0 +1,78 @@
+{
+  "artifact_sha256": "894e5c4538ef8d5cd7ce7450cfa1a74d416f253709575d032f9b7b054ff13da7",
+  "code_revision": "38848a81b95bfd5c06b67fc7f577eea600913d90184dad9ed9ec4e4e676dc813",
+  "configuration": {
+    "architecture": "presence_gated_unetplusplus_efficientnet_b4",
+    "batch_size": 4,
+    "cache_preprocessed_images": true,
+    "effective_training_sample_count": 665,
+    "epochs": 16,
+    "evaluation_batch_size": 8,
+    "evaluation_mode": "exact_frozen_validation_checkpoint",
+    "evaluation_postprocessing": "largest_connected_component",
+    "frozen_source_run_sha256": "b20914ff1277c34651afe6207517203c6403154ba3b958133af70373eb379430",
+    "image_size": 512,
+    "learning_rate": 0.00018,
+    "metric_device": "cuda",
+    "normalization_mean": [0.485, 0.456, 0.406],
+    "normalization_std": [0.229, 0.224, 0.225],
+    "positive_sample_repeat": 2,
+    "presence_positive_weight": 0.4910313901345291,
+    "pretrained_imagenet": true,
+    "seed": 20260811,
+    "segmentation_loss_version": "validation_model_soup_v1",
+    "selected_training_epochs": 0,
+    "selected_validation_epoch": 7,
+    "source_training_loss_versions": [
+      "tolerant_boundary_presence_v3",
+      "tolerant_boundary_v2"
+    ],
+    "supplemental_segmentation": null,
+    "training_splits": ["train"],
+    "validation_selection": {
+      "selected_presence_threshold": 0.3,
+      "selected_segmentation_threshold": 0.7,
+      "selected_source_b_weight": 0.85,
+      "source": "weight_interpolation_on_validation_split",
+      "source_a_run_sha256": "782542f3934b8b6eee81ec850bf614c781514361847364a528bd4e3179b02d2a",
+      "source_b_run_sha256": "8b2cc25d47e310fdf02531a3adb45b8861b5c7209e1b7f6c8d6188eaeb2335e4"
+    }
+  },
+  "data_root_persisted": false,
+  "dataset_manifest_sha256": "4cc40d802dc4a0bdc6231e8d8f47483934ba7a1c9b75b80f6c0f2eb37131e646",
+  "disclaimer": "This result is not a diagnosis and does not establish clinical validity.",
+  "evaluated_at": "2026-08-11T03:07:30.503093Z",
+  "evaluation_id": "smart-om-segmentation-locked-test-2026",
+  "interface": {
+    "input_name": "image",
+    "output_kind": "binary_mask_logits",
+    "output_name": "logits",
+    "segmentation_threshold": 0.7
+  },
+  "license_terms": ["CC BY 4.0"],
+  "patient_disjoint": true,
+  "patient_overlap_count": 0,
+  "schema_version": "1.0",
+  "source_dataset": "SMART-OM-figshare-31341790-v1",
+  "source_datasets": ["SMART-OM-figshare-31341790-v1"],
+  "source_license": "CC BY 4.0",
+  "split_patient_counts": {
+    "test": 39,
+    "train": 199,
+    "validation": 39
+  },
+  "task": "segmentation",
+  "test": {
+    "boundary_f1": 0.5615705847740173,
+    "boundary_tolerance_ratio": 0.01,
+    "dice": 0.6808804869651794,
+    "negative_pixel_specificity": 0.9704075455665588,
+    "negative_sample_count": 55,
+    "positive_boundary_f1": 0.31435373425483704,
+    "positive_dice": 0.5675831437110901,
+    "positive_sample_count": 49,
+    "presence_threshold": 0.3,
+    "sample_count": 104,
+    "segmentation_threshold": 0.7
+  }
+}
