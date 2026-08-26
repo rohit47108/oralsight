@@ -10,24 +10,24 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://oralsight.org";
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "OralSight - Document changes you can see",
+    default: "OralSight - Guided mouth scans and visual change tracking",
     template: "%s - OralSight",
   },
   description:
-    "OralSight guides a consistent eight-region mouth scan, organizes non-diagnostic observations, and prepares a report you control.",
+    "OralSight guides a consistent eight-region mouth scan, checks each capture, tracks visible observations, and prepares a report you control.",
   applicationName: "OralSight",
   category: "health",
   openGraph: {
     type: "website",
     siteName: "OralSight",
-    title: "OralSight - Document changes you can see",
+    title: "OralSight - Guided mouth scans and visual change tracking",
     description:
-      "A consistent eight-region capture path for private, non-diagnostic oral observations.",
+      "Capture eight consistent mouth views, track visible observations, and create a report you control.",
   },
   twitter: {
     card: "summary",
     title: "OralSight",
-    description: "Document changes you can see, one consistent scan at a time.",
+    description: "Track visible changes, one consistent scan at a time.",
   },
 };
 

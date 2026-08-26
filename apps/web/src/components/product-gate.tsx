@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import type { ProductContext } from "@/lib/product-auth";
+import { hostedWorkspaceEnabled } from "@/lib/production-env";
 
 export function ProductGate({
   context,
@@ -15,21 +16,33 @@ export function ProductGate({
   const mainContentId = embeddedInSiteMain ? undefined : "main-content";
 
   if (context.state === "signed_out") {
+    const workspaceEnabled = hostedWorkspaceEnabled();
     return (
       <Root className="product-gate" id={mainContentId}>
         <div className="product-gate__content">
           <p className="workspace-kicker">Private workspace</p>
-          <h1>Sign in to your OralSight account.</h1>
+          <h1>
+            {workspaceEnabled
+              ? "Sign in to your OralSight account."
+              : "Continue with the OralSight mobile app."}
+          </h1>
           <p>
-            Your account keeps web access separate from the images protected on
-            your phone.
+            {workspaceEnabled
+              ? "Your account keeps web access separate from the images protected on your phone."
+              : "The mobile app runs the guided scan, stores protected captures, and creates your observation report."}
           </p>
-          <a
-            className="button"
-            href={"/auth/login?returnTo=" + encodeURIComponent(returnTo)}
-          >
-            Sign in securely
-          </a>
+          {workspaceEnabled ? (
+            <a
+              className="button"
+              href={"/auth/login?returnTo=" + encodeURIComponent(returnTo)}
+            >
+              Sign in securely
+            </a>
+          ) : (
+            <Link className="button" href="/how-it-works#start">
+              Explore the scan flow
+            </Link>
+          )}
           <Link className="text-link" href="/">
             Return to OralSight
           </Link>

@@ -1,10 +1,14 @@
 import Link from "next/link";
 
 import { primaryNavigation } from "@/content/site";
+import { hostedWorkspaceEnabled } from "@/lib/production-env";
 
 import { BrandMark } from "./brand-mark";
 
 export function SiteHeader() {
+  const workspaceEnabled = hostedWorkspaceEnabled();
+  const actionHref = workspaceEnabled ? "/signin" : "/how-it-works#start";
+  const actionLabel = workspaceEnabled ? "Open OralSight" : "Explore the scan";
   return (
     <header className="site-header">
       <div className="site-header__inner page-width">
@@ -17,8 +21,8 @@ export function SiteHeader() {
           ))}
         </nav>
         <div className="header-actions">
-          <Link className="button button--compact" href="/signin">
-            Open OralSight
+          <Link className="button button--compact" href={actionHref}>
+            {actionLabel}
           </Link>
         </div>
         <details className="mobile-menu">
@@ -34,8 +38,8 @@ export function SiteHeader() {
             ))}
             <Link href="/security">Security</Link>
             <Link href="/accessibility">Accessibility</Link>
-            <Link className="button" href="/signin">
-              Open OralSight
+            <Link className="button" href={actionHref}>
+              {actionLabel}
             </Link>
           </nav>
         </details>

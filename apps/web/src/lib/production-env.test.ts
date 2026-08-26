@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { validateProductionWebEnvironment } from "@/lib/production-env";
+import { hostedWorkspaceEnabled } from "@/lib/production-env";
 
 const realEnvironment = {
   NODE_ENV: "production",
@@ -26,6 +27,33 @@ describe("production web environment", () => {
     expect(() =>
       validateProductionWebEnvironment(realEnvironment),
     ).not.toThrow();
+  });
+
+  it("accepts a public competition deployment without account credentials", () => {
+    const environment = {
+      NODE_ENV: "production",
+      VERCEL: "1",
+      ORALSIGHT_WEB_MODE: "public",
+      NEXT_PUBLIC_SITE_URL: "https://oralsight.vercel.app",
+    };
+
+    expect(() => validateProductionWebEnvironment(environment)).not.toThrow();
+    expect(hostedWorkspaceEnabled(environment)).toBe(false);
+  });
+
+  it("requires a real HTTPS site origin in public mode", () => {
+    expect(() =>
+      validateProductionWebEnvironment({
+        NODE_ENV: "production",
+        VERCEL: "1",
+        ORALSIGHT_WEB_MODE: "public",
+        NEXT_PUBLIC_SITE_URL: "http://oralsight.test",
+      }),
+    ).toThrow(/NEXT_PUBLIC_SITE_URL.*HTTPS/);
+  });
+
+  it("keeps hosted accounts enabled by default", () => {
+    expect(hostedWorkspaceEnabled(realEnvironment)).toBe(true);
   });
 
   it("rejects a missing production variable", () => {

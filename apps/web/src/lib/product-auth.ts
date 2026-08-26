@@ -7,6 +7,7 @@ import {
   type PlatformMe,
   type UserRole,
 } from "@/lib/platform-api";
+import { hostedWorkspaceEnabled } from "@/lib/production-env";
 
 export type ViewerIdentity = {
   displayName: string;
@@ -64,6 +65,7 @@ function identityFromUser(user: Record<string, unknown>): ViewerIdentity {
 }
 
 export const getProductContext = cache(async (): Promise<ProductContext> => {
+  if (!hostedWorkspaceEnabled()) return { state: "signed_out" };
   const session = await auth0.getSession();
   if (!session) return { state: "signed_out" };
   const identity = identityFromUser(session.user);

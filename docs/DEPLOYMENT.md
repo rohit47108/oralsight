@@ -204,6 +204,14 @@ Set these values in every Vercel environment that will be exercised:
 | `AUTH0_AUDIENCE`             | Exact platform API audience                          |
 | `ORALSIGHT_PLATFORM_API_URL` | Server-only HTTPS origin of the platform API         |
 
+For a public competition deployment before hosted accounts are connected, set
+`ORALSIGHT_WEB_MODE=public` and `NEXT_PUBLIC_SITE_URL` to the deployed HTTPS
+origin. The public site, product explanation, privacy, security, evidence, and
+professional pages remain available. Account-only routes send visitors to the
+mobile product flow instead of exposing a broken identity-provider link. Remove
+`ORALSIGHT_WEB_MODE=public` after the Auth0 and platform values above are set and
+verified.
+
 Register exact callback, logout, and web-origin URLs for production and each
 preview environment with the OIDC provider. Never put a client secret, access
 token, database URL, or signing private key in a `NEXT_PUBLIC_*` variable.

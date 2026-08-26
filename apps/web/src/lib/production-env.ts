@@ -50,6 +50,12 @@ function requireOrigin(
   }
 }
 
+export function hostedWorkspaceEnabled(
+  environment: Environment = process.env,
+): boolean {
+  return environment.ORALSIGHT_WEB_MODE?.trim().toLowerCase() !== "public";
+}
+
 export function validateProductionWebEnvironment(
   environment: Environment = process.env,
 ): void {
@@ -57,6 +63,17 @@ export function validateProductionWebEnvironment(
   const isProductionBuild =
     environment.NODE_ENV === "production" || isVercelBuild;
   if (!isProductionBuild) return;
+
+  if (!hostedWorkspaceEnabled(environment)) {
+    const siteUrl = requireValue(environment, "NEXT_PUBLIC_SITE_URL");
+    if (PLACEHOLDER_PATTERN.test(siteUrl)) {
+      throw new Error(
+        "[OralSight web] NEXT_PUBLIC_SITE_URL still contains a placeholder value.",
+      );
+    }
+    requireOrigin("NEXT_PUBLIC_SITE_URL", siteUrl, isVercelBuild);
+    return;
+  }
 
   const allowCiDummyValues =
     environment.ORALSIGHT_ALLOW_CI_DUMMY_WEB_ENV === "true" &&
