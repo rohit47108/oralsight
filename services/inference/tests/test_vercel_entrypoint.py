@@ -1,6 +1,24 @@
+import tomllib
 from pathlib import Path
 
 from oralsight_api.deployment import packaged_release_manifest
+
+
+def test_vercel_runtime_dependencies_do_not_install_an_asgi_server() -> None:
+    service_root = Path(__file__).resolve().parents[1]
+    project = tomllib.loads(
+        (service_root / "pyproject.toml").read_text(encoding="utf-8")
+    )
+
+    runtime_dependencies = project["project"]["dependencies"]
+
+    assert not any(
+        dependency.lower().startswith("uvicorn") for dependency in runtime_dependencies
+    )
+    assert any(
+        dependency.lower().startswith("uvicorn")
+        for dependency in project["project"]["optional-dependencies"]["dev"]
+    )
 
 
 def test_vercel_entrypoint_prefers_private_release_bundle(tmp_path: Path) -> None:
