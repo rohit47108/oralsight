@@ -15,7 +15,7 @@ artifact worker, and the stateless image-analysis service. Normal installed-app
 use never substitutes bundled results for a live capture.
 
 The last complete source-level verification was green. The new privileged-access
-changes require one final repository-wide rerun, so this document does not invent
+changes require one final repository-wide rerun, so this record does not fill in
 updated test counts, generated hashes, or route totals. The remaining release
 items include external deployment, physical-device evidence, clinician approval,
 repeat-capture comparison evidence, closed learned-model gates, and the model

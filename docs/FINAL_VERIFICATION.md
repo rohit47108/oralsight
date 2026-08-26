@@ -2,12 +2,12 @@
 
 Snapshot date: 2026-08-25
 
-> **This result is not a diagnosis.** This document records engineering evidence,
+> **This result is not a diagnosis.** This record contains engineering evidence,
 > not clinical validation, regulatory clearance, or a production-host sign-off.
 
 The privileged-access contract changed after the previous release pass. Rows
 marked pending must be replaced with exact evidence from the final rerun. This
-record deliberately does not guess counts, hashes, route totals, a commit, or an
+the record does not guess counts, hashes, route totals, a commit, or an
 archive filename.
 
 ## Source checks
