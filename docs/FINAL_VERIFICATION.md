@@ -89,10 +89,10 @@ The following also require owner accounts or physical resources:
 
 The verified source archive is:
 
-`OralSight-source.zip` — 572 files, 89,035,633 bytes, SHA-256
-`f2543631f0938dbba8801501dc33120f85e88ca46a02edad8265562eaab00099`.
+`OralSight-source.zip` — 572 files, 89,035,851 bytes, SHA-256
+`92859da7a5554f6fd885811359949efb0fbe01732887d8be0b496c4aef85e497`.
 
-It was created from the clean release tree at commit `fa22d20`. The archive was
+It was created from the clean release tree at commit `bca1f6e`. The archive was
 inspected after creation; the only environment-looking files are `.env.example`
 templates. No secrets, databases, Git metadata, dependencies, or builds are
 included.
