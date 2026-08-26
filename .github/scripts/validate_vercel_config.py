@@ -108,7 +108,7 @@ def validate_repository_contract(root_config: dict[str, Any]) -> None:
         ):
             raise ValueError("every root rewrite must target a declared service")
     if (
-        rewrites[-1].get("source") != "/:path*"
+        rewrites[-1].get("source") != "/(.*)"
         or rewrites[-1]["destination"].get("service") != "web"
     ):
         raise ValueError("the final Vercel rewrite must be the web catch-all")

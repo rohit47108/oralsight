@@ -8,7 +8,7 @@ import {
 import type { CaptureSet, ReportArtifact } from "@oralsight/contracts";
 import { z } from "zod";
 
-import { auth0 } from "@/lib/auth0";
+import { getAuth0Client } from "@/lib/auth0";
 
 function removeCaptureUploadStatus(value: unknown): unknown {
   if (value === null || typeof value !== "object" || Array.isArray(value)) {
@@ -505,7 +505,7 @@ function platformBaseUrl(): string {
 }
 
 async function accessToken(): Promise<string> {
-  const result = await auth0.getAccessToken();
+  const result = await getAuth0Client().getAccessToken();
   const token =
     typeof result === "string" ? result : (result as { token?: string }).token;
   if (!token) {

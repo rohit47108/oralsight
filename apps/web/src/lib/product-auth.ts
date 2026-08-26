@@ -1,6 +1,6 @@
 import { cache } from "react";
 
-import { auth0 } from "@/lib/auth0";
+import { getAuth0Client } from "@/lib/auth0";
 import {
   PlatformApiError,
   getMe,
@@ -66,7 +66,7 @@ function identityFromUser(user: Record<string, unknown>): ViewerIdentity {
 
 export const getProductContext = cache(async (): Promise<ProductContext> => {
   if (!hostedWorkspaceEnabled()) return { state: "signed_out" };
-  const session = await auth0.getSession();
+  const session = await getAuth0Client().getSession();
   if (!session) return { state: "signed_out" };
   const identity = identityFromUser(session.user);
   try {
