@@ -53,7 +53,12 @@ function requireOrigin(
 export function hostedWorkspaceEnabled(
   environment: Environment = process.env,
 ): boolean {
-  return environment.ORALSIGHT_WEB_MODE?.trim().toLowerCase() !== "public";
+  const mode = environment.ORALSIGHT_WEB_MODE?.trim().toLowerCase();
+  if (mode === "public") return false;
+  if (mode === "hosted") return true;
+  return REQUIRED_WEB_ENVIRONMENT.every((name) =>
+    Boolean(environment[name]?.trim()),
+  );
 }
 
 export function validateProductionWebEnvironment(
@@ -64,7 +69,7 @@ export function validateProductionWebEnvironment(
     environment.NODE_ENV === "production" || isVercelBuild;
   if (!isProductionBuild) return;
 
-  if (!hostedWorkspaceEnabled(environment)) {
+  if (environment.ORALSIGHT_WEB_MODE?.trim().toLowerCase() === "public") {
     const siteUrl = requireValue(environment, "NEXT_PUBLIC_SITE_URL");
     if (PLACEHOLDER_PATTERN.test(siteUrl)) {
       throw new Error(

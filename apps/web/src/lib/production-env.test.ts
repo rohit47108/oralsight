@@ -56,6 +56,26 @@ describe("production web environment", () => {
     expect(hostedWorkspaceEnabled(realEnvironment)).toBe(true);
   });
 
+  it("does not offer hosted sign-in when runtime credentials are absent", () => {
+    expect(
+      hostedWorkspaceEnabled({
+        NEXT_PUBLIC_SITE_URL: "https://oralsight.vercel.app",
+      }),
+    ).toBe(false);
+  });
+
+  it("honors an explicit hosted mode so a bad deployment fails loudly", () => {
+    expect(hostedWorkspaceEnabled({ ORALSIGHT_WEB_MODE: "hosted" })).toBe(true);
+    expect(() =>
+      validateProductionWebEnvironment({
+        NODE_ENV: "production",
+        VERCEL: "1",
+        ORALSIGHT_WEB_MODE: "hosted",
+        NEXT_PUBLIC_SITE_URL: "https://oralsight.vercel.app",
+      }),
+    ).toThrow(/AUTH0_DOMAIN/);
+  });
+
   it("rejects a missing production variable", () => {
     const environment: Record<string, string | undefined> = {
       ...realEnvironment,
