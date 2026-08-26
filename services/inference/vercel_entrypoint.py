@@ -33,7 +33,7 @@ from oralsight_api.main import app as inference_app  # noqa: E402
 
 
 app = FastAPI(
-    title="OralSight inference gateway",
+    title="OralSight Inference Service",
     docs_url=None,
     redoc_url=None,
     openapi_url=None,
