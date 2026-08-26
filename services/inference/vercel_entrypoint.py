@@ -11,6 +11,8 @@ import os
 import sys
 from pathlib import Path
 
+from fastapi import FastAPI
+
 SERVICE_DIRECTORY = Path(__file__).resolve().parent
 SOURCE_DIRECTORY = SERVICE_DIRECTORY / "src"
 if str(SOURCE_DIRECTORY) not in sys.path:
@@ -27,6 +29,16 @@ if packaged_release is not None:
         str(packaged_release),
     )
 
-from oralsight_api.main import app  # noqa: E402
+from oralsight_api.main import app as inference_app  # noqa: E402
+
+
+app = FastAPI(
+    title="OralSight inference gateway",
+    docs_url=None,
+    redoc_url=None,
+    openapi_url=None,
+)
+app.mount("/api", inference_app)
+app.mount("/", inference_app)
 
 __all__ = ["app"]

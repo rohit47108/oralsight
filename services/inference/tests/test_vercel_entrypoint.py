@@ -1,7 +1,23 @@
+import importlib.util
 import tomllib
 from pathlib import Path
+from types import ModuleType
+
+from fastapi.testclient import TestClient
 
 from oralsight_api.deployment import packaged_release_manifest
+
+
+def load_vercel_entrypoint(service_root: Path) -> ModuleType:
+    spec = importlib.util.spec_from_file_location(
+        "oralsight_vercel_entrypoint_under_test",
+        service_root / "vercel_entrypoint.py",
+    )
+    if spec is None or spec.loader is None:
+        raise RuntimeError("Could not load the Vercel entrypoint module")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 def test_vercel_runtime_uses_uvicorn_without_websocket_extras() -> None:
@@ -20,6 +36,14 @@ def test_vercel_runtime_uses_uvicorn_without_websocket_extras() -> None:
         dependency.lower().startswith("uvicorn")
         for dependency in project["project"]["optional-dependencies"]["dev"]
     )
+
+
+def test_vercel_entrypoint_accepts_public_api_prefix() -> None:
+    service_root = Path(__file__).resolve().parents[1]
+    client = TestClient(load_vercel_entrypoint(service_root).app)
+
+    assert client.get("/api/healthz").status_code == 200
+    assert client.get("/api/v1/model-card").status_code == 200
 
 
 def test_vercel_entrypoint_prefers_private_release_bundle(tmp_path: Path) -> None:
