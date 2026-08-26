@@ -60,7 +60,7 @@ const RESULT_REASON_COPY: Readonly<Record<string, string>> = {
   appearance_inference_failed:
     "The appearance-description analysis could not finish.",
   disease_research_inference_failed:
-    "The experimental disease-category analysis could not finish.",
+    "The additional image-pattern analysis could not finish.",
   baseline_image_quality_rejected:
     "The earlier image did not pass the image-quality checks.",
   current_image_quality_rejected:

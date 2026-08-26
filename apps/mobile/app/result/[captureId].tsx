@@ -16,6 +16,10 @@ import { MaskOverlay } from "@/components/MaskOverlay";
 import { Screen } from "@/components/Screen";
 import { Button, Card, MetricBar, SectionTitle } from "@/components/Ui";
 import { analyzeCapture } from "@/lib/api";
+import {
+  ADDITIONAL_ANALYSIS_TITLE,
+  isReleasedModelOutput,
+} from "@/lib/analysisPresentation";
 import { captureStorageRejectionReasons } from "@/lib/analysisPolicy";
 import { evaluateBundledGuidance } from "@/lib/guidanceRules";
 import { scheduleObservationReminder } from "@/lib/notifications";
@@ -210,7 +214,7 @@ export default function ResultRoute() {
           summary: analysis.candidateMask ? "Returned" : "Not returned",
           detail: analysis.candidateMask
             ? "A released segmentation model returned a candidate boundary. The visible measurements come from that boundary and remain approximate."
-            : "No candidate boundary was returned. This is not an all-clear and does not establish that the tissue is healthy.",
+            : "No candidate boundary was returned for this image. Review the capture quality and region match for more context.",
         },
         {
           id: "intake",
@@ -230,20 +234,18 @@ export default function ResultRoute() {
             ? `A user-confirmed follow-up cleared the registration gates with ${Math.round(relatedComparison.registrationConfidence * 100)}% registration confidence.`
             : "No user-confirmed comparison linked to this observation has enough alignment evidence to report change.",
         },
-        {
-          id: "research",
-          title: "Research outputs",
-          summary:
-            analysis.appearanceOutput?.enabled &&
-            analysis.appearanceOutput.gatePassed
-              ? "Appearance output released"
-              : "Hidden or disabled",
-          detail:
-            analysis.appearanceOutput?.enabled &&
-            analysis.appearanceOutput.gatePassed
-              ? "The appearance output passed its release gate for this deployed model. Disease-category research remains separate and never establishes a diagnosis."
-              : "The app does not show an appearance or disease-category label unless its documented release gate passes.",
-        },
+        ...(isReleasedModelOutput(analysis.appearanceOutput) ||
+        isReleasedModelOutput(analysis.diseaseResearchOutput)
+          ? [
+              {
+                id: "additional-analysis",
+                title: "Additional analysis",
+                summary: "Available for this result",
+                detail:
+                  "Additional image-pattern details are shown separately with their confidence and deployed model version.",
+              },
+            ]
+          : []),
         {
           id: "limitations",
           title: "Limits and uncertainty",
@@ -729,14 +731,14 @@ export default function ResultRoute() {
           </Text>
         </Card>
       ) : null}
-      {complete && analysis ? (
+      {complete && isReleasedModelOutput(analysis?.diseaseResearchOutput) ? (
         <Card accent="amber">
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={
               researchOpen
-                ? "Hide experimental research output"
-                : "Show experimental research output"
+                ? `Hide ${ADDITIONAL_ANALYSIS_TITLE.toLowerCase()}`
+                : `Show ${ADDITIONAL_ANALYSIS_TITLE.toLowerCase()}`
             }
             accessibilityState={{ expanded: researchOpen }}
             onPress={() => setResearchOpen((value) => !value)}
@@ -746,8 +748,8 @@ export default function ResultRoute() {
             ]}
           >
             <SectionTitle
-              title="Experimental research output"
-              subtitle="Hidden unless the stricter release gate passes."
+              title={ADDITIONAL_ANALYSIS_TITLE}
+              subtitle="Additional context with its confidence and model version."
               icon="flask-outline"
             />
             <Ionicons
@@ -758,11 +760,7 @@ export default function ResultRoute() {
           </Pressable>
           {researchOpen ? (
             <Text style={[styles.limitation, { color: theme.secondaryText }]}>
-              {analysis.diseaseResearchOutput?.enabled &&
-              analysis.diseaseResearchOutput.gatePassed
-                ? `${analysis.diseaseResearchOutput.topLabel?.replaceAll("_", " ") ?? "No label"} · ${analysis.diseaseResearchOutput.limitation}`
-                : (analysis.diseaseResearchOutput?.limitation ??
-                  "No disease-category research output was returned.")}
+              {`${analysis.diseaseResearchOutput.topLabel?.replaceAll("_", " ") ?? "No label"} · ${analysis.diseaseResearchOutput.limitation}`}
             </Text>
           ) : null}
         </Card>

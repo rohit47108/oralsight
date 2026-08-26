@@ -3,9 +3,9 @@ import type { Metadata } from "next";
 import { PageIntro } from "@/components/page-intro";
 
 export const metadata: Metadata = {
-  title: "Research & limitations",
+  title: "Analysis & evidence",
   description:
-    "Read OralSight model release gates, measurement limits, abstention behavior, dataset limits, and forbidden conclusions.",
+    "See how OralSight checks captures, highlights candidate areas, records confidence, and publishes model performance.",
 };
 
 const releaseGates = [
@@ -42,9 +42,9 @@ export default function ResearchPage() {
   return (
     <>
       <PageIntro
-        label="Research & limitations"
-        title="No evidence, no output."
-        description="A model can exist in the codebase and still remain hidden in the product. Each output has its own data, performance, calibration, and review gate."
+        label="Analysis & evidence"
+        title="Every result carries its own record."
+        description="OralSight keeps capture quality, model versions, confidence, and limitations beside the image so a result can be understood and checked."
       />
 
       <section
@@ -52,15 +52,15 @@ export default function ResearchPage() {
         aria-labelledby="status-heading"
       >
         <div>
-          <p className="section-label">Release status</p>
+          <p className="section-label">Current deployment</p>
           <h2 id="status-heading">
             The deployed model card is the source of truth.
           </h2>
         </div>
         <p>
-          OralSight reads a versioned model card at runtime. It names model
-          files, hashes, enabled heads, metrics, limitations, and gate status. A
-          public page never substitutes a marketing claim for that record.
+          OralSight reads a versioned model card at runtime. It lists the active
+          analysis tools, exact model versions and hashes, evaluation metrics,
+          known limits, and release status for the service you are using.
         </p>
       </section>
 
@@ -69,13 +69,15 @@ export default function ResearchPage() {
         aria-labelledby="gate-heading"
       >
         <div className="gate-section__heading">
-          <p className="section-label">Required evidence</p>
-          <h2 id="gate-heading">Five outputs. Five separate gates.</h2>
+          <p className="section-label">Performance requirements</p>
+          <h2 id="gate-heading">
+            Each analysis tool earns release separately.
+          </h2>
         </div>
         <div
           className="gate-table"
           role="table"
-          aria-label="Research output release gates"
+          aria-label="Analysis release requirements"
         >
           <div className="gate-table__header" role="row">
             <span role="columnheader">Output</span>
@@ -100,23 +102,24 @@ export default function ResearchPage() {
           <div>
             <p className="section-label">Primary observation</p>
             <h2 id="primary-heading">
-              Describe the image before naming a category.
+              Start with what is visible in the image.
             </h2>
             <ul>
               <li>Candidate mask or outline</li>
               <li>Approximate normalized area</li>
               <li>Shape, color, and texture descriptors</li>
               <li>Uncertainty and limitations</li>
-              <li>Reasons for abstention</li>
+              <li>A clear reason and next step when analysis stops</li>
             </ul>
           </div>
           <div>
-            <p className="section-label">Experimental research output</p>
-            <h2>Separate, collapsed, and never a care rule.</h2>
+            <p className="section-label">Additional pattern analysis</p>
+            <h2>Extra context stays separate from the primary result.</h2>
             <p>
-              A disease-category head may appear only after its stricter gate
-              and signed review pass. It remains expandable, plainly labeled,
-              and cannot set urgency or care guidance.
+              Additional categories appear only when the deployed model card
+              marks that tool as released. They stay in an expandable panel with
+              their confidence and model version, leaving the visual observation
+              easy to read first.
             </p>
           </div>
         </div>
@@ -127,19 +130,24 @@ export default function ResearchPage() {
         aria-labelledby="limits-heading"
       >
         <div className="limitation-ledger__heading">
-          <p className="section-label">Known limits</p>
-          <h2 id="limits-heading">What the product cannot establish.</h2>
+          <p className="section-label">Reading a result well</p>
+          <h2 id="limits-heading">
+            Important context stays beside the result.
+          </h2>
         </div>
         <dl>
           <div>
             <dt>Diagnosis</dt>
             <dd>
-              A photograph and research model do not establish a diagnosis.
+              A result organizes visible image findings for follow-up; diagnosis
+              requires an appropriate professional evaluation.
             </dd>
           </div>
           <div>
             <dt>Harmlessness</dt>
-            <dd>No result proves that an observed change is harmless.</dd>
+            <dd>
+              A quiet-looking image is still only one view at one point in time.
+            </dd>
           </div>
           <div>
             <dt>Physical size</dt>
@@ -167,8 +175,8 @@ export default function ResearchPage() {
           <div>
             <dt>Clinical validity</dt>
             <dd>
-              Passing a competition release gate does not establish clinical
-              validity or regulatory clearance.
+              Engineering performance is recorded separately from any future
+              clinical or regulatory evaluation.
             </dd>
           </div>
         </dl>
@@ -180,18 +188,17 @@ export default function ResearchPage() {
       >
         <div className="page-width detail-split">
           <div>
-            <p className="section-label">Care information</p>
+            <p className="section-label">Next-step information</p>
             <h2 id="guidance-heading">
-              Models do not decide what you should do next.
+              Symptoms and image analysis remain separate.
             </h2>
           </div>
           <div className="long-copy">
             <p>
-              Review priority can come only from a signed, versioned,
-              clinician-approved rule file using symptoms, duration,
-              progression, image quality, and uncertainty. If that file is
-              absent or invalid, urgency levels stay off and the app gives
-              neutral seek-care information.
+              OralSight can organize symptom answers, duration, progression,
+              image quality, and uncertainty using a signed, versioned guidance
+              file. The app records the exact guidance version used and always
+              keeps model categories out of that decision.
             </p>
           </div>
         </div>

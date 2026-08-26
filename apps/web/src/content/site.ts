@@ -5,14 +5,14 @@ export const primaryNavigation = [
   { href: "/how-it-works", label: "How it works" },
   { href: "/privacy", label: "Privacy" },
   { href: "/for-professionals", label: "For professionals" },
-  { href: "/research", label: "Research & limits" },
+  { href: "/research", label: "Analysis & evidence" },
 ] as const;
 
 export const footerNavigation = [
   { href: "/calibration", label: "Calibration card" },
   { href: "/security", label: "Security" },
   { href: "/accessibility", label: "Accessibility" },
-  { href: "/research", label: "Research & limitations" },
+  { href: "/research", label: "Analysis & evidence" },
 ] as const;
 
 export const mouthRegions = [

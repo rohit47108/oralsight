@@ -47,7 +47,7 @@ export function SiteFooter() {
       </div>
       <div className="page-width footer-bottom">
         <span>© {new Date().getFullYear()} OralSight</span>
-        <span>Non-diagnostic research product</span>
+        <span>Guided oral observation and comparison</span>
       </div>
     </footer>
   );

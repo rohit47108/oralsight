@@ -531,7 +531,7 @@ export default function CompareRoute() {
                 ? "Automated suggestion unavailable"
                 : "Automated link suggestion"
             }
-            subtitle="This research output does not identify tissue or confirm that the observations match."
+            subtitle="The score suggests visual similarity. You confirm whether both images show the same observation."
             icon="link-outline"
           />
           {suggestion.candidateMatchScore !== null ? (

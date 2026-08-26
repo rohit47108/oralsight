@@ -6,9 +6,9 @@ import { RegionMap } from "@/components/region-map";
 import { scanSteps } from "@/content/site";
 
 export const metadata: Metadata = {
-  title: "Document changes you can see",
+  title: "Guided mouth scans and visual change tracking",
   description:
-    "Follow one consistent eight-region capture path, review non-diagnostic observations, and prepare a report you control.",
+    "Capture eight consistent mouth views, review visible changes, compare observations over time, and create a report you control.",
 };
 
 function Arrow() {
@@ -37,12 +37,14 @@ export default function HomePage() {
         </ol>
 
         <div className="hero-copy">
-          <p className="hero-copy__lead">A guided record, not a guess.</p>
-          <h1 id="hero-heading">A clearer way to keep track.</h1>
+          <p className="hero-copy__lead">Guided mouth observation</p>
+          <h1 id="hero-heading">
+            Track visible changes with a consistent scan.
+          </h1>
           <p className="hero-copy__body">
-            OralSight helps you document your mouth with the same eight views
-            each time, then organizes what you can see for a professional
-            conversation.
+            OralSight guides you through eight mouth regions, checks each
+            capture, highlights candidate areas, and turns your observations
+            into a timeline and shareable report.
           </p>
           <div className="hero-actions">
             <Link className="button" href="/how-it-works#start">
@@ -53,7 +55,7 @@ export default function HomePage() {
             </Link>
           </div>
           <p className="hero-note">
-            You decide what to capture, save, compare, and share.
+            Your scans stay organized by region, date, and capture quality.
           </p>
         </div>
 
@@ -70,9 +72,9 @@ export default function HomePage() {
             <p className="section-label">Compare with context</p>
             <h2 id="comparison-heading">See the same area, side by side.</h2>
             <p>
-              OralSight only suggests a link between observations. You confirm
-              the match before anything joins a timeline, and weak comparisons
-              stay hidden.
+              Confirm two observations show the same area, then review them side
+              by side. OralSight checks whether the images align well enough
+              before showing an approximate change.
             </p>
             <Link className="arrow-link" href="/how-it-works#compare">
               How comparisons work <Arrow />
@@ -172,8 +174,8 @@ export default function HomePage() {
           <p className="section-label">Made for a real conversation</p>
           <h2 id="report-heading">A report a professional can scan quickly.</h2>
           <p>
-            Dates, region names, image quality, observations, uncertainty, and
-            questions stay together. Research output remains clearly separated.
+            Dates, region names, image quality, visible descriptors, confidence,
+            comparisons, and questions stay together in one readable record.
           </p>
         </div>
         <article className="report-sheet" aria-label="Report structure preview">
@@ -209,13 +211,14 @@ export default function HomePage() {
 
       <section className="closing-callout">
         <div className="page-width closing-callout__inner">
-          <h2>Know what the app can and cannot tell you.</h2>
+          <h2>See how OralSight analyzes each capture.</h2>
           <p>
-            Read the model gates, measurement limits, and situations where
-            analysis stops instead of producing an answer.
+            Explore the image checks, candidate-area analysis, confidence
+            details, comparison rules, and model performance records behind a
+            result.
           </p>
           <Link className="button button--light" href="/research">
-            Read research & limits
+            Explore the analysis
           </Link>
         </div>
       </section>

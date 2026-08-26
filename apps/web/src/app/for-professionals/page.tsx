@@ -15,7 +15,7 @@ export default function ProfessionalsPage() {
       <PageIntro
         label="For professionals"
         title="A cleaner record for the conversation in front of you."
-        description="OralSight organizes patient-captured observations. It does not replace an examination, a diagnostic image, or clinical judgment."
+        description="OralSight organizes patient-captured observations into a consistent record that is faster to review alongside an examination."
       />
 
       <section
@@ -87,8 +87,8 @@ export default function ProfessionalsPage() {
             </h2>
             <p>
               The workspace groups shared cases, image pairs, session coverage,
-              annotations, and access history. Experimental output stays
-              collapsed and clearly labeled.
+              annotations, reports, and access history. Additional model output
+              stays separate from the primary visual observation.
             </p>
           </div>
           <div
@@ -114,8 +114,8 @@ export default function ProfessionalsPage() {
                 <dd>Confirmation and geometry status</dd>
               </div>
               <div>
-                <dt>Research output</dt>
-                <dd>Separate, gated, expandable</dd>
+                <dt>Additional analysis</dt>
+                <dd>Separate, versioned, expandable</dd>
               </div>
             </dl>
             <p>Structure preview. No patient record is shown.</p>
@@ -141,13 +141,13 @@ export default function ProfessionalsPage() {
 
       <section className="professional-close">
         <div className="page-width professional-close__inner">
-          <h2>Review the evidence rules, then request secure access.</h2>
+          <h2>Review the analysis record, then request secure access.</h2>
           <p>
-            Release gates, data requirements, and known limitations are part of
-            the product, not fine print.
+            Model versions, capture quality, confidence, and known limitations
+            travel with every shared result.
           </p>
           <Link className="button button--light" href="/research">
-            Read research & limits
+            Review analysis & evidence
           </Link>
           <Link className="text-link" href="/professional-apply">
             Apply for clinician access

@@ -97,15 +97,16 @@ function Limitations({ values }: { values: string[] }) {
 function ModelOutput({
   title,
   value,
-  experimental = false,
+  contextual = false,
 }: {
   title: string;
   value: unknown;
-  experimental?: boolean;
+  contextual?: boolean;
 }) {
   const output = record(value);
   if (!output) return null;
   const enabled = output.enabled === true;
+  if (!enabled) return null;
   const label = displayLabel(output.topLabel);
   const confidence = percentage(output.confidence);
   const limitation = string(output.limitation);
@@ -113,7 +114,7 @@ function ModelOutput({
     <section className="authorized-model-output" data-enabled={enabled}>
       <div>
         <h4>{title}</h4>
-        <span>{enabled ? "Released output" : "Not released"}</span>
+        <span>Available in this result</span>
       </div>
       {enabled && label ? (
         <p>
@@ -122,9 +123,9 @@ function ModelOutput({
         </p>
       ) : null}
       {limitation ? <p>{limitation}</p> : null}
-      {experimental ? (
+      {contextual ? (
         <p className="authorized-model-output__note">
-          This research output does not determine care guidance.
+          Use this additional analysis as context for professional discussion.
         </p>
       ) : null}
     </section>
@@ -261,9 +262,9 @@ function Observation({
         ) : null}
         <ModelOutput title="Appearance output" value={value.appearanceOutput} />
         <ModelOutput
-          title="Experimental research output"
+          title="Additional image pattern analysis"
           value={value.diseaseResearchOutput}
-          experimental
+          contextual
         />
         <Limitations values={limitations} />
       </div>

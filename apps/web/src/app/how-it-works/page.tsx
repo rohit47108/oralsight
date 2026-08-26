@@ -109,10 +109,10 @@ export default function HowItWorksPage() {
           <li>
             <span>4</span>
             <div>
-              <h3>Honest stop</h3>
+              <h3>Clear feedback</h3>
               <p>
-                Unsupported or uncertain input shows why analysis is
-                unavailable.
+                If a capture cannot be analyzed, the app explains what happened
+                and gives you the next useful action.
               </p>
             </div>
           </li>
@@ -134,16 +134,16 @@ export default function HowItWorksPage() {
             <p>
               A completed primary result can show a candidate outline,
               approximate image-normalized area, visible shape, color, and
-              texture descriptors, uncertainty, and limitations. It may also
-              abstain.
+              texture descriptors, confidence, and the capture details used to
+              produce the result.
             </p>
             <p>
-              Optional research categories stay in a separate expandable area
-              and only appear after their release gates pass. They do not
-              control care guidance.
+              Additional image-pattern analysis appears in a separate details
+              panel when it is available. The deployed model card records which
+              analysis tools are active and how they were evaluated.
             </p>
             <Link className="arrow-link arrow-link--light" href="/research">
-              Read the release gates <span aria-hidden="true">→</span>
+              See how analysis works <span aria-hidden="true">→</span>
             </Link>
           </div>
         </div>

@@ -10,6 +10,7 @@ import {
 } from "@oralsight/contracts";
 
 import { DISCLAIMER, ORAL_MAP_ASSET_VERSION } from "@/constants";
+import { isReleasedModelOutput } from "@/lib/analysisPresentation";
 import { evaluateBundledGuidance } from "@/lib/guidanceRules";
 import {
   decryptToTemporaryFile,
@@ -170,19 +171,23 @@ async function observationRows(input: ReportInput): Promise<string> {
           .join(", ")
       : "Unavailable";
     const appearance =
-      analysis?.appearanceOutput?.enabled &&
-      analysis.appearanceOutput.gatePassed &&
+      isReleasedModelOutput(analysis?.appearanceOutput) &&
       analysis.appearanceOutput.topLabel
         ? `${analysis.appearanceOutput.topLabel.replaceAll("_", " ")} (${Math.round((analysis.appearanceOutput.confidence ?? 0) * 100)}% confidence)`
-        : (analysis?.appearanceOutput?.limitation ??
-          "Not requested or unavailable");
-    const diseaseResearch =
-      analysis?.diseaseResearchOutput?.enabled &&
-      analysis.diseaseResearchOutput.gatePassed &&
+        : null;
+    const additionalAnalysis =
+      isReleasedModelOutput(analysis?.diseaseResearchOutput) &&
       analysis.diseaseResearchOutput.topLabel
-        ? `${analysis.diseaseResearchOutput.topLabel.replaceAll("_", " ")} (${Math.round((analysis.diseaseResearchOutput.confidence ?? 0) * 100)}% confidence; experimental research output)`
-        : (analysis?.diseaseResearchOutput?.limitation ??
-          "Not requested or unavailable");
+        ? `${analysis.diseaseResearchOutput.topLabel.replaceAll("_", " ")} (${Math.round((analysis.diseaseResearchOutput.confidence ?? 0) * 100)}% confidence)`
+        : null;
+    const optionalAnalysisMarkup = [
+      appearance
+        ? `<p><strong>Appearance pattern:</strong> ${escapeHtml(appearance)}</p>`
+        : "",
+      additionalAnalysis
+        ? `<p><strong>Additional image pattern analysis:</strong> ${escapeHtml(additionalAnalysis)}</p>`
+        : "",
+    ].join("");
     const calibration = calibrationForReport(capture);
     const calibrationMarkup =
       calibration.status === "valid"
@@ -218,8 +223,7 @@ async function observationRows(input: ReportInput): Promise<string> {
           <p><strong>Shape descriptors:</strong> ${analysis?.descriptors ? `perimeter ${analysis.descriptors.perimeter.toFixed(3)}; border irregularity ${analysis.descriptors.borderIrregularity.toFixed(3)}` : "Unavailable"}</p>
           <p><strong>Color descriptors:</strong> ${analysis?.descriptors ? `redness ${analysis.descriptors.meanRedness.toFixed(3)}; brightness ${analysis.descriptors.meanBrightness.toFixed(3)}` : "Unavailable"}</p>
           <p><strong>Texture contrast:</strong> ${analysis?.descriptors ? analysis.descriptors.textureContrast.toFixed(3) : "Unavailable"}</p>
-          <p><strong>Gated appearance output:</strong> ${escapeHtml(appearance)}</p>
-          <p><strong>Experimental disease-category research output:</strong> ${escapeHtml(diseaseResearch)}</p>
+          ${optionalAnalysisMarkup}
           <p><strong>Model confidence:</strong> ${analysis?.status === "complete" ? `${Math.round(analysis.uncertainty.overallConfidence * 100)}%` : "Unavailable; no completed learned analysis"}</p>
           <p><strong>Dataset similarity:</strong> ${analysis?.uncertainty.datasetSimilarity === null || analysis?.uncertainty.datasetSimilarity === undefined ? "Not assessed; no released out-of-distribution model" : `${Math.round(analysis.uncertainty.datasetSimilarity * 100)}%`}</p>
           <p><strong>Model agreement:</strong> ${analysis?.uncertainty.modelAgreement === null || analysis?.uncertainty.modelAgreement === undefined ? "Not assessed; no released independent ensemble" : `${Math.round(analysis.uncertainty.modelAgreement * 100)}%`}</p>
