@@ -81,7 +81,7 @@
 
 ## Task 6: Final documentation
 
-**Description:** Make release documentation match the exact verified tree and remove assistant-like or inflated claims.
+**Description:** Make the release documentation match the verified tree and keep the wording plain and accurate.
 
 **Acceptance criteria:**
 

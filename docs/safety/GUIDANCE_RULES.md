@@ -1,6 +1,6 @@
 # Guidance-rule activation procedure
 
-The included example is intentionally disabled. The application must treat a missing,
+The included example is disabled. The application must treat a missing,
 malformed, unsigned, hash-mismatched, expired, or `enabled: false` file identically:
 
 - calculate no urgency or review-priority level;

@@ -1,6 +1,6 @@
 # Oral observation map asset
 
-The audited v1 asset is `procedural-v1`: Codex-assisted geometry created for OralSight
+The audited v1 asset is `procedural-v1`: procedural geometry created for OralSight
 and rendered from React Three Fiber primitives in
 `apps/mobile/src/components/OralObservationMap.tsx`. There is no GLB, imported patient
 anatomy, or commercial mesh in this version. `manifest.json` binds the implementation

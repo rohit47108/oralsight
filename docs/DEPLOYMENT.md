@@ -2,7 +2,7 @@
 
 Last reviewed: 2026-08-13
 
-This document separates what is present in source from what still needs an
+This guide separates what is present in source from what still needs an
 account, credential, managed service, physical device, or real deployment. A
 successful software deployment does not establish clinical accuracy or
 regulatory status.
