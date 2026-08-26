@@ -1,7 +1,7 @@
 # OralSight
 
-OralSight is a real iOS and Android mouth-observation app with an intentionally
-non-diagnostic safety boundary.
+OralSight is an iOS and Android app for taking consistent mouth photos and
+tracking visible changes. It is not a diagnostic tool.
 
 The normal user flow accepts a camera image or a photo selected from the device,
 removes metadata, checks image quality, asks the user to confirm privacy and the
@@ -9,9 +9,9 @@ selected mouth region, encrypts accepted data locally, calls a stateless analysi
 service, saves the signed response, and makes the observation available in history
 and a local PDF report.
 
-The installed app contains no sample mouth image or local fixture fallback. It
-does not substitute made-up results when analysis fails. A disabled-by-default
-backend fixture remains only for isolated service and contract testing.
+The installed app contains no sample mouth images and does not replace a failed
+analysis with a made-up result. A disabled backend fixture exists only for
+service and contract tests.
 
 > **This result is not a diagnosis.** OralSight does not prove cancer,
 > harmlessness, or the absence of disease.
@@ -43,7 +43,7 @@ both the quality and anatomy checks pass. An empty mask means only that the mode
 did not mark a candidate; it does not prove that the image is normal or harmless.
 The app never invents a mask, disease class, or diagnosis.
 
-## What is intentionally unavailable
+## What is not available yet
 
 The anatomy-validation head is enabled only for region matching. Its
 patient-disjoint test reached macro F1 `0.9842`, with no region recall below
@@ -54,7 +54,7 @@ Its exact frozen test reached Dice `0.7192` and boundary F1 `0.6256`, passing
 the required aggregate gates. Positive-image scores were lower, so its
 limitations remain visible and an empty mask is never treated as reassurance.
 
-That released weight used the Autooral training split under its authors'
+The released weight uses the Autooral training split under its authors'
 academic-research and non-commercial terms. A clean-license SMART-OM-only
 replacement was trained and evaluated once on a fresh patient holdout, but it
 reached Dice `0.6809` and boundary F1 `0.5616`, below the fixed `0.70`/`0.60`
@@ -67,8 +67,8 @@ Disease-category research failed (`macro F1 0.3596`, calibration error
 Appearance classification and lesion re-identification lack the required labels
 or longitudinal pairs. Those three heads remain disabled for real users.
 
-The service has a hash-verified release-manifest and model-runtime boundary. A future
-model is allowed to run only when its exact artifact, preprocessing contract,
+The service checks a hash-verified release manifest before loading a model. A
+future model can run only when its exact artifact, preprocessing contract,
 metrics, review evidence, and release state validate. Missing or invalid evidence
 causes an abstention.
 
