@@ -27,7 +27,7 @@ adb reverse tcp:8000 tcp:8000
 ```
 
 A physical iPhone or a device without that reverse tunnel needs an HTTPS endpoint.
-Plain LAN HTTP is intentionally rejected.
+Plain LAN HTTP is rejected for safety.
 
 ## Production environment
 

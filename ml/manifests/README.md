@@ -1,7 +1,7 @@
 # Dataset manifests
 
 `dataset.example.csv` is a header-only template and contains no participant data.
-Create `dataset.csv` only in an approved local workspace; it is intentionally ignored by
+Create `dataset.csv` only in an approved local workspace; Git ignores it by
 Git. Use pseudonymous patient IDs scoped to each source dataset, relative paths beneath
 an explicit data root, and one of these splits: `train`, `validation`, `test`, or
 `external_test`.

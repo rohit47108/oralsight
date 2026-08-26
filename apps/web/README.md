@@ -33,7 +33,7 @@ Production builds fail before compilation when any Auth0, site-origin, audience,
 or platform-API value is missing or still looks like a placeholder. GitHub CI
 uses `ORALSIGHT_ALLOW_CI_DUMMY_WEB_ENV=true` with explicit dummy values so it can
 exercise the optimized build without production credentials. That bypass works
-only when `CI=true` and is deliberately ignored when `VERCEL=1`; never configure
+only when `CI=true` and is ignored when `VERCEL=1`; never configure
 it in a deployment project.
 
 ## Service boundary

@@ -2,7 +2,7 @@
 
 ## Overview
 
-Finish the approved OralSight product work from the current `codex/oralsight-full-product` branch. This plan covers only the remaining release-critical gaps and handoff work; the original OralSight blueprint and `docs/REQUIREMENT_AUDIT.md` remain the binding product scope.
+Finish the approved OralSight product work on the `main` branch. This plan covers the remaining release-critical gaps and handoff work; the original OralSight blueprint and `docs/REQUIREMENT_AUDIT.md` remain the product scope.
 
 ## Architecture Decisions
 
