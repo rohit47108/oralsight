@@ -20,9 +20,9 @@ Rules:
   locked.
 
 The deployed service response from `GET /v1/model-card` is authoritative for runtime
-model versions, hashes, enabled heads, and gates. `CURRENT_MODEL_CARD.md` records the
-checked-in release: anatomy enabled for region matching and segmentation enabled for
-non-diagnostic candidate masks. Appearance, disease-category research, and automated
+model versions, hashes, enabled heads, and gates. The public source release enables
+anatomy matching and receives the competition segmentation model from a private,
+hash-verified deployment bundle. Appearance, disease-category research, and automated
 re-identification remain disabled.
 
 The current eligible asset rows are deliberately narrow: the `procedural-v1`
@@ -34,16 +34,13 @@ inventory/manifest, and rerunning the repository audit workflow.
 
 `SEGMENTATION_SMART_OM_ONLY_ATTEMPT.json` records the failed 2026-08-10 attempt
 to replace the Autooral-assisted segmentation artifact with a SMART-OM-only
-CC BY 4.0 model. The failed model weights are not bundled. The existing released
-weight remains restricted to the documented academic competition/research scope
-until broader redistribution rights are confirmed or a future replacement passes
-a new untouched release test.
+CC BY 4.0 model. The failed model weights are not bundled. The existing competition
+weight stays outside public Git history and is used only through the private
+deployment bundle.
 
-No public license has been selected for the OralSight source repository as a whole.
-The CC0 declarations for the procedural map and synthetic fixture apply only to those
-listed assets. Third-party dependency licenses apply to their respective packages. Do
-not infer a repository-wide source license from either category or from package metadata;
-the owners must select and add an explicit source license before public distribution.
+The OralSight source repository uses the MIT License. The CC0 declarations for the
+procedural map and synthetic fixture and the licenses of third-party dependencies and
+model assets still apply to those items separately.
 
 The locked dependency inventory is generated from `pnpm-lock.yaml` and `uv.lock`:
 

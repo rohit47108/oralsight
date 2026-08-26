@@ -18,7 +18,6 @@ The later fixed safety and data contracts still control conflicting details:
   accuracy, HIPAA compliance, or unsupported physical precision;
 - learned outputs remain hidden when their evidence gates fail;
 - every proposed lesion match still requires a separate user decision; and
-- Parkinson/NeuroSight remains deferred until OralSight is complete.
 
 > **This result is not a diagnosis.** This is a software audit, not clinical or
 > regulatory evidence.
@@ -155,9 +154,10 @@ The current segmentation head passed the competition engineering gate, but it us
 Autooral training data under academic-research/non-commercial terms. A SMART-OM-only
 CC BY 4.0 replacement was trained and evaluated once on a new patient holdout that
 excluded every earlier holdout patient. It scored Dice `0.6809` and boundary F1
-`0.5616`, below the fixed `0.70`/`0.60` gate, and was rejected. Public or commercial
-distribution therefore still needs written permission or a future properly licensed
-model that passes a new untouched test.
+`0.5616`, below the fixed `0.70`/`0.60` gate, and was rejected. The current weight
+therefore stays in the private academic-competition deployment bundle. Public source
+distribution excludes it; a future commercial model still needs broader rights or a
+new untouched-test pass.
 
 The following implemented features also need outside proof before they can be
 called production-complete:
@@ -174,18 +174,9 @@ called production-complete:
   domain deployment;
 - deployed retention and backup settings that match the web privacy notice's published
   35-day maximum backup window;
-- a repository-wide source license plus confirmation that the
-  Autooral-derived segmentation artifact may be distributed and used for the
-  planned release; and
+- deployment verification that the private Autooral-derived segmentation bundle
+  remains inaccessible from public source and public downloads; and
 - final wording, demo-case, and competition review.
-
-## Parkinson/NeuroSight
-
-The original file includes a later Parkinson module, but the user explicitly
-asked to finish OralSight first. NeuroSight voice, tapping, spiral, handwriting,
-tremor, gait, balance, cognition, fusion, rehabilitation, avatar, and clinician
-flows remain a static roadmap only. They are not part of this OralSight
-completion verdict.
 
 ## Overall verdict
 
@@ -195,7 +186,7 @@ paths are implemented. It is also not accurate to call every blueprint item
 complete. Personalized geometry remains a generic image-colored surface;
 quantitative longitudinal change and several learned heads are release-gated;
 preview quality has the documented device boundary; and deployment, device,
-clinical-review, comparison-repeatability, and redistribution evidence remains
+clinical-review, and comparison-repeatability evidence remains
 outside the repository. The current source is an academic competition/research
 build, not a fully deployed, physically or clinically validated, commercially
 licensed medical product.

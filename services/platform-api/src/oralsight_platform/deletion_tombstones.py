@@ -116,9 +116,7 @@ async def matching_tombstone(
     await ensure_database_key_versions_available(session, settings)
     candidates = tombstone_fingerprint_candidates(settings, subject)
     clauses = [
-        (
-            DeletedSubjectTombstone.fingerprint_key_version == version
-        )
+        (DeletedSubjectTombstone.fingerprint_key_version == version)
         & (DeletedSubjectTombstone.subject_fingerprint == fingerprint)
         for version, fingerprint in candidates.items()
     ]
@@ -139,7 +137,10 @@ def validate_tombstone_settings(settings: Settings) -> None:
         )
     if settings.deletion_tombstone_current_key_version == LEGACY_SHARE_KEY_VERSION:
         raise ValueError("The current deletion-tombstone key must use a new version.")
-    if settings.deletion_tombstone_current_key_version in settings.deletion_tombstone_retained_keys:
+    if (
+        settings.deletion_tombstone_current_key_version
+        in settings.deletion_tombstone_retained_keys
+    ):
         raise ValueError(
             "The current deletion-tombstone key version cannot also be retained."
         )

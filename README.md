@@ -49,18 +49,18 @@ The anatomy-validation head is enabled only for region matching. Its
 patient-disjoint test reached macro F1 `0.9842`, with no region recall below
 `0.9302`.
 
-The segmentation head is enabled only for non-diagnostic candidate outlining.
-Its exact frozen test reached Dice `0.7192` and boundary F1 `0.6256`, passing
-the required aggregate gates. Positive-image scores were lower, so its
-limitations remain visible and an empty mask is never treated as reassurance.
+The competition inference deployment can enable non-diagnostic candidate
+outlining. Its exact frozen test reached Dice `0.7192` and boundary F1 `0.6256`.
+Positive-image scores were lower, so an empty mask is never treated as
+reassurance.
 
 The released weight uses the Autooral training split under its authors'
 academic-research and non-commercial terms. A clean-license SMART-OM-only
 replacement was trained and evaluated once on a fresh patient holdout, but it
 reached Dice `0.6809` and boundary F1 `0.5616`, below the fixed `0.70`/`0.60`
-gate. It was rejected and is not bundled. The current weight is therefore for
-the documented academic competition/research build unless broader written
-permission is obtained.
+gate. It was rejected. The competition weight is supplied to the deployed
+inference service through a private model bundle and is not stored in this
+public repository.
 
 Disease-category research failed (`macro F1 0.3596`, calibration error
 `0.0827`, inadequate held-out patients, and no signed clinical review).
@@ -71,9 +71,6 @@ The service checks a hash-verified release manifest before loading a model. A
 future model can run only when its exact artifact, preprocessing contract,
 metrics, review evidence, and release state validate. Missing or invalid evidence
 causes an abstention.
-
-NeuroSight and Parkinson-related assessment are not implemented. The app contains
-only a clearly labeled static roadmap entry for that deferred work.
 
 See [implementation status](docs/IMPLEMENTATION_STATUS.md) for the exact remaining
 external evidence and physical-device tests. The completed local checks are in
@@ -96,9 +93,10 @@ in [requirement audit](docs/REQUIREMENT_AUDIT.md).
 - `docs`: architecture, safety, privacy, release, licensing, and build instructions
 
 No restricted medical image, patient dataset, database, secret, or generated build
-belongs in Git. The shipped anatomy and segmentation ONNX files are hash-pinned and
-listed in the asset inventory. The repository's CC0 test fixture is not imported by
-or compiled into the mobile app.
+belongs in Git. The public anatomy model is hash-pinned and listed in the asset
+inventory; the competition segmentation model stays in the ignored private release
+bundle. The repository's CC0 test fixture is not imported by or compiled into the
+mobile app.
 
 ## Install and verify
 
@@ -137,8 +135,9 @@ To create a clean source archive after verification:
 
 The packager uses Git's non-ignored source-file list, so it omits local
 dependencies, exports, caches, secrets, medical data, databases, and model
-training artifacts. It includes the three audited, hash-pinned ONNX files used
-for face-presence privacy checks, anatomy matching, and candidate-mask inference.
+training artifacts. It includes the audited, redistributable ONNX files used for
+face-presence privacy checks and anatomy matching. The private candidate-mask
+bundle is intentionally excluded.
 
 ## Run locally
 
@@ -149,7 +148,7 @@ $env:ORALSIGHT_DEPLOYMENT_MODE = "development"
 $env:ORALSIGHT_REQUIRE_RESPONSE_SIGNING = "false"
 $env:ORALSIGHT_ENABLE_DEMO_FIXTURES = "false"
 $env:ORALSIGHT_RELEASE_MANIFEST_PATH = (
-  Resolve-Path "services/inference/release/release-manifest.json"
+  Resolve-Path "services/inference/private-release/release-manifest.json"
 ).Path
 py -3.12 -m uv run --frozen --package oralsight-inference `
   uvicorn oralsight_api.main:app --reload --port 8000 --no-access-log --no-server-header
@@ -217,12 +216,9 @@ requirements are documented in
 - Passing software tests does not establish clinical accuracy, regulatory status,
   effectiveness, or HIPAA compliance.
 
-## Distribution boundary
+## Distribution
 
-No repository-wide source license has been selected by the owner. The bundled
-segmentation weight is documented for academic research/non-commercial use and
-is not cleared here for unrestricted public or commercial redistribution. A
-private competition repository and local source ZIP can be used within that
-scope. Before a public GitHub release, choose the source license and obtain
-written model permission or replace the weight with a properly licensed model
-that passes a new untouched release test.
+OralSight source code is available under the MIT License. The public repository
+does not contain the Autooral-assisted segmentation weight. The academic
+competition deployment loads that weight from a private, hash-verified model
+bundle. See [`docs/PUBLIC_DISTRIBUTION.md`](docs/PUBLIC_DISTRIBUTION.md).

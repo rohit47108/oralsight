@@ -4,6 +4,7 @@ import importlib.util
 from datetime import timedelta
 from pathlib import Path
 
+
 def _migration_module():
     path = (
         Path(__file__).parents[1]

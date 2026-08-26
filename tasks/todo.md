@@ -4,10 +4,10 @@
 
 - [x] Permanent folder contains the complete source.
 - [x] Local and GitHub histories are merged.
-- [ ] Public source license is committed.
+- [x] Public source license is present and ready to commit.
 - [ ] Restricted model weight is absent from the public tree and branch history.
-- [ ] External model-artifact configuration is documented and tested.
-- [ ] Repository audit passes from the permanent folder.
+- [x] External model-artifact configuration is documented and tested.
+- [x] Repository audit passes from the permanent folder.
 
 ## Product
 
@@ -19,12 +19,12 @@
 
 ## Quality
 
-- [ ] TypeScript tests, type checks, formatting, and production web build pass.
-- [ ] Python service and ML tests plus Ruff checks pass.
-- [ ] Android and iOS JavaScript exports pass.
+- [x] TypeScript tests, type checks, formatting, and production web build pass.
+- [x] Python service and ML tests plus Ruff checks pass.
+- [x] Android and iOS JavaScript exports pass.
 - [ ] Browser checks pass at phone, tablet, laptop, and desktop widths.
 - [ ] Accessibility, empty, loading, error, and reduced-motion states are verified.
-- [ ] Dependency, secret, model, fixture, and repository audits pass.
+- [x] Dependency, secret, model, fixture, and repository audits pass.
 
 ## Publishing
 
@@ -34,4 +34,3 @@
 - [ ] Preview deployment is live and browser-verified.
 - [ ] Production URL is live and recorded after successful preview verification.
 - [ ] Exact remaining external credentials, if any, are listed individually.
-

@@ -122,9 +122,9 @@ holdout patient. It reached Dice `0.6809` and boundary F1 `0.5616`, below the fi
 `0.70`/`0.60` gates. It was rejected and is not bundled. See
 [`SEGMENTATION_SMART_OM_ONLY_ATTEMPT.json`](licenses-model-cards/SEGMENTATION_SMART_OM_ONLY_ATTEMPT.json).
 
-The shipped segmentation weight is therefore suitable only for the documented
-academic competition/research scope until written broader permission is obtained
-or a future properly licensed model passes a new untouched evaluation.
+The private segmentation weight is therefore used only for the documented
+academic competition scope. It is hash-verified at deployment and is not included
+in the public repository.
 
 ## Current verification
 
@@ -151,10 +151,9 @@ The exact commands and boundaries are recorded in
 
 These cannot be manufactured inside the source tree:
 
-- Owner-selected repository license and written confirmation for any public or
-  commercial redistribution of the Autooral-assisted segmentation weight.
-  Keeping the repository private avoids public redistribution but does not
-  expand the artifact's license grant.
+- A broader model license or a replacement model is needed only for a future
+  commercial distribution. The public source is MIT licensed and excludes the
+  Autooral-assisted competition weight.
 - Owner-registered iOS and Android identifiers, Expo/EAS project and signing
   accounts, Apple and Google credentials, and store records.
 - Real OIDC tenant/roles, PostgreSQL, TLS Redis, private S3, secrets/KMS, worker
@@ -170,5 +169,4 @@ These cannot be manufactured inside the source tree:
 - A clinician-approved guidance rule if urgency is to be enabled. Without it,
   urgency stays disabled and only neutral seek-care information is shown.
 
-NeuroSight/Parkinson work remains a static roadmap by the requested sequencing.
 It is not part of this OralSight source-release verdict.

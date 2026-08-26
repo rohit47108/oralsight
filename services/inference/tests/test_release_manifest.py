@@ -555,3 +555,20 @@ def test_model_interface_rejects_wrong_transform_or_label_order() -> None:
                 "heads": [anatomy],
             }
         )
+
+
+def test_public_source_manifest_omits_the_private_segmentation_artifact() -> None:
+    repository_root = Path(__file__).resolve().parents[3]
+    manifest_path = repository_root / "services/inference/release/release-manifest.json"
+    payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+    segmentation = next(
+        head for head in payload["heads"] if head["head"] == "segmentation"
+    )
+
+    assert segmentation["enabled"] is False
+    assert "artifactPath" not in segmentation
+    assert "artifactSha256" not in segmentation
+
+    runtime = load_release_runtime({RELEASE_MANIFEST_ENV: str(manifest_path)})
+    assert ModelHead.SEGMENTATION not in runtime.enabled_heads
+    assert ModelHead.ANATOMY in runtime.enabled_heads

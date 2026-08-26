@@ -2,8 +2,9 @@
 
 This directory contains the stateless FastAPI service for OralSight. It performs
 deterministic capture-quality checks, runs release-gated ONNX heads through OpenCV DNN,
-and computes confidence-gated registration diagnostics. The checked-in release includes
-hash-pinned anatomy and segmentation models. Anatomy rejects mismatched mouth regions;
+and computes confidence-gated registration diagnostics. The public source includes
+the hash-pinned anatomy model. The competition deployment loads candidate segmentation
+from a private, hash-verified release bundle. Anatomy rejects mismatched mouth regions;
 segmentation outlines one possible candidate region. Neither model diagnoses disease.
 Appearance, disease-category research, and re-identification remain disabled.
 
@@ -11,13 +12,23 @@ Appearance, disease-category research, and re-identification remain disabled.
 > research outputs. Millimeter estimates appear only when the versioned physical
 > marker and same-plane checks pass, and they remain approximate.
 
-The bundled segmentation weight used the Autooral training split under
+The competition segmentation weight used the Autooral training split under
 academic-research/non-commercial terms. A SMART-OM-only CC BY 4.0 replacement
 was evaluated on a fresh patient holdout and rejected because Dice `0.6809` and
 boundary F1 `0.5616` missed the fixed `0.70`/`0.60` gate. The current weight is
-therefore limited to the documented academic competition/research scope unless
-broader written permission is obtained. See the checked release review and
+therefore stays outside the public repository and is supplied only to the
+academic competition inference deployment. See the checked release review and
 [SMART-OM-only attempt evidence](../../docs/licenses-model-cards/SEGMENTATION_SMART_OM_ONLY_ATTEMPT.json).
+
+For local candidate outlining, set `ORALSIGHT_RELEASE_MANIFEST_PATH` to the
+manifest in `services/inference/private-release`. The expected bundle layout and
+public-source boundary are documented in
+[`docs/PUBLIC_DISTRIBUTION.md`](../../docs/PUBLIC_DISTRIBUTION.md).
+
+For a private competition container, run
+`docker build -f Dockerfile.private -t oralsight-inference:competition .` from
+this directory. That build deliberately fails when the local private bundle is
+absent. The regular `Dockerfile` remains safe to build from a public clone.
 
 ## Run locally
 

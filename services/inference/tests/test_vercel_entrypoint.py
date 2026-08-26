@@ -1,0 +1,24 @@
+from pathlib import Path
+
+from oralsight_api.deployment import packaged_release_manifest
+
+
+def test_vercel_entrypoint_prefers_private_release_bundle(tmp_path: Path) -> None:
+    public_manifest = tmp_path / "release" / "release-manifest.json"
+    private_manifest = tmp_path / "private-release" / "release-manifest.json"
+    public_manifest.parent.mkdir()
+    private_manifest.parent.mkdir()
+    public_manifest.write_text("{}", encoding="utf-8")
+    private_manifest.write_text("{}", encoding="utf-8")
+
+    assert packaged_release_manifest(tmp_path) == private_manifest
+
+
+def test_vercel_entrypoint_falls_back_to_public_release_manifest(
+    tmp_path: Path,
+) -> None:
+    public_manifest = tmp_path / "release" / "release-manifest.json"
+    public_manifest.parent.mkdir()
+    public_manifest.write_text("{}", encoding="utf-8")
+
+    assert packaged_release_manifest(tmp_path) == public_manifest

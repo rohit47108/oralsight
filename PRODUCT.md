@@ -59,7 +59,6 @@ itself as a diagnostic product.
   images. The separate opt-in platform owns accounts, consent, private object storage,
   durable jobs, access history, retention, and deletion.
 - Production phone use requires an HTTPS inference endpoint and a pinned response-signing public key.
-- NeuroSight and Parkinson-specific assessment are outside the current product scope.
 
 ## Brand Commitments
 

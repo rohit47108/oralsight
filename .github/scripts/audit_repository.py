@@ -41,7 +41,7 @@ AUDITED_FILE_SHA256 = {
         "5267d20ba11091590d89186ad065b85fd703241cbdab89bd79a684f95aecb99b"
     ),
     "apps/web/src/app/icon.svg": (
-        "73c118539f03fa5e54047ecd9f19408d781b1a847be89fe94d18709301d98d90"
+        "ac57f5275bcc09a3dff1561554800753d7651cd86b98dc390f2242448994c10b"
     ),
     "apps/mobile/src/components/OralObservationMap.tsx": (
         "b653a1c864c7c22cdf908fc10f4d2602d0e9b26ebf96ab8c84d47e435f1a4d95"
@@ -79,9 +79,6 @@ AUDITED_FILE_SHA256 = {
     "services/inference/release/anatomy.onnx": (
         "335cacfa5ceab8d32d6b903c65d482c246ac6ac2a7e7a831f6ede27d62a553a9"
     ),
-    "services/inference/release/segmentation.onnx": (
-        "6e0d74557960001b60a181e1fd7444c21c50ca4a30175c8c4449b40298352ac5"
-    ),
     "services/inference/src/oralsight_api/assets/face_detection_yunet_2023mar.onnx": (
         "8f2383e4dd3cfbb4553ea8718107fc0423210dc964f9f4280604804ed2552fa4"
     ),
@@ -104,9 +101,6 @@ AUDITED_FILE_LICENSE = {
     "apps/web/public/calibration/oralsight-calibration-preview.png": "CC0-1.0",
     "packages/contracts/fixtures/bundled-demo.json": "CC0-1.0",
     "services/inference/release/anatomy.onnx": "CC BY 4.0",
-    "services/inference/release/segmentation.onnx": (
-        "SMART-OM CC BY 4.0; Autooral academic research only non-commercial"
-    ),
     "services/inference/src/oralsight_api/assets/face_detection_yunet_2023mar.onnx": (
         "MIT"
     ),
@@ -251,6 +245,39 @@ def audit_forbidden_artifacts(audit: Audit) -> None:
                 audit.errors.append(
                     f"Embedded image/base64 JSON is not on the synthetic allowlist: {relative}"
                 )
+
+
+def audit_public_model_distribution(audit: Audit) -> None:
+    """Keep deployment-only weights out of the public source package."""
+
+    relative = "services/inference/release/release-manifest.json"
+    try:
+        manifest = json.loads(_read(relative))
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        audit.errors.append(f"Public release manifest could not be read: {exc}")
+        return
+    segmentation = next(
+        (
+            head
+            for head in manifest.get("heads", [])
+            if head.get("head") == "segmentation"
+        ),
+        None,
+    )
+    audit.require(segmentation is not None, "Public manifest lacks segmentation state.")
+    if segmentation is not None:
+        audit.require(
+            segmentation.get("enabled") is False,
+            "Public manifest must not enable the private segmentation weight.",
+        )
+        audit.require(
+            "artifactPath" not in segmentation and "artifactSha256" not in segmentation,
+            "Public manifest must not reference the private segmentation artifact.",
+        )
+    audit.require(
+        not (ROOT / "services/inference/release/segmentation.onnx").exists(),
+        "Private segmentation weight must not be present in the public release folder.",
+    )
 
 
 def _typescript_regions(audit: Audit) -> tuple[str, ...]:
@@ -529,6 +556,7 @@ def main() -> int:
     audit = Audit()
     try:
         audit_forbidden_artifacts(audit)
+        audit_public_model_distribution(audit)
     except (OSError, subprocess.CalledProcessError) as exc:
         audit.errors.append(f"Could not enumerate repository files: {exc}")
     audit_regions_and_assets(audit)

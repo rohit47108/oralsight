@@ -958,7 +958,7 @@ def test_registration_alignment_contract_rejects_extreme_finite_transform() -> N
         )
 
 
-def test_packaged_release_runs_live_alignment_but_keeps_change_gate_closed() -> None:
+def test_public_release_manifest_keeps_private_segmentation_fail_closed() -> None:
     repository_root = Path(__file__).resolve().parents[3]
     fixture_payload = json.loads(
         (repository_root / "packages/contracts/fixtures/bundled-demo.json").read_text(
@@ -980,19 +980,17 @@ def test_packaged_release_runs_live_alignment_but_keeps_change_gate_closed() -> 
         runtime,
     )
 
-    assert ModelHead.SEGMENTATION in runtime.enabled_heads
+    assert ModelHead.SEGMENTATION not in runtime.enabled_heads
+    assert ModelHead.ANATOMY in runtime.enabled_heads
+    assert runtime.analysis_ready is False
     assert runtime.repeated_capture_area_error is None
-    assert result.analysis_origin is AnalysisOrigin.LIVE_MODEL
-    assert result.registration_alignment is not None
-    assert result.registration_alignment.matrix == pytest.approx(
-        (1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0), abs=1e-6
-    )
-    assert result.registration_alignment.source_image_size.width_px == 160
-    assert result.registration_alignment.target_image_size.height_px == 160
+    assert result.analysis_origin is AnalysisOrigin.UNAVAILABLE
+    assert result.registration_alignment is None
     assert result.comparable is False
     assert result.normalized_change is None
     assert result.repeatability_gate_passed is False
-    assert result.suppression_reasons == ["repeated_capture_area_error_gate_unmet"]
+    assert "segmentation_release_gate_unmet" in result.suppression_reasons
+    assert "repeated_capture_area_error_gate_unmet" in result.suppression_reasons
 
 
 def test_comparison_normalizes_candidate_area_with_registration_homography(

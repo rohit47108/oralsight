@@ -1,6 +1,6 @@
 # OralSight current model release state
 
-Last updated: 2026-08-10
+Last updated: 2026-08-26
 Threshold version: `2026.1`
 
 > **This result is not a diagnosis.** A passed engineering release gate does
@@ -9,13 +9,13 @@ Threshold version: `2026.1`
 The deployed `GET /v1/model-card` response is authoritative for runtime
 versions, hashes, enabled heads, limitations, and gate state.
 
-| Head                         | Release state                    | Locked result                                                                                                           |
-| ---------------------------- | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| Anatomy validation           | Enabled for region matching only | Macro F1 `0.9842`; lowest region recall `0.9302`; calibration error `0.0123`; 376 test images from 47 held-out patients |
-| Segmentation                 | Enabled for candidate masks only | Dice `0.7192`; boundary F1 `0.6256`; 106 test images from 39 held-out patients                                          |
-| Appearance                   | Disabled                         | SMART-OM does not provide the fixed seven-class appearance labels or 50 held-out patients per class                     |
-| Disease-category research    | Disabled / hidden                | Macro F1 `0.3596`; calibration error `0.0827`; inadequate held-out support; no signed clinical review                   |
-| Re-identification suggestion | Disabled                         | SMART-OM is cross-sectional and does not provide the required matched longitudinal and hard-negative pairs              |
+| Head                         | Release state                                 | Locked result                                                                                                           |
+| ---------------------------- | --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Anatomy validation           | Enabled for region matching only              | Macro F1 `0.9842`; lowest region recall `0.9302`; calibration error `0.0123`; 376 test images from 47 held-out patients |
+| Segmentation                 | Enabled in the private competition deployment | Dice `0.7192`; boundary F1 `0.6256`; 106 test images from 39 held-out patients                                          |
+| Appearance                   | Disabled                                      | SMART-OM does not provide the fixed seven-class appearance labels or 50 held-out patients per class                     |
+| Disease-category research    | Disabled / hidden                             | Macro F1 `0.3596`; calibration error `0.0827`; inadequate held-out support; no signed clinical review                   |
+| Re-identification suggestion | Disabled                                      | SMART-OM is cross-sectional and does not provide the required matched longitudinal and hard-negative pairs              |
 
 ## Enabled artifacts
 
@@ -30,6 +30,8 @@ Segmentation:
 
 - Version `smart-om-autooral-unetplusplus-b4-2026.07.28`; SHA-256
   `6e0d74557960001b60a181e1fd7444c21c50ca4a30175c8c4449b40298352ac5`.
+- Stored in the ignored, hash-verified private deployment bundle; it is not part
+  of the public Git source or public source archive.
 - Draws one approximate candidate mask and supplies visual descriptors after
   quality and anatomy checks pass.
 - The exact frozen artifact passed aggregate Dice `0.7192` and boundary F1
@@ -44,7 +46,8 @@ Segmentation:
   once on a fresh patient holdout. It scored Dice `0.6809` and boundary F1
   `0.5616`, below the fixed `0.70`/`0.60` gates, so it was rejected and is not
   bundled. This means the current Autooral-assisted weight remains limited to
-  the academic competition/research scope unless broader rights are confirmed.
+  the academic competition scope. A broader public or commercial distribution
+  needs replacement weights or broader permission.
 
 Both artifacts use patient-disjoint SMART-OM evaluation with zero
 train/validation/test patient overlap. OpenCV DNN verifies each pinned hash,

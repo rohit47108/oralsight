@@ -7,10 +7,6 @@ import { useAppTheme } from "@/theme";
 
 const roadmap = [
   [
-    "NeuroSight",
-    "A separate future neurological-pattern research product. Parkinson-related assessment is not part of OralSight.",
-  ],
-  [
     "Independent clinical study",
     "Prospective evaluation with external clinicians, representative participants, locked models, and published methods. Engineering tests cannot substitute for this evidence.",
   ],

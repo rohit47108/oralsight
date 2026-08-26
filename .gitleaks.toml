@@ -6,5 +6,17 @@ description = "Exact non-secret identifiers used by contract and signing code"
 regexTarget = "secret"
 regexes = [
   '''^idempotency-key-1$''',
+  '''^idempotency-key-0001$''',
+  '''^019cfd1d-9fb7-7a55-b261-a7510f678c21$''',
+  '''^replace-with-64-hex-characters$''',
+  '''^operation-key-(stale-0004|newer-0005|resurrect-0003)$''',
+  '''^operation-(owner|other)-key-000[12]$''',
+  '''^kms-pending-v1$''',
+  '''^idempotency-secret-0009$''',
+  '''^consent-revoke-record-001$''',
+  '''^annotation-mask-replacement-0001$''',
+  '''^match-decision-second-001$''',
+  '''^existing-lesion-(proposal-1|defer-001)$''',
+  '''^max_bytes=size$''',
   '''^Ed25519PrivateKey$''',
 ]

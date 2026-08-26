@@ -1,6 +1,6 @@
 # OralSight deployment handoff
 
-Last reviewed: 2026-08-13
+Last reviewed: 2026-08-26
 
 This guide separates what is present in source from what still needs an
 account, credential, managed service, physical device, or real deployment. A
@@ -51,10 +51,10 @@ Store, or Google Play; a domain does not replace the native build.
 
 Before a complete public deployment, the owner must provide:
 
-1. A protected GitHub `main` branch. The workspace is connected to the empty,
-   public `rohit47108/oralsight` repository but has not pushed the current tree.
-   Do not publish the Autooral-assisted segmentation weight there until its
-   redistribution permission is resolved or the repository is made private.
+1. The public `rohit47108/oralsight` repository. The complete source now lives
+   in its local checkout at `C:\Users\rohit\Projects\oralsight`. The private
+   Autooral-assisted segmentation weight is excluded from the public source;
+   deployment supplies it through the ignored, hash-verified release bundle.
 2. Production-ready Vercel projects and environment values. The workspace is
    linked to the `oralsight` project, but no deployment of the current tree has
    been verified.
@@ -77,11 +77,10 @@ Before a complete public deployment, the owner must provide:
 10. Expo, Apple Developer, and Google Play accounts plus signing credentials for
     installable release builds.
 11. Physical iPhones and Android phones for the release device matrix.
-12. An explicit repository-wide source license and written confirmation that
-    every shipped model and derived weight may be distributed and used for the
-    intended release. The current segmentation inventory includes Autooral under
-    academic-research/non-commercial terms; that evidence supports the
-    competition prototype, not an unrestricted commercial-product license.
+12. The repository source is MIT licensed. The private segmentation bundle uses
+    Autooral under academic-research/non-commercial terms and is suitable only
+    for the competition deployment described by its inventory record. A later
+    commercial release needs a replacement weight or broader permission.
 13. A published privacy/retention notice that matches operations. The checked
     privacy page states the runbook's maximum 35-day encrypted backup lifetime;
     the deployed storage and backup policies must match it.
@@ -567,8 +566,8 @@ verify:
 10. The public privacy notice states the deployed retention periods, including
     the actual maximum backup lifetime, and matches the configured lifecycle
     rules and operator runbook.
-11. The repository license and all asset/model redistribution and intended-use
-    rights have been approved for the planned form of release.
+11. The MIT source license and public asset terms are present, and the private
+    competition model bundle is absent from public source and download artifacts.
 12. Worker analyze and compare jobs reject a missing/altered Ed25519 signature,
     wrong key or request ID, encoded body, missing `no-store`, and malformed JSON
     before accepting an inference result.

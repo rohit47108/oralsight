@@ -16,8 +16,12 @@ SOURCE_DIRECTORY = SERVICE_DIRECTORY / "src"
 if str(SOURCE_DIRECTORY) not in sys.path:
     sys.path.insert(0, str(SOURCE_DIRECTORY))
 
-packaged_release = SERVICE_DIRECTORY / "release" / "release-manifest.json"
-if packaged_release.is_file():
+
+from oralsight_api.deployment import packaged_release_manifest  # noqa: E402
+
+
+packaged_release = packaged_release_manifest(SERVICE_DIRECTORY)
+if packaged_release is not None:
     os.environ.setdefault(
         "ORALSIGHT_RELEASE_MANIFEST_PATH",
         str(packaged_release),

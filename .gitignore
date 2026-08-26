@@ -24,6 +24,7 @@ htmlcov/
 ml/data/
 ml/artifacts/
 ml/mlruns/
+services/inference/private-release/
 
 # Secrets and local state
 .vercel/

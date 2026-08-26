@@ -6,11 +6,8 @@
   "heads": [
     {
       "head": "segmentation",
-      "enabled": true,
-      "version": "smart-om-autooral-unetplusplus-b4-2026.07.28",
-      "artifactPath": "segmentation.onnx",
-      "artifactFormat": "onnx",
-      "artifactSha256": "6e0d74557960001b60a181e1fd7444c21c50ca4a30175c8c4449b40298352ac5",
+      "enabled": false,
+      "version": "private-deployment-bundle-required",
       "evaluatedAt": "2026-07-28T08:49:30.743381Z",
       "metrics": {
         "dice": 0.7191798686981201,
@@ -21,28 +18,10 @@
         "test_patient_count": 39,
         "test_sample_count": 106
       },
-      "unmetRequirements": [],
-      "reviewerApproved": true,
-      "reviewEvidence": "segmentation-engineering-review.md",
-      "interface": {
-        "inputName": "image",
-        "outputName": "logits",
-        "inputScope": "sanitized_full_image",
-        "inputColorSpace": "RGB",
-        "inputLayout": "NCHW",
-        "inputWidth": 512,
-        "inputHeight": 512,
-        "pixelScale": "zero_to_one",
-        "resizeMode": "stretch",
-        "resizeInterpolation": "linear",
-        "normalizationMean": [0.485, 0.456, 0.406],
-        "normalizationStd": [0.229, 0.224, 0.225],
-        "outputKind": "binary_mask_logits",
-        "classLabels": [],
-        "supportsAbstention": true,
-        "probabilityTransform": "sigmoid",
-        "segmentationThreshold": 0.55
-      }
+      "unmetRequirements": [
+        "The released competition model is supplied to the deployed service through a private release bundle and is not redistributed in the public source repository."
+      ],
+      "reviewerApproved": false
     },
     {
       "head": "anatomy",

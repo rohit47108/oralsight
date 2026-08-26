@@ -194,14 +194,14 @@ async def test_legacy_tombstone_blocks_and_missing_key_version_fails_closed(
         )
         await session.commit()
 
-    unavailable = await client.get(
-        "/v2/me", headers=auth_headers("auth0|new-person")
-    )
+    unavailable = await client.get("/v2/me", headers=auth_headers("auth0|new-person"))
     assert unavailable.status_code == 503
     assert unavailable.json()["error"]["code"] == "deletion_tombstone_key_unavailable"
 
 
-def test_migration_backfills_all_legacy_fingerprints_without_receipt_expiry_filter() -> None:
+def test_migration_backfills_all_legacy_fingerprints_without_receipt_expiry_filter() -> (
+    None
+):
     path = (
         Path(__file__).parents[1]
         / "alembic"

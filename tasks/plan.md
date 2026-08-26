@@ -26,7 +26,6 @@ runnable from the same monorepo.
   the Autooral-assisted segmentation weight. Deployments receive model artifacts
   through an explicit external artifact path or private model store.
 - The normal product never substitutes a fixture result for a real capture.
-- Parkinson and NeuroSight are out of scope.
 
 ## Phases
 
@@ -34,19 +33,19 @@ runnable from the same monorepo.
 
 - [x] Inspect the empty checkout, Git history, remote, older source, and Vercel link.
 - [x] Merge the strongest local and remote histories into the permanent repository.
-- [ ] Add the repository license and public-distribution policy.
-- [ ] Remove the restricted segmentation weight from the public tree and configure
+- [x] Add the repository license and public-distribution policy.
+- [x] Remove the restricted segmentation weight from the public tree and configure
       an explicit external artifact path with fail-clear runtime behavior.
-- [ ] Update inventories, model cards, repository audits, and deployment examples.
+- [x] Update inventories, model cards, repository audits, and deployment examples.
 - [ ] Remove the restricted blob from the public branch history before the next push.
 
 ### 2. Fresh source verification
 
-- [ ] Install from committed locks in the permanent repository.
-- [ ] Run contracts, TypeScript tests, type checks, formatting, and dependency audit.
-- [ ] Run inference, platform, worker, and ML tests plus Ruff checks.
-- [ ] Build the Next.js web product and export Android/iOS JavaScript bundles.
-- [ ] Run repository, model-hash, fixture-isolation, and secret scans.
+- [x] Install from committed locks in the permanent repository.
+- [x] Run contracts, TypeScript tests, type checks, formatting, and dependency audit.
+- [x] Run inference, platform, worker, and ML tests plus Ruff checks.
+- [x] Build the Next.js web product and export Android/iOS JavaScript bundles.
+- [x] Run repository, model-hash, fixture-isolation, and secret scans.
 
 ### 3. Competition product polish
 
@@ -55,7 +54,7 @@ runnable from the same monorepo.
 - [ ] Audit the principal mobile flow for scan recovery, permissions, touch targets,
       safe areas, reduced motion, large text, and clear accepted/rejected states.
 - [ ] Verify the fast competition path from consent to a complete report.
-- [ ] Remove remaining Parkinson/NeuroSight references and stale packaging language.
+- [x] Remove stale packaging and unrelated roadmap language.
 
 ### 4. Deployment and end-to-end verification
 
@@ -75,10 +74,9 @@ runnable from the same monorepo.
 
 ## Risks and responses
 
-| Risk | Response |
-| --- | --- |
-| Restricted model already exists in public history | Remove it from the current tree, replace runtime loading with a private artifact path, and publish a cleaned branch history. |
-| Hosted services are not provisioned | Finish all source and local verification, then request only the exact account or credential that blocks the next live boundary. |
-| Web deployment builds but authenticated flows fail | Verify browser to API to storage boundaries before promotion. |
-| Existing release notes overstate old evidence | Replace stale claims with fresh command and runtime evidence from this repository. |
-
+| Risk                                               | Response                                                                                                                        |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Restricted model already exists in public history  | Remove it from the current tree, replace runtime loading with a private artifact path, and publish a cleaned branch history.    |
+| Hosted services are not provisioned                | Finish all source and local verification, then request only the exact account or credential that blocks the next live boundary. |
+| Web deployment builds but authenticated flows fail | Verify browser to API to storage boundaries before promotion.                                                                   |
+| Existing release notes overstate old evidence      | Replace stale claims with fresh command and runtime evidence from this repository.                                              |
