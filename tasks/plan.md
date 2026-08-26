@@ -37,7 +37,7 @@ runnable from the same monorepo.
 - [x] Remove the restricted segmentation weight from the public tree and configure
       an explicit external artifact path with fail-clear runtime behavior.
 - [x] Update inventories, model cards, repository audits, and deployment examples.
-- [ ] Remove the restricted blob from the public branch history before the next push.
+- [x] Remove the restricted blob from the public branch history before the next push.
 
 ### 2. Fresh source verification
 

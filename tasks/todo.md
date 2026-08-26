@@ -4,8 +4,8 @@
 
 - [x] Permanent folder contains the complete source.
 - [x] Local and GitHub histories are merged.
-- [x] Public source license is present and ready to commit.
-- [ ] Restricted model weight is absent from the public tree and branch history.
+- [x] Public source license is committed.
+- [x] Restricted model weight is absent from the public tree and branch history.
 - [x] External model-artifact configuration is documented and tested.
 - [x] Repository audit passes from the permanent folder.
 
