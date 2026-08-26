@@ -15,31 +15,31 @@ Finish the approved OralSight product work on the `main` branch. This plan cover
 
 ### Phase 1: Deletion safety
 
-- [ ] Task 1: Prove upload-capability quiescence through the completion interval.
-- [ ] Task 2: Separate the polling receipt from the durable account-deletion tombstone.
-- [ ] Task 3: Make mobile abandon cloud credentials and sync state on a tombstone response.
+- [x] Task 1: Prove upload-capability quiescence through the completion interval.
+- [x] Task 2: Separate the polling receipt from the durable account-deletion tombstone.
+- [x] Task 3: Make mobile abandon cloud credentials and sync state on a tombstone response.
 
 ### Checkpoint: Deletion safety
 
-- [ ] Focused platform and mobile regression tests pass.
-- [ ] Migration upgrade and downgrade behavior is covered.
-- [ ] A deleted subject cannot be silently reprovisioned after receipt expiry.
+- [x] Focused platform and mobile regression tests pass.
+- [x] Migration upgrade and downgrade behavior is covered.
+- [x] A deleted subject cannot be silently reprovisioned after receipt expiry.
 
 ### Phase 2: Release evidence
 
-- [ ] Task 4: Regenerate contracts, OpenAPI, legal notices, and checksums.
-- [ ] Task 5: Run the complete TypeScript, Python, web, mobile-bundle, security, and repository gates.
-- [ ] Task 6: Reconcile final verification and implementation-status documents with current evidence.
+- [x] Task 4: Regenerate contracts, OpenAPI, legal notices, and checksums.
+- [x] Task 5: Run the complete TypeScript, Python, web, mobile-bundle, security, and repository gates.
+- [x] Task 6: Reconcile final verification and implementation-status documents with current evidence.
 
 ### Checkpoint: Release evidence
 
-- [ ] Every claimed pass has fresh command output from the exact tree.
-- [ ] External or hardware-only evidence is plainly identified as pending.
+- [x] Every claimed pass has fresh command output from the exact tree.
+- [x] External or hardware-only evidence is plainly identified as pending.
 
 ### Phase 3: Handoff and publishing
 
-- [ ] Task 7: Review changed code and prose for readability, accessibility, safety, and human-maintained style.
-- [ ] Task 8: Commit coherent changes with normal, specific commit messages and create a verified source ZIP.
+- [x] Task 7: Review changed code and prose for readability, accessibility, safety, and human-maintained style.
+- [x] Task 8: Commit coherent changes with normal, specific commit messages and create a verified source ZIP.
 - [ ] Task 9: Publish to the intended GitHub repository only when repository visibility and model redistribution are safe.
 - [ ] Task 10: Configure and verify preview deployments only when the required Auth0, platform, signing, and storage settings exist.
 

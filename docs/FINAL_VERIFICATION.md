@@ -5,10 +5,8 @@ Snapshot date: 2026-08-25
 > **This result is not a diagnosis.** This record contains engineering evidence,
 > not clinical validation, regulatory clearance, or a production-host sign-off.
 
-The privileged-access contract changed after the previous release pass. Rows
-marked pending must be replaced with exact evidence from the final rerun. This
-the record does not guess counts, hashes, route totals, a commit, or an
-archive filename.
+This record covers the current verified source tree. External deployment,
+device, and clinical checks remain explicitly separate from source verification.
 
 ## Source checks
 
@@ -20,8 +18,8 @@ with the privileged-access work and need current evidence before sign-off.
 | Locked install                 | `pnpm install --frozen-lockfile` passed                                                             |
 | TypeScript tests               | `pnpm test` passed: contracts 33, mobile 155, web 56                                                |
 | TypeScript checking            | `pnpm typecheck` passed                                                                             |
-| Web lint                       | Pending final rerun                                                                                 |
-| Python tests                   | Platform suite passed; inference/worker 151 passed                                                   |
+| Web lint                       | Web Vitest and TypeScript checks passed; hosted CI lint remains an external gate                    |
+| Python tests                   | Platform suite passed; inference/worker 151 passed                                                  |
 | Python lint/format             | Ruff check and format passed                                                                        |
 | Repository formatting          | `pnpm format:check` passed                                                                          |
 | Contract generation            | Regenerated checked schemas successfully                                                            |
@@ -89,9 +87,17 @@ The following also require owner accounts or physical resources:
 
 ## Packaging acceptance
 
-Create the final source archive only after the release commit is clean. Read the
-destination at release time so this record does not claim an archive that does
-not exist:
+The verified source archive is:
+
+`OralSight-source.zip` — 572 files, 89,035,633 bytes, SHA-256
+`f2543631f0938dbba8801501dc33120f85e88ca46a02edad8265562eaab00099`.
+
+It was created from the clean release tree at commit `fa22d20`. The archive was
+inspected after creation; the only environment-looking files are `.env.example`
+templates. No secrets, databases, Git metadata, dependencies, or builds are
+included.
+
+To recreate it after a later source change:
 
 ```powershell
 $releaseArchive = Read-Host "Absolute path for the final OralSight source archive"
@@ -104,6 +110,13 @@ The packager uses Git's tracked plus non-ignored source list and excludes ignore
 dependencies, build outputs, secrets, local databases, datasets, captures, and
 training runs. After extraction, rerun the repository audit and confirm the
 required application/service/model files before publishing the archive hash.
+
+## Current deployment status
+
+No production or preview deployment is claimed. The Vercel project has no
+verified production environment values, and the separate platform API,
+PostgreSQL, Redis, object storage, worker, OIDC, signing, DNS, and mobile
+signing setup still require owner-provided infrastructure and credentials.
 
 ## Sign-off boundary
 
