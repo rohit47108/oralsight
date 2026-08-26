@@ -107,6 +107,22 @@ def validate_repository_contract(root_config: dict[str, Any]) -> None:
             or destination.get("service") not in services
         ):
             raise ValueError("every root rewrite must target a declared service")
+
+    expected_inference_rewrites = {
+        "/api/v1/:path*": "/v1/:path*",
+        "/api/healthz": "/healthz",
+    }
+    actual_inference_rewrites = {
+        rewrite.get("source"): rewrite.get("destination", {}).get("path")
+        for rewrite in rewrites
+        if isinstance(rewrite, dict)
+        and isinstance(rewrite.get("destination"), dict)
+        and rewrite["destination"].get("service") == "inference"
+    }
+    if actual_inference_rewrites != expected_inference_rewrites:
+        raise ValueError(
+            "inference rewrites must remove the public /api prefix before dispatch"
+        )
     if (
         rewrites[-1].get("source") != "/(.*)"
         or rewrites[-1]["destination"].get("service") != "web"

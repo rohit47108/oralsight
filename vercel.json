@@ -13,39 +13,17 @@
         "**/*.py": {
           "maxDuration": 60
         }
-      },
-      "routes": [
-        {
-          "src": "/api/v1/(.*)",
-          "transforms": [
-            {
-              "type": "request.path",
-              "op": "set",
-              "args": "/v1/$1"
-            }
-          ]
-        },
-        {
-          "src": "/api/healthz",
-          "transforms": [
-            {
-              "type": "request.path",
-              "op": "set",
-              "args": "/healthz"
-            }
-          ]
-        }
-      ]
+      }
     }
   },
   "rewrites": [
     {
-      "source": "/api/v1/(.*)",
-      "destination": { "service": "inference" }
+      "source": "/api/v1/:path*",
+      "destination": { "service": "inference", "path": "/v1/:path*" }
     },
     {
       "source": "/api/healthz",
-      "destination": { "service": "inference" }
+      "destination": { "service": "inference", "path": "/healthz" }
     },
     {
       "source": "/(.*)",
