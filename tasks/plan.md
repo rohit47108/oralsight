@@ -1,64 +1,84 @@
-# Implementation Plan: OralSight Release Closure
+# Implementation Plan: OralSight Competition Completion
 
-## Overview
+## Objective
 
-Finish the approved OralSight product work on the `main` branch. This plan covers the remaining release-critical gaps and handoff work; the original OralSight blueprint and `docs/REQUIREMENT_AUDIT.md` remain the product scope.
+Finish OralSight directly in `C:\Users\rohit\Projects\oralsight` as the permanent
+source of truth, publish a coherent public GitHub repository, deploy and verify the
+web product on Vercel, and keep the mobile, inference, platform, and worker paths
+runnable from the same monorepo.
 
-## Architecture Decisions
+## Current baseline
 
-- A completed cloud deletion leaves a durable, keyed server tombstone. The short-lived receipt used for status polling is separate from the long-lived protection against silent account recreation.
-- Direct object-storage uploads are considered live until their signed capability expires and the configured maximum upload-completion interval has also elapsed. Deletion completes only after a final rescan, delete, and absence check.
-- Learned medical outputs remain disabled unless their fixed release gates pass. Shipping source code never substitutes fixture output for an arbitrary live capture.
-- Vercel hosts the web application and stateless inference service. PostgreSQL, Redis, object storage, and the continuous worker require the documented container platform.
+- The completed local source history and the public GitHub history were merged into
+  this repository on 2026-08-26.
+- The eight-region mobile workflow, web workspaces, inference API, platform API,
+  worker, contracts, deployment files, and tests already exist.
+- The remaining work is public-distribution cleanup, fresh verification, product
+  polish, live deployment, and end-to-end acceptance.
 
-## Task List
+## Architecture decisions
 
-### Phase 1: Deletion safety
+- This directory and its `main` branch are the only active source tree.
+- Vercel hosts the Next.js web application. The platform API and continuous worker
+  remain container services; the stateless inference service may use Vercel or a
+  container host depending on model size and runtime limits.
+- The public repository will use an MIT source license and will not redistribute
+  the Autooral-assisted segmentation weight. Deployments receive model artifacts
+  through an explicit external artifact path or private model store.
+- The normal product never substitutes a fixture result for a real capture.
+- Parkinson and NeuroSight are out of scope.
 
-- [x] Task 1: Prove upload-capability quiescence through the completion interval.
-- [x] Task 2: Separate the polling receipt from the durable account-deletion tombstone.
-- [x] Task 3: Make mobile abandon cloud credentials and sync state on a tombstone response.
+## Phases
 
-### Checkpoint: Deletion safety
+### 1. Repository recovery and public-source cleanup
 
-- [x] Focused platform and mobile regression tests pass.
-- [x] Migration upgrade and downgrade behavior is covered.
-- [x] A deleted subject cannot be silently reprovisioned after receipt expiry.
+- [x] Inspect the empty checkout, Git history, remote, older source, and Vercel link.
+- [x] Merge the strongest local and remote histories into the permanent repository.
+- [ ] Add the repository license and public-distribution policy.
+- [ ] Remove the restricted segmentation weight from the public tree and configure
+      an explicit external artifact path with fail-clear runtime behavior.
+- [ ] Update inventories, model cards, repository audits, and deployment examples.
+- [ ] Remove the restricted blob from the public branch history before the next push.
 
-### Phase 2: Release evidence
+### 2. Fresh source verification
 
-- [x] Task 4: Regenerate contracts, OpenAPI, legal notices, and checksums.
-- [x] Task 5: Run the complete TypeScript, Python, web, mobile-bundle, security, and repository gates.
-- [x] Task 6: Reconcile final verification and implementation-status documents with current evidence.
+- [ ] Install from committed locks in the permanent repository.
+- [ ] Run contracts, TypeScript tests, type checks, formatting, and dependency audit.
+- [ ] Run inference, platform, worker, and ML tests plus Ruff checks.
+- [ ] Build the Next.js web product and export Android/iOS JavaScript bundles.
+- [ ] Run repository, model-hash, fixture-isolation, and secret scans.
 
-### Checkpoint: Release evidence
+### 3. Competition product polish
 
-- [x] Every claimed pass has fresh command output from the exact tree.
-- [x] External or hardware-only evidence is plainly identified as pending.
+- [ ] Audit every public and signed-in web route for dead navigation, empty/error/
+      loading states, responsive layout, accessibility, and plain product copy.
+- [ ] Audit the principal mobile flow for scan recovery, permissions, touch targets,
+      safe areas, reduced motion, large text, and clear accepted/rejected states.
+- [ ] Verify the fast competition path from consent to a complete report.
+- [ ] Remove remaining Parkinson/NeuroSight references and stale packaging language.
 
-### Phase 3: Handoff and publishing
+### 4. Deployment and end-to-end verification
 
-- [x] Task 7: Review changed code and prose for readability, accessibility, safety, and human-maintained style.
-- [x] Task 8: Commit coherent changes with normal, specific commit messages and create a verified source ZIP.
-- [ ] Task 9: Publish to the intended GitHub repository only when repository visibility and model redistribution are safe.
-- [ ] Task 10: Configure and verify preview deployments only when the required Auth0, platform, signing, and storage settings exist.
+- [ ] Verify GitHub repository visibility, default branch, remote SHA, and Actions.
+- [ ] Verify the Vercel project, root/build settings, environment contract, and domain.
+- [ ] Deploy a preview, inspect build/runtime logs, and test public routes in a browser.
+- [ ] Configure or precisely identify the remaining identity, database, Redis, object
+      storage, worker-host, signing, and mobile-build credentials.
+- [ ] Promote only a verified deployment and record the exact public URLs.
 
-### Checkpoint: Complete
+### 5. Final acceptance
 
-- [ ] Source ZIP hash and contents are verified.
-- [ ] GitHub branch and remote commit are verified after push.
-- [ ] Deployed URLs are verified end to end, or the exact owner-provided setup still required is listed without claiming deployment.
+- [ ] Run the complete main-journey acceptance suite against the final tree.
+- [ ] Review code for correctness, security, accessibility, performance, and clarity.
+- [ ] Update `docs/FINAL_VERIFICATION.md` with fresh evidence only.
+- [ ] Confirm a clean working tree and matching local/remote commit.
 
-## Risks and Mitigations
+## Risks and responses
 
-| Risk                                             | Impact                                       | Mitigation                                                                                                                |
-| ------------------------------------------------ | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| A direct upload finishes after URL expiry        | Deleted medical bytes could reappear         | Enforce a maximum upload duration at ingress, wait that duration beyond capability expiry, then rescan and verify absence |
-| A deleted OIDC subject is reprovisioned later    | Old local data could sync into a new account | Keep a keyed durable tombstone and require explicit, separately designed account recreation                               |
-| Public source publishes restricted model weights | License breach                               | Keep the repository private or omit the weight until written redistribution rights exist                                  |
-| Build success is mistaken for a live product     | Broken auth/cloud paths in production        | Require real environment values and preview end-to-end verification before promotion                                      |
+| Risk | Response |
+| --- | --- |
+| Restricted model already exists in public history | Remove it from the current tree, replace runtime loading with a private artifact path, and publish a cleaned branch history. |
+| Hosted services are not provisioned | Finish all source and local verification, then request only the exact account or credential that blocks the next live boundary. |
+| Web deployment builds but authenticated flows fail | Verify browser to API to storage boundaries before promotion. |
+| Existing release notes overstate old evidence | Replace stale claims with fresh command and runtime evidence from this repository. |
 
-## Rulings
-
-- Ruling: Preserve the non-diagnostic, gate-closed product contract because the supplied blueprint makes it part of the product, and current evaluation evidence does not justify diagnostic claims. Cost if wrong: potentially less aggressive marketing; benefit: no fabricated clinical performance.
-- Ruling: Do not push the restricted model weight to a public repository without written redistribution permission. Cost if wrong: publishing waits for a visibility/license decision; benefit: avoids an irreversible public disclosure.
