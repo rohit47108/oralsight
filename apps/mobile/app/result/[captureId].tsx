@@ -269,6 +269,17 @@ export default function ResultRoute() {
         mimeType: capture.mimeType,
         inputOrigin: "live_capture",
         localQuality: capture.quality,
+        ...(capture.calibrationRequested === true &&
+        capture.calibrationCardVersion === "oralsight-calibration-v1"
+          ? {
+              calibration: {
+                cardVersion: capture.calibrationCardVersion,
+                markerId: 17,
+                markerSideMm: 20,
+                planeConfirmed: capture.calibrationPlaneConfirmed === true,
+              } as const,
+            }
+          : {}),
       });
       const rejectionReasons = captureStorageRejectionReasons(
         nextAnalysis,

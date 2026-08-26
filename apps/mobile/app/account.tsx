@@ -90,7 +90,57 @@ export default function AccountRoute() {
           />
         </Card>
       ) : null}
-      {!cloud.configured ? (
+      {cloud.sessionStatus === "deletion_pending" ? (
+        <Card accent="amber">
+          <SectionTitle
+            title={
+              cloud.deletion?.status === "failed"
+                ? "Cloud deletion needs attention"
+                : "Cloud deletion in progress"
+            }
+            subtitle="Sync, sharing, processing, analytics, and account setup stay paused until deletion and device cleanup finish. Local features remain available."
+            icon="time-outline"
+          />
+          {cloud.deletion ? (
+            <Text style={[styles.body, { color: theme.text }]}>
+              Status: {cloud.deletion.status.replaceAll("_", " ")}
+            </Text>
+          ) : null}
+          <Button
+            label="Check deletion status"
+            variant="secondary"
+            loading={cloud.busy}
+            loadingLabel="Checking status..."
+            onPress={() => void cloud.refreshDeletion()}
+          />
+        </Card>
+      ) : cloud.sessionStatus === "recreation_required" ? (
+        <Card accent="amber">
+          <SectionTitle
+            title="Confirm account recreation"
+            subtitle="This account was deleted. Create a new empty account to use cloud sync again. Your previous cloud records were not restored."
+            icon="refresh-circle-outline"
+          />
+          <Button
+            label="Recreate empty account"
+            loading={cloud.busy}
+            loadingLabel="Recreating account..."
+            onPress={() => void cloud.recreateAccount()}
+          />
+          <Text style={[styles.body, { color: theme.secondaryText }]}>
+            Local scans remain on this device and are not uploaded
+            automatically.
+          </Text>
+        </Card>
+      ) : cloud.configured && cloud.sessionStatus === "unavailable" ? (
+        <Card accent="amber">
+          <SectionTitle
+            title="Cloud account paused on this device"
+            subtitle="The prior deletion could not be tracked safely, so this app removed its session and will not reconnect automatically. Local features remain available."
+            icon="shield-outline"
+          />
+        </Card>
+      ) : !cloud.configured ? (
         <Card accent="amber">
           <SectionTitle
             title="Account services unavailable"

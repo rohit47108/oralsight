@@ -1,6 +1,6 @@
 # OralSight deployment handoff
 
-Last reviewed: 2026-08-10
+Last reviewed: 2026-08-13
 
 This document separates what is present in source from what still needs an
 account, credential, managed service, physical device, or real deployment. A
@@ -51,14 +51,19 @@ Store, or Google Play; a domain does not replace the native build.
 
 Before a complete public deployment, the owner must provide:
 
-1. A GitHub repository and protected `main` branch. This workspace currently has
-   no Git remote.
-2. A Vercel team/project for the web app and inference API.
+1. A protected GitHub `main` branch. The workspace is connected to the empty,
+   public `rohit47108/oralsight` repository but has not pushed the current tree.
+   Do not publish the Autooral-assisted segmentation weight there until its
+   redistribution permission is resolved or the repository is made private.
+2. Production-ready Vercel projects and environment values. The workspace is
+   linked to the `oralsight` project, but no deployment of the current tree has
+   been verified.
 3. An OIDC provider such as Auth0 with a public native client, a regular web
    client, an API audience, asymmetric signing, and the required patient,
-   clinician-pending, clinician, and administrator role claims. The platform
-   defaults to the access-token claim `https://oralsight.app/roles` and falls
-   back to `roles`; production must deliberately emit or configure one of them.
+   `clinician_pending`, clinician, and administrator role claims. The platform
+   defaults to the access-token claim `https://oralsight.app/roles`. It never
+   falls back to a generic `roles` claim; production must deliberately emit or
+   configure the exact claim.
 4. Managed PostgreSQL with TLS and point-in-time recovery.
 5. Managed Redis with TLS, authentication, persistence, and `noeviction`.
 6. A private S3 bucket with all Block Public Access controls enabled, Bucket
@@ -77,11 +82,14 @@ Before a complete public deployment, the owner must provide:
     intended release. The current segmentation inventory includes Autooral under
     academic-research/non-commercial terms; that evidence supports the
     competition prototype, not an unrestricted commercial-product license.
-13. A published privacy/retention notice that matches operations. The production
-    runbook currently targets a maximum 35-day encrypted backup lifetime, but the
-    current public privacy page does not state that window.
+13. A published privacy/retention notice that matches operations. The checked
+    privacy page states the runbook's maximum 35-day encrypted backup lifetime;
+    the deployed storage and backup policies must match it.
 14. Final native application identifiers. The checked source still uses
     `org.oralsight.prototype` and has no owner-specific Expo project ID.
+15. A hash-bound, reviewer-approved repeated-capture evaluation with area error
+    no greater than 10% before any normalized or calibrated longitudinal change
+    is enabled. A display registration transform does not satisfy this gate.
 
 The application remains usable in local-only mode when account services are not
 configured. Accounts, cloud sync, QR sharing, clinician review, server-rendered
@@ -152,6 +160,10 @@ docker compose ps
 This publishes PostgreSQL on `127.0.0.1:5432`, Redis on
 `127.0.0.1:6379`, inference on `127.0.0.1:8000`, the platform API on
 `127.0.0.1:8001`, and worker health on `127.0.0.1:8010`.
+The Compose stack signs inference responses with a documented, public
+development-only key and pins its public half in the worker. Override all three
+`ORALSIGHT_LOCAL_RESPONSE_SIGNING_*` values together to exercise key rotation;
+never reuse the checked-in development key in staging or production.
 
 Run the web app separately from the repository root:
 
@@ -211,6 +223,7 @@ ORALSIGHT_DEPLOYMENT_MODE=production
 ORALSIGHT_REQUIRE_RESPONSE_SIGNING=true
 ORALSIGHT_RESPONSE_SIGNING_PRIVATE_KEY_B64=<raw 32-byte Ed25519 private key in base64>
 ORALSIGHT_RESPONSE_SIGNING_KEY_ID=<derived key ID>
+ORALSIGHT_RESPONSE_SIGNING_PUBLIC_KEY_B64=<raw 32-byte Ed25519 public key in base64 for worker Compose wiring>
 ORALSIGHT_ENABLE_DEMO_FIXTURES=false
 ORALSIGHT_MAX_CONCURRENT_INFERENCE=2
 ORALSIGHT_RATE_LIMIT_PER_CLIENT=30
@@ -221,6 +234,14 @@ ORALSIGHT_RATE_LIMIT_WINDOW_SECONDS=60
 The three rate-limit values are process-local safety limits. Keep an additional
 rate limit at the public ingress, especially when more than one inference replica
 is running.
+
+Generate one matching key set with
+`uv run --project services/inference python services/inference/scripts/generate_signing_key.py`.
+Store the private value only in the inference secret manager. The worker receives
+the public value as
+`ORALSIGHT_WORKER_INFERENCE_RESPONSE_SIGNING_PUBLIC_KEY_B64`; mobile receives the
+same public bytes through `EXPO_PUBLIC_RESPONSE_SIGNING_PUBLIC_KEY_B64`. The
+worker derives the expected 16-character key ID from the public bytes.
 
 The packaged Vercel entry point sets the hash-pinned release manifest path when
 the release directory is present. The matching raw public key is compiled into
@@ -264,9 +285,9 @@ pnpm dlx vercel@58.8.0 promote <preview-url>
 
 Do not reuse an existing project link without checking its project name and
 intended framework. In the current development workspace, the root `.vercel`
-link points to the older `oralsight-inference` project even though the root
-configuration now describes the combined product. The source ZIP excludes
-`.vercel`, so a fresh extraction starts unlinked.
+link points to `oralsight`; the older live `oralsight-inference` deployment is a
+separate release and is not evidence that this tree is deployed. The source ZIP
+excludes `.vercel`, so a fresh extraction starts unlinked.
 
 ### Option B: two stable Vercel projects
 
@@ -333,7 +354,119 @@ automatic schema creation. Keep that behavior enabled.
 Set `ORALSIGHT_PLATFORM_OIDC_ROLE_CLAIM` when the identity provider uses a
 different access-token role claim. A web profile field is not enough: the role
 must be present in the API access token, and verified-clinician status is still
-checked in PostgreSQL before professional access is granted.
+checked in PostgreSQL before professional access is granted. Set
+`ORALSIGHT_PLATFORM_PRIVILEGED_TOKEN_MAX_AGE_SECONDS` between 60 and 3600
+seconds, and configure the provider to refresh access tokens within that limit.
+
+### Bootstrap the first administrator
+
+There is no HTTP endpoint that can create an administrator. First have the
+owner-designated administrator sign in once, which provisions a patient account.
+Then run the one-time command inside the platform container. Read the exact OIDC
+subject interactively so it does not enter shell history, store it only in the
+current process, and pass only the variable name to Compose:
+
+```powershell
+$bootstrapSubject = Read-Host "Exact OIDC subject for the first administrator"
+$env:ORALSIGHT_PLATFORM_BOOTSTRAP_ADMIN_SUBJECT = $bootstrapSubject
+$env:ORALSIGHT_PLATFORM_BOOTSTRAP_CONFIRMATION = "BOOTSTRAP ORALSIGHT FIRST ADMIN"
+docker compose --env-file C:\secure\oralsight-production.env `
+  -f compose.production.yaml exec `
+  -e ORALSIGHT_PLATFORM_BOOTSTRAP_ADMIN_SUBJECT `
+  -e ORALSIGHT_PLATFORM_BOOTSTRAP_CONFIRMATION `
+  platform-api oralsight-bootstrap-admin
+Remove-Item Env:ORALSIGHT_PLATFORM_BOOTSTRAP_ADMIN_SUBJECT
+Remove-Item Env:ORALSIGHT_PLATFORM_BOOTSTRAP_CONFIRMATION
+$bootstrapSubject = $null
+```
+
+The command requires an existing active account, serializes concurrent
+production attempts, and does not print or write the subject into audit details.
+The first successful promotion creates a durable, identity-free database seal.
+It is idempotent only for the same sole administrator, refuses every different
+target, and cannot reopen merely because administrator or audit rows were later
+removed. Assign `admin` in the configured access-token role claim, then require
+the administrator to sign out and back in. The portal stays locked until both
+the database role and a freshly validated token role agree.
+
+Add a second administrator before launch. `oralsight-add-admin` is a trusted
+infrastructure-operator command, not proof that another administrator personally
+approved the change. It requires a distinct active saved administrator as a
+reference, exact target and reference subjects supplied through temporary
+environment variables, and the confirmation phrase `ADD ORALSIGHT ADMIN`. The
+reference proves that this is a normal addition rather than zero-administrator
+recovery. The operation is audited without naming an approving person and never
+prints either subject.
+
+Run the additional-admin command from a protected operator shell:
+
+```powershell
+$targetSubject = Read-Host "Exact OIDC subject for the additional administrator"
+$referenceSubject = Read-Host "Exact OIDC subject for an active administrator reference"
+$env:ORALSIGHT_PLATFORM_ADMIN_TARGET_SUBJECT = $targetSubject
+$env:ORALSIGHT_PLATFORM_ADMIN_REFERENCE_SUBJECT = $referenceSubject
+$env:ORALSIGHT_PLATFORM_ADMIN_CONFIRMATION = "ADD ORALSIGHT ADMIN"
+docker compose --env-file C:\secure\oralsight-production.env `
+  -f compose.production.yaml exec `
+  -e ORALSIGHT_PLATFORM_ADMIN_TARGET_SUBJECT `
+  -e ORALSIGHT_PLATFORM_ADMIN_REFERENCE_SUBJECT `
+  -e ORALSIGHT_PLATFORM_ADMIN_CONFIRMATION `
+  platform-api oralsight-add-admin
+Remove-Item Env:ORALSIGHT_PLATFORM_ADMIN_TARGET_SUBJECT
+Remove-Item Env:ORALSIGHT_PLATFORM_ADMIN_REFERENCE_SUBJECT
+Remove-Item Env:ORALSIGHT_PLATFORM_ADMIN_CONFIRMATION
+$targetSubject = $null
+$referenceSubject = $null
+```
+
+Then assign `admin` in the exact configured access-token role claim and require
+the additional administrator to sign out and back in. The database promotion
+alone does not open administrator routes.
+
+If a durably sealed installation has no saved administrator, use the separate
+break-glass command. It refuses an unsealed installation and refuses recovery
+while any administrator remains:
+
+```powershell
+$recoverySubject = Read-Host "Exact OIDC subject for the recovery administrator"
+$env:ORALSIGHT_PLATFORM_RECOVERY_ADMIN_SUBJECT = $recoverySubject
+$env:ORALSIGHT_PLATFORM_RECOVERY_CONFIRMATION = "RECOVER ORALSIGHT SEALED INSTALLATION WITH ZERO ADMINS"
+docker compose --env-file C:\secure\oralsight-production.env `
+  -f compose.production.yaml exec `
+  -e ORALSIGHT_PLATFORM_RECOVERY_ADMIN_SUBJECT `
+  -e ORALSIGHT_PLATFORM_RECOVERY_CONFIRMATION `
+  platform-api oralsight-recover-admin
+Remove-Item Env:ORALSIGHT_PLATFORM_RECOVERY_ADMIN_SUBJECT
+Remove-Item Env:ORALSIGHT_PLATFORM_RECOVERY_CONFIRMATION
+$recoverySubject = $null
+```
+
+Assign `admin` in the exact configured token claim and require a fresh sign-in
+after recovery. Test this path in staging and retain the operator evidence
+outside application logs.
+
+### Complete a clinician approval
+
+Approving professional credentials does not immediately open patient records.
+The full applicant path is:
+
+1. The identity administrator creates a searchable invitation reference and
+   assigns `clinician_pending` in the configured token claim.
+2. The applicant signs out and back in, opens `/professional-apply`, and submits
+   that reference with professional credentials.
+3. The platform administrator reviews the credentials and invitation reference.
+4. After approval, the identity administrator replaces `clinician_pending`
+   with `clinician`.
+5. The clinician signs out and back in and selects **Check secure access**.
+6. Confirm that the portal records the first-observed timestamp and opens only
+   patient-authorized records.
+
+That timestamp records when the required role first appeared in a validated,
+signed access token. It proves only a past observation. Every protected route
+continues to check the current signed token. Privileged token roles are ignored
+900 seconds after `iat` by default, plus the configured clock leeway. Removing a
+provider role therefore locks a refreshed sign-in immediately and any previously
+issued token no later than that bound; it is not instant revocation.
 
 `ORALSIGHT_PLATFORM_PENDING_UPLOAD_LIFETIME_SECONDS` defaults to `3600`. This is
 the maximum lifetime of an unfinished upload reservation; retention cleanup must
@@ -358,6 +491,14 @@ The full account-enabled mobile build needs all of these public build values:
 The preview and production EAS profiles select their matching EAS environment.
 Add the account-related values to both environments before building; otherwise
 the app deliberately remains local-only even though the cloud code is present.
+
+The calibration card has one 20 mm ArUco marker and four fixed neutral patches.
+No extra environment variable enables them. A calibrated request carries the
+fixed card version, marker ID 17, marker side 20 mm, and the user's same-plane
+confirmation. Size estimation and neutral-patch color normalization fail closed
+independently. Color normalization may adjust only approximate mean redness and
+brightness after every patch gate passes; it never rewrites the image or changes
+the mask, anatomy, quality, texture, learned heads, or guidance.
 
 Register the native callback generated for the `oralsight` app scheme with the
 OIDC provider, then create the EAS project and build:
@@ -399,17 +540,20 @@ Record the commit SHA, image digests, Vercel deployment IDs, EAS build IDs, mode
 release ID, signing key ID, migration revision, and environment names. Then
 verify:
 
-1. Web public pages load and authenticated patient, clinician-pending,
-   clinician, and administrator roles reach only their allowed screens.
+1. Web public pages load and authenticated patient, `clinician_pending`,
+   clinician, and administrator roles reach only their allowed screens. Prove
+   first-admin bootstrap, clinician two-step activation, and fail-closed access
+   after removing each privileged token role.
 2. `GET /api/healthz` and `GET /api/v1/model-card` report the expected release,
    enabled heads, signing state, and `Cache-Control: no-store`.
 3. `GET /readyz` on the platform origin reports database, queue, and object
    storage ready.
 4. One synthetic or expressly licensed scan completes all eight regions using
    live model responses. A failed live request produces no fixture result.
-5. Account consent, sync, multi-angle upload, report, personalized observation
-   surface, summary video, encrypted export, QR share/exchange/revoke, clinician
-   review, and access history work through the deployed services.
+5. Account consent, sync, multi-angle upload, report, image-colored generic
+   observation surface, summary video, encrypted export, QR
+   share/exchange/revoke, clinician review, and access history work through the
+   deployed services. Do not describe the GLB as reconstructed patient anatomy.
 6. Delete-all removes live database rows and object bytes, revokes shares and
    grants, cancels work, creates the identity tombstone, and causes the mobile
    installation keys to rotate.
@@ -425,6 +569,18 @@ verify:
     rules and operator runbook.
 11. The repository license and all asset/model redistribution and intended-use
     rights have been approved for the planned form of release.
+12. Worker analyze and compare jobs reject a missing/altered Ed25519 signature,
+    wrong key or request ID, encoded body, missing `no-store`, and malformed JSON
+    before accepting an inference result.
+13. The app may display a gated registration transform for visual alignment, but
+    normalized and calibrated longitudinal change remains unavailable until the
+    deployed release includes hash-bound, reviewer-approved repeated-capture
+    evidence at no more than 10% area error.
+14. A printed-card smoke covers both independent paths: valid marker-plane sizing
+    still works when neutral-patch normalization is suppressed, and a passing
+    four-patch fit changes only mean redness/brightness while recording
+    `neutral-grayscale-patches-affine-rgb-v1`. Repeat this on the required device
+    and printer matrix before relying on either estimate.
 
 Only after those checks pass should the current tree be called deployed.
 
@@ -444,11 +600,13 @@ Only after those checks pass should the current tree be called deployed.
 
 ## Source ZIP handoff
 
-After the final checks and documentation are frozen:
+After the final checks and documentation are frozen, choose the release archive
+path from the protected operator shell:
 
 ```powershell
+$releaseArchive = Read-Host "Absolute path for the final OralSight source archive"
 .\scripts\package-source.ps1 `
-  -OutputPath .\outputs\release\OralSight-complete-2026-08-10.zip `
+  -OutputPath $releaseArchive `
   -Force
 ```
 

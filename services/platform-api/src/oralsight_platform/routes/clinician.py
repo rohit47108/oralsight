@@ -171,6 +171,19 @@ async def submit_clinician_verification(
             "oidc_role_required",
             "The access token is not authorized for clinician verification.",
         )
+    user = await session.scalar(
+        select(User).where(User.id == actor.user_id).with_for_update()
+    )
+    if user is None:
+        raise ServiceError(404, "account_not_found", "The account was not found.")
+    if user.status is not UserStatus.ACTIVE:
+        raise ServiceError(403, "account_not_active", "This account is not available.")
+    if user.role is not UserRole.PATIENT:
+        raise ServiceError(
+            409,
+            "invalid_verification_state",
+            "The clinician application cannot change this account role.",
+        )
     existing = await session.scalar(
         select(ClinicianVerification)
         .where(
@@ -190,9 +203,6 @@ async def submit_clinician_verification(
             "verification_already_active",
             "A pending or verified clinician record already exists.",
         )
-    user = await session.get(User, actor.user_id)
-    if user is None:
-        raise ServiceError(404, "account_not_found", "The account was not found.")
     now = utc_now()
     value = ClinicianVerification(
         user_id=actor.user_id,
@@ -221,7 +231,12 @@ async def submit_clinician_verification(
         request_id=request.state.request_id,
         details={"status": ClinicianVerificationStatus.PENDING.value},
     )
-    response = verification_response(value)
+    response = verification_response(
+        value,
+        required_claim=request.app.state.settings.oidc_role_claim,
+        applicant_role=user.role,
+        applicant_token_roles=actor.token_roles,
+    )
     return await commit_idempotent(
         session,
         user_id=actor.user_id,
@@ -238,6 +253,7 @@ async def submit_clinician_verification(
     response_model=ClinicianVerificationResponse,
 )
 async def get_current_clinician_verification(
+    request: Request,
     actor: Annotated[Actor, Depends(get_current_actor)],
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> ClinicianVerificationResponse:
@@ -250,7 +266,79 @@ async def get_current_clinician_verification(
         raise ServiceError(
             404, "verification_not_found", "No clinician verification was found."
         )
-    return verification_response(value)
+    return verification_response(
+        value,
+        required_claim=request.app.state.settings.oidc_role_claim,
+        applicant_role=actor.role,
+        applicant_token_roles=actor.token_roles,
+    )
+
+
+@router.post(
+    "/clinician-verifications/current/activate",
+    response_model=ClinicianVerificationResponse,
+)
+async def activate_current_clinician_verification(
+    request: Request,
+    actor: Annotated[Actor, Depends(get_current_actor)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> ClinicianVerificationResponse:
+    if UserRole.CLINICIAN.value not in actor.token_roles:
+        raise ServiceError(
+            403,
+            "oidc_role_required",
+            "The access token is not authorized for the clinician role.",
+        )
+    value = await session.scalar(
+        select(ClinicianVerification)
+        .where(
+            ClinicianVerification.user_id == actor.user_id,
+            ClinicianVerification.status == ClinicianVerificationStatus.VERIFIED,
+        )
+        .order_by(ClinicianVerification.submitted_at.desc())
+        .with_for_update()
+    )
+    if value is None:
+        raise ServiceError(
+            409,
+            "verification_not_ready",
+            "An approved clinician verification is required.",
+        )
+    user = await session.scalar(
+        select(User).where(User.id == actor.user_id).with_for_update()
+    )
+    if user is None:
+        raise ServiceError(404, "account_not_found", "The account was not found.")
+    if user.status is not UserStatus.ACTIVE:
+        raise ServiceError(403, "account_not_active", "This account is not available.")
+    if user.role not in {UserRole.CLINICIAN_PENDING, UserRole.CLINICIAN}:
+        raise ServiceError(
+            409,
+            "invalid_verification_state",
+            "The clinician account state cannot be activated.",
+        )
+
+    if value.oidc_role_observed_at is None:
+        value.oidc_role_observed_at = utc_now()
+        append_audit_event(
+            session,
+            patient_user_id=actor.user_id,
+            actor_user_id=actor.user_id,
+            event_type="clinician_verification.oidc_role_observed",
+            resource_type="clinician_verification",
+            resource_id=value.id,
+            request_id=request.state.request_id,
+            details={"requiredRole": UserRole.CLINICIAN.value},
+        )
+    if user.role is UserRole.CLINICIAN_PENDING:
+        user.role = UserRole.CLINICIAN
+    await session.commit()
+    return verification_response(
+        value,
+        required_claim=request.app.state.settings.oidc_role_claim,
+        applicant_role=user.role,
+        applicant_token_roles=actor.token_roles,
+    )
 
 
 @router.get(
@@ -258,6 +346,7 @@ async def get_current_clinician_verification(
     response_model=ClinicianVerificationQueue,
 )
 async def list_clinician_verifications(
+    request: Request,
     actor: Annotated[Actor, Depends(require_oidc_roles(UserRole.ADMIN))],
     session: Annotated[AsyncSession, Depends(get_session)],
     verification_status: Annotated[
@@ -291,7 +380,13 @@ async def list_clinician_verifications(
     )
     page = rows[:limit]
     return ClinicianVerificationQueue(
-        items=[verification_response(value) for value in page],
+        items=[
+            verification_response(
+                value,
+                required_claim=request.app.state.settings.oidc_role_claim,
+            )
+            for value in page
+        ],
         next_cursor=page[-1].id if len(rows) > limit else None,
     )
 
@@ -302,6 +397,7 @@ async def list_clinician_verifications(
 )
 async def get_clinician_verification_for_admin(
     verification_id: str,
+    request: Request,
     actor: Annotated[Actor, Depends(require_oidc_roles(UserRole.ADMIN))],
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> ClinicianVerificationResponse:
@@ -311,7 +407,10 @@ async def get_clinician_verification_for_admin(
         raise ServiceError(
             404, "resource_not_found", "The requested resource was not found."
         )
-    return verification_response(value)
+    return verification_response(
+        value,
+        required_claim=request.app.state.settings.oidc_role_claim,
+    )
 
 
 @router.post(
@@ -357,21 +456,29 @@ async def decide_clinician_verification(
         raise ServiceError(
             422, "invalid_review_evidence", "Review evidence cannot be future dated."
         )
-    applicant = await session.get(User, value.user_id)
+    applicant = await session.scalar(
+        select(User).where(User.id == value.user_id).with_for_update()
+    )
     if applicant is None:
         raise ServiceError(
             500, "invalid_verification_state", "The applicant is missing."
+        )
+    if (
+        applicant.status is not UserStatus.ACTIVE
+        or applicant.role is not UserRole.CLINICIAN_PENDING
+    ):
+        raise ServiceError(
+            409,
+            "invalid_verification_state",
+            "The clinician decision cannot change this account role.",
         )
     value.status = body.status
     value.reviewer_user_id = actor.user_id
     value.reviewer_evidence = body.evidence.model_dump(mode="json", by_alias=True)
     value.decision_reason = body.decision_reason
     value.reviewed_at = now
-    applicant.role = (
-        UserRole.CLINICIAN
-        if body.status is ClinicianVerificationStatus.VERIFIED
-        else UserRole.PATIENT
-    )
+    if body.status is ClinicianVerificationStatus.REJECTED:
+        applicant.role = UserRole.PATIENT
     append_audit_event(
         session,
         patient_user_id=value.user_id,
@@ -382,7 +489,11 @@ async def decide_clinician_verification(
         request_id=request.state.request_id,
         details={"status": body.status.value},
     )
-    response = verification_response(value)
+    response = verification_response(
+        value,
+        required_claim=request.app.state.settings.oidc_role_claim,
+        applicant_role=applicant.role,
+    )
     return await commit_idempotent(
         session,
         user_id=actor.user_id,

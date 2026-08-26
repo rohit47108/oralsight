@@ -35,15 +35,22 @@ from .contracts import (
     DescriptorChanges,
     DiseaseResearchClass,
     DistributionClass,
+    ImagePixelSize,
     ModelHead,
     ModelOutput,
     MouthRegion,
     QualityClass,
     QualityResult,
+    RegistrationAlignment,
     Uncertainty,
     VisualDescriptors,
 )
-from .calibration import estimate_calibrated_bounding_box
+from .calibration import (
+    NEUTRAL_COLOR_REFERENCE_VERSION,
+    NeutralColorReference,
+    estimate_calibrated_bounding_box,
+    estimate_neutral_color_reference,
+)
 from .model_adapters import (
     ClassificationPrediction,
     EmbeddingPrediction,
@@ -61,7 +68,7 @@ SUPPORTED_PIL_FORMATS = {"JPEG", "PNG", "WEBP"}
 
 MODEL_VERSIONS = {
     "quality": "opencv-quality-yunet-v3",
-    "registration": "orb-homography-descriptor-normalization-v3",
+    "registration": "orb-homography-descriptor-normalization-v4",
 }
 MINIMUM_SEGMENTATION_ENSEMBLE_IOU = 0.50
 YUNET_MODEL_PATH = (
@@ -359,6 +366,8 @@ def _segmentation_agreement(
 def candidate_from_model_mask(
     image: SanitizedImage,
     prediction: SegmentationPrediction,
+    *,
+    color_reference: NeutralColorReference | None = None,
 ) -> tuple[CandidateMask | None, VisualDescriptors | None, np.ndarray | None]:
     """Convert one validated model probability map into approximate descriptors."""
 
@@ -422,19 +431,24 @@ def candidate_from_model_mask(
     mask_pixels = component.astype(bool)
     rgb_float = rgb.astype(np.float32)
     selected_rgb = rgb_float[mask_pixels]
+    descriptor_rgb = (
+        color_reference.correct_rgb(selected_rgb)
+        if color_reference is not None and color_reference.applied
+        else selected_rgb
+    )
     mean_redness = _clamp(
         float(
             np.mean(
                 np.maximum(
                     0.0,
-                    selected_rgb[:, 0]
-                    - (selected_rgb[:, 1] + selected_rgb[:, 2]) / 2.0,
+                    descriptor_rgb[:, 0]
+                    - (descriptor_rgb[:, 1] + descriptor_rgb[:, 2]) / 2.0,
                 )
             )
             / 255.0
         )
     )
-    mean_brightness = _clamp(float(np.mean(selected_rgb)) / 255.0)
+    mean_brightness = _clamp(float(np.mean(descriptor_rgb)) / 255.0)
     gray = cv2.cvtColor(image.bgr, cv2.COLOR_BGR2GRAY)
     texture_values = cv2.Laplacian(gray, cv2.CV_32F)[mask_pixels]
     texture_contrast = _clamp(float(np.std(texture_values)) / 64.0)
@@ -839,6 +853,7 @@ def analyze_sanitized_image(
     primary_complete = base_primary_complete and secondary_passed
     candidate_mask: CandidateMask | None = None
     descriptors: VisualDescriptors | None = None
+    color_reference: NeutralColorReference | None = None
     if primary_complete and segmentation_prediction is not None:
         candidate_mask, descriptors, _ = candidate_from_model_mask(
             image,
@@ -848,6 +863,41 @@ def analyze_sanitized_image(
             limitations.append(
                 "The released segmentation model returned no thresholded candidate region."
             )
+            if metadata.calibration is not None:
+                limitations.append(
+                    "Neutral-patch color normalization was not applied because no completed candidate region was available."
+                )
+        elif metadata.calibration is not None:
+            color_reference = estimate_neutral_color_reference(
+                image.bgr,
+                candidate_mask.bounding_box,
+                plane_confirmed=metadata.calibration.plane_confirmed,
+                expected_marker_id=metadata.calibration.marker_id,
+                marker_side_mm=metadata.calibration.marker_side_mm,
+            )
+            if color_reference.applied:
+                candidate_mask, descriptors, _ = candidate_from_model_mask(
+                    image,
+                    segmentation_prediction,
+                    color_reference=color_reference,
+                )
+                limitations.append(
+                    "Mean redness and mean brightness were normalized from all four neutral patches on the detected OralSight calibration card. The source image, mask, anatomy, quality, texture, and guidance inputs were not changed."
+                )
+            else:
+                rendered_reasons = ", ".join(
+                    reason.replace("_", " ")
+                    for reason in color_reference.suppression_reasons
+                )
+                limitations.append(
+                    "Neutral-patch color normalization was not applied"
+                    + (f": {rendered_reasons}. " if rendered_reasons else ". ")
+                    + "The approximate color descriptors use the uncorrected sanitized image."
+                )
+    elif metadata.calibration is not None:
+        limitations.append(
+            "Neutral-patch color normalization was not applied because no completed candidate region was available."
+        )
 
     appearance_output: ModelOutput | None = None
     if ModelHead.APPEARANCE in requested:
@@ -932,6 +982,10 @@ def analyze_sanitized_image(
     if not primary_complete:
         limitations.append("No completed image interpretation is available.")
 
+    model_versions = _invoked_model_versions(runtime, invoked_heads)
+    if color_reference is not None and color_reference.applied:
+        model_versions["descriptor_color_reference"] = NEUTRAL_COLOR_REFERENCE_VERSION
+
     return AnalysisResult(
         capture_id=metadata.capture_id,
         region=metadata.selected_region,
@@ -949,7 +1003,7 @@ def analyze_sanitized_image(
             limitations=list(dict.fromkeys(limitations)),
         ),
         abstention_reasons=list(dict.fromkeys(abstention_reasons)),
-        model_versions=_invoked_model_versions(runtime, invoked_heads),
+        model_versions=model_versions,
         input_origin=metadata.input_origin,
         analysis_origin=(
             AnalysisOrigin.LIVE_MODEL
@@ -1068,6 +1122,88 @@ def _orb_registration(
         registration_confidence,
         reasons,
         homography,
+    )
+
+
+def _public_registration_alignment(
+    baseline: SanitizedImage,
+    current: SanitizedImage,
+    baseline_to_current_pixels: np.ndarray,
+) -> RegistrationAlignment | None:
+    """Convert a gated pixel homography into a bounded client-safe transform.
+
+    OpenCV estimates baseline-to-current pixel coordinates. The comparison UI
+    overlays the current capture on the baseline, so the public transform is
+    the inverse mapping in normalized image coordinates. No image bytes or
+    derived registered image are returned.
+    """
+
+    baseline_height, baseline_width = baseline.bgr.shape[:2]
+    current_height, current_width = current.bgr.shape[:2]
+    if min(baseline_height, baseline_width, current_height, current_width) < 1:
+        return None
+    try:
+        current_to_baseline_pixels = np.linalg.inv(baseline_to_current_pixels)
+    except np.linalg.LinAlgError:
+        return None
+
+    baseline_pixel_scale = np.diag(
+        [max(baseline_width - 1, 1), max(baseline_height - 1, 1), 1.0]
+    )
+    current_pixel_scale = np.diag(
+        [max(current_width - 1, 1), max(current_height - 1, 1), 1.0]
+    )
+    try:
+        normalized = (
+            np.linalg.inv(baseline_pixel_scale)
+            @ current_to_baseline_pixels
+            @ current_pixel_scale
+        )
+    except np.linalg.LinAlgError:
+        return None
+    if normalized.shape != (3, 3) or not np.all(np.isfinite(normalized)):
+        return None
+    scale = float(normalized[2, 2])
+    if abs(scale) < 1e-10:
+        return None
+    normalized = normalized / scale
+    determinant = float(np.linalg.det(normalized))
+    if not math.isfinite(determinant) or abs(determinant) < 1e-10:
+        return None
+
+    # Reject transforms with a projective horizon through or immediately next
+    # to the rendered image. The client can safely clip finite off-canvas
+    # coordinates, but cannot safely divide by a near-zero homogeneous value.
+    sample_points = np.array(
+        [
+            [0.0, 0.5, 1.0, 0.0, 0.5, 1.0, 0.0, 0.5, 1.0],
+            [0.0, 0.0, 0.0, 0.5, 0.5, 0.5, 1.0, 1.0, 1.0],
+            [1.0] * 9,
+        ],
+        dtype=np.float64,
+    )
+    projected = normalized @ sample_points
+    denominators = projected[2, :]
+    if np.any(np.abs(denominators) < 1e-6):
+        return None
+    projected_coordinates = projected[:2, :] / denominators
+    if not np.all(np.isfinite(projected_coordinates)):
+        return None
+    # Excessively large values are not useful for a clipped comparison view
+    # and can overflow lower-precision graphics paths on mobile devices.
+    if float(np.max(np.abs(projected_coordinates))) > 16.0:
+        return None
+
+    return RegistrationAlignment(
+        matrix=tuple(float(value) for value in normalized.ravel()),
+        source_image_size=ImagePixelSize(
+            width_px=current_width,
+            height_px=current_height,
+        ),
+        target_image_size=ImagePixelSize(
+            width_px=baseline_width,
+            height_px=baseline_height,
+        ),
     )
 
 
@@ -1251,7 +1387,8 @@ def compare_sanitized_images(
             learned_output_available = True
         except Exception:
             candidate_match_score = None
-            suppression_reasons.append("lesion_reidentification_inference_failed")
+            if not metadata.user_confirmed_match:
+                suppression_reasons.append("lesion_reidentification_inference_failed")
 
     (
         inlier_ratio,
@@ -1261,6 +1398,13 @@ def compare_sanitized_images(
         homography,
     ) = _orb_registration(baseline, current)
     suppression_reasons.extend(registration_reasons)
+    registration_alignment = (
+        _public_registration_alignment(baseline, current, homography)
+        if homography is not None
+        and not registration_reasons
+        and learned_output_available
+        else None
+    )
 
     if not baseline_quality.accepted:
         suppression_reasons.append("baseline_image_quality_rejected")
@@ -1285,8 +1429,8 @@ def compare_sanitized_images(
         if current_candidate is None or current_descriptors is None:
             suppression_reasons.append("current_candidate_region_unavailable")
 
-    repeated_capture_gate_passed = runtime.repeated_capture_area_error is not None
-    if not repeated_capture_gate_passed:
+    repeatability_gate_passed = runtime.repeated_capture_area_error is not None
+    if not repeatability_gate_passed:
         suppression_reasons.append("repeated_capture_area_error_gate_unmet")
 
     # Prior-analysis metadata binds capture and region identity, but it is
@@ -1391,11 +1535,16 @@ def compare_sanitized_images(
     if any(request is not None for request in calibration_requests):
         if not all(request is not None for request in calibration_requests):
             calibration_suppression_reasons.append("paired_calibration_required")
-        elif not comparable:
-            calibration_suppression_reasons.append("comparison_not_comparable")
-        elif baseline_candidate is None or current_candidate is None:
-            calibration_suppression_reasons.append("candidate_bounds_unavailable")
         else:
+            if not comparable:
+                calibration_suppression_reasons.append("comparison_not_comparable")
+            if not repeatability_gate_passed:
+                calibration_suppression_reasons.append(
+                    "repeated_capture_area_error_gate_unmet"
+                )
+            if baseline_candidate is None or current_candidate is None:
+                calibration_suppression_reasons.append("candidate_bounds_unavailable")
+        if not calibration_suppression_reasons:
             baseline_request = metadata.baseline_calibration
             current_request = metadata.current_calibration
             assert baseline_request is not None and current_request is not None
@@ -1474,6 +1623,9 @@ def compare_sanitized_images(
         registration_confidence=registration_confidence,
         inlier_ratio=inlier_ratio,
         reprojection_error_ratio=reprojection_error_ratio,
+        repeated_capture_area_error=runtime.repeated_capture_area_error,
+        repeatability_gate_passed=repeatability_gate_passed,
+        registration_alignment=registration_alignment,
         normalized_change=normalized_change,
         descriptor_changes=descriptor_changes,
         calibrated_measurement_changes=calibrated_changes,
@@ -1502,6 +1654,9 @@ def failed_comparison(metadata: CompareMetadata) -> ComparisonResult:
         registration_confidence=0,
         inlier_ratio=0,
         reprojection_error_ratio=1,
+        repeated_capture_area_error=None,
+        repeatability_gate_passed=False,
+        registration_alignment=None,
         normalized_change=None,
         descriptor_changes=None,
         calibrated_measurement_changes=None,

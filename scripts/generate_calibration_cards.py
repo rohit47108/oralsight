@@ -15,6 +15,7 @@ MARKER_SIDE_MM = 20.0
 MARKER_ID = 17
 CARD_VERSION = "oralsight-calibration-v1"
 REFERENCE_BAR_MM = 50.0
+NEUTRAL_PATCH_VALUES = (35, 100, 170, 235)
 
 
 def _px(mm: float) -> int:
@@ -165,7 +166,7 @@ def build_card(*, page_width_mm: float, page_height_mm: float) -> Image.Image:
     patches_y = marker_panel_y + _px(3)
     draw.text((patches_x, patches_y), "Neutral reference", fill=ink, font=small_bold)
     patch_side = _px(9)
-    for index, value in enumerate((35, 100, 170, 235)):
+    for index, value in enumerate(NEUTRAL_PATCH_VALUES):
         left = patches_x + index * (patch_side + _px(2))
         top = patches_y + _px(7)
         draw.rectangle(

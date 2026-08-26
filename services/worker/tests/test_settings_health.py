@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from base64 import b64encode
 from dataclasses import dataclass
 
 import httpx
@@ -30,6 +31,7 @@ def test_production_accepts_only_tls_internal_dependencies() -> None:
         redis_url="rediss://redis.internal:6379/0",
         platform_api_url="https://platform.internal",
         inference_api_url="https://inference.internal",
+        inference_response_signing_public_key_b64=b64encode(b"p" * 32).decode("ascii"),
     )
     assert settings.production is True
 

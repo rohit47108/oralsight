@@ -118,9 +118,14 @@ class WorkerEngine:
         message: QueueMessage,
         envelope: JobEnvelope,
         reason_code: str,
+        retry_after_seconds: float | None = None,
     ) -> None:
         now = self.clock()
-        delay = self.retry_policy.delay_seconds(envelope.attempt)
+        delay = (
+            retry_after_seconds
+            if retry_after_seconds is not None
+            else self.retry_policy.delay_seconds(envelope.attempt)
+        )
         not_before = now + timedelta(seconds=delay)
         if (
             envelope.attempt >= envelope.max_attempts
@@ -267,7 +272,12 @@ class WorkerEngine:
                 self._completion_ttl(envelope, self.clock()),
             )
         except RetryableJobError as exc:
-            await self._schedule_retry(message, envelope, exc.code)
+            await self._schedule_retry(
+                message,
+                envelope,
+                exc.code,
+                retry_after_seconds=exc.retry_after_seconds,
+            )
         except PermanentJobError as exc:
             await self._terminal_failure(message, envelope, exc.code)
         except Exception:

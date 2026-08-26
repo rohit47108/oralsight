@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import hashlib
+import hmac
+import time
 from datetime import UTC, datetime, timedelta
 from typing import Annotated
+from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Header, Query, Request, status
 from fastapi.responses import Response
@@ -31,6 +34,8 @@ from ..models import (
     MediaKind,
     ScanSession,
     ScanStatus,
+    User,
+    UserStatus,
     new_id,
     utc_now,
 )
@@ -57,6 +62,7 @@ from ..object_storage import (
     StorageError,
     StorageIntegrityError,
     StorageNotFound,
+    TransferTokenCodec,
 )
 
 router = APIRouter(prefix="/v2", tags=["capture"])
@@ -561,6 +567,53 @@ def _upload_deadline_passed(asset: CaptureAsset) -> bool:
     return deadline <= utc_now()
 
 
+def _upload_token_codec(request: Request) -> TransferTokenCodec:
+    secret = request.app.state.settings.share_secret_derivation_key.get_secret_value().encode()
+    return TransferTokenCodec(secret)
+
+
+def _upload_capability_error() -> ServiceError:
+    return ServiceError(
+        403,
+        "invalid_upload_capability",
+        "The upload capability is invalid.",
+    )
+
+
+def _required_capability_str(payload: dict[str, object], field: str) -> str:
+    value = payload.get(field)
+    if not isinstance(value, str) or not value:
+        raise _upload_capability_error()
+    return value
+
+
+def _required_capability_size(payload: dict[str, object]) -> int:
+    value = payload.get("size")
+    if type(value) is not int or value <= 0:
+        raise _upload_capability_error()
+    return value
+
+
+def _capability_expiry(asset: CaptureAsset, lifetime_seconds: int) -> int:
+    now_epoch = int(time.time())
+    expiry = now_epoch + lifetime_seconds
+    deadline = asset.upload_expires_at
+    if deadline is not None:
+        if deadline.tzinfo is None:
+            deadline = deadline.replace(tzinfo=UTC)
+        expiry = min(expiry, int(deadline.timestamp()))
+    if expiry < now_epoch:
+        raise ServiceError(410, "asset_upload_expired", "This upload has expired.")
+    return expiry
+
+
+async def _cleanup_ambiguous_upload(request: Request, object_key: str) -> None:
+    try:
+        await request.app.state.object_storage.delete(object_key)
+    except StorageError:
+        pass
+
+
 async def _reject_expired_upload(
     request: Request, session: AsyncSession, asset: CaptureAsset
 ) -> None:
@@ -594,22 +647,46 @@ async def create_asset_upload_intent(
         )
     if asset.byte_size > request.app.state.settings.capture_asset_max_bytes:
         raise ServiceError(413, "asset_too_large", "The capture asset is too large.")
-    try:
-        intent = await request.app.state.object_storage.presign_upload(
-            asset.object_key,
-            media_type=asset.media_type,
-            sha256=asset.content_sha256,
-            size_bytes=asset.byte_size,
-            lifetime_seconds=request.app.state.settings.object_transfer_lifetime_seconds,
+    capability_expiry_epoch = _capability_expiry(
+        asset, request.app.state.settings.object_transfer_lifetime_seconds
+    )
+    token = _upload_token_codec(request).issue(
+        {
+            "op": "put",
+            "user": asset.user_id,
+            "asset": asset.id,
+            "key": asset.object_key,
+            "type": asset.media_type,
+            "sha": asset.content_sha256,
+            "size": asset.byte_size,
+            "exp": capability_expiry_epoch,
+        }
+    )
+    capability_expires_at = datetime.fromtimestamp(capability_expiry_epoch, UTC)
+    current_capability_expiry = asset.upload_capability_expires_at
+    if (
+        current_capability_expiry is None
+        or (
+            current_capability_expiry.replace(tzinfo=UTC)
+            if current_capability_expiry.tzinfo is None
+            else current_capability_expiry.astimezone(UTC)
         )
-    except StorageError as exc:
-        raise _storage_service_error(exc) from exc
+        < capability_expires_at
+    ):
+        asset.upload_capability_expires_at = capability_expires_at
+    await session.commit()
     return AssetTransferIntentResponse(
         asset_id=asset.id,
         method="PUT",
-        url=intent.url,
-        headers=intent.headers,
-        expires_at=datetime.fromtimestamp(intent.expires_at_epoch, UTC),
+        url=(
+            f"{request.app.state.settings.object_storage_public_base_url.rstrip('/')}"
+            f"/v2/storage/uploads/{quote(token, safe='')}"
+        ),
+        headers={
+            "Content-Type": asset.media_type,
+            "Content-Length": str(asset.byte_size),
+        },
+        expires_at=capability_expires_at,
     )
 
 
@@ -712,32 +789,131 @@ async def get_capture_asset_content(
 
 
 @router.put("/storage/uploads/{token}", include_in_schema=False)
-async def local_presigned_upload(token: str, request: Request) -> Response:
-    storage = request.app.state.object_storage
-    if not isinstance(storage, LocalObjectStorage):
-        raise ServiceError(404, "not_found", "Endpoint not found.")
+async def platform_capability_upload(
+    token: str,
+    request: Request,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> Response:
     try:
-        payload = storage.tokens.verify(token, operation="put")
-        expected_size = int(payload["size"])
-        if expected_size > request.app.state.settings.capture_asset_max_bytes:
-            raise StorageIntegrityError("object_too_large")
+        payload = _upload_token_codec(request).verify(token, operation="put")
+    except StorageError as exc:
+        raise _upload_capability_error() from exc
+
+    user_id = _required_capability_str(payload, "user")
+    asset_id = _required_capability_str(payload, "asset")
+    object_key = _required_capability_str(payload, "key")
+    media_type = _required_capability_str(payload, "type")
+    content_sha256 = _required_capability_str(payload, "sha")
+    expected_size = _required_capability_size(payload)
+    if expected_size > request.app.state.settings.capture_asset_max_bytes:
+        raise ServiceError(413, "asset_too_large", "The capture asset is too large.")
+
+    content_length = request.headers.get("content-length")
+    try:
+        declared_length = int(content_length) if content_length is not None else None
+    except ValueError as exc:
+        raise ServiceError(
+            400, "invalid_content_length", "The upload length is invalid."
+        ) from exc
+    if declared_length != expected_size:
+        raise ServiceError(
+            400, "invalid_content_length", "The upload length is invalid."
+        )
+    submitted_media_type = request.headers.get("content-type", "").split(";", 1)[0]
+    if submitted_media_type.strip() != media_type:
+        raise ServiceError(
+            422, "asset_integrity_failed", "The uploaded asset failed verification."
+        )
+
+    async with request.app.state.user_operation_locks.hold(user_id):
+        user = await session.scalar(
+            select(User)
+            .where(User.id == user_id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
+        if user is None:
+            raise _upload_capability_error()
+        if user.status is UserStatus.DELETION_PENDING:
+            raise ServiceError(
+                403,
+                "account_deletion_pending",
+                "This account is pending deletion.",
+            )
+        if user.status is not UserStatus.ACTIVE:
+            raise ServiceError(403, "account_not_active", "This account is not active.")
+
+        asset = await session.scalar(
+            select(CaptureAsset)
+            .where(CaptureAsset.id == asset_id, CaptureAsset.user_id == user.id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
+        if asset is None:
+            raise _upload_capability_error()
+        if _upload_deadline_passed(asset):
+            raise ServiceError(410, "asset_upload_expired", "This upload has expired.")
+        if asset.deleted_at is not None or asset.status is not CaptureStatus.PENDING:
+            raise ServiceError(
+                409, "asset_upload_closed", "This asset no longer accepts uploads."
+            )
+        if (
+            asset.object_key != object_key
+            or asset.media_type != media_type
+            or asset.byte_size != expected_size
+            or not hmac.compare_digest(asset.content_sha256, content_sha256)
+        ):
+            raise _upload_capability_error()
+
         body = bytearray()
+        digest = hashlib.sha256()
         async for chunk in request.stream():
             body.extend(chunk)
+            digest.update(chunk)
             if len(body) > expected_size:
-                raise StorageIntegrityError("object_size_mismatch")
+                body.clear()
+                raise ServiceError(
+                    422,
+                    "asset_integrity_failed",
+                    "The uploaded asset failed verification.",
+                )
+        if len(body) != expected_size or not hmac.compare_digest(
+            digest.hexdigest(), content_sha256
+        ):
+            body.clear()
+            raise ServiceError(
+                422,
+                "asset_integrity_failed",
+                "The uploaded asset failed verification.",
+            )
         data = bytes(body)
         body.clear()
-        if len(data) != expected_size:
-            raise StorageIntegrityError("object_size_mismatch")
-        media_type = str(payload["type"])
-        if request.headers.get("content-type", "").split(";", 1)[0] != media_type:
-            raise StorageIntegrityError("object_media_mismatch")
-        await storage.put_bytes(
-            str(payload["key"]), data, media_type=media_type, sha256=str(payload["sha"])
-        )
-    except StorageError as exc:
-        raise _storage_service_error(exc) from exc
+        try:
+            stored = await request.app.state.object_storage.put_bytes(
+                object_key,
+                data,
+                media_type=media_type,
+                sha256=content_sha256,
+            )
+            data = b""
+            if (
+                stored.size_bytes != expected_size
+                or stored.media_type != media_type
+                or not hmac.compare_digest(stored.sha256, content_sha256)
+            ):
+                raise StorageError("object_write_unverified")
+        except StorageError as exc:
+            data = b""
+            await _cleanup_ambiguous_upload(request, object_key)
+            raise ServiceError(
+                503, "object_storage_unavailable", "Storage is unavailable."
+            ) from exc
+        except Exception as exc:
+            data = b""
+            await _cleanup_ambiguous_upload(request, object_key)
+            raise ServiceError(
+                503, "object_storage_unavailable", "Storage is unavailable."
+            ) from exc
     return Response(status_code=204)
 
 

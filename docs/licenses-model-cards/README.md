@@ -44,3 +44,14 @@ The CC0 declarations for the procedural map and synthetic fixture apply only to 
 listed assets. Third-party dependency licenses apply to their respective packages. Do
 not infer a repository-wide source license from either category or from package metadata;
 the owners must select and add an explicit source license before public distribution.
+
+The locked dependency inventory is generated from `pnpm-lock.yaml` and `uv.lock`:
+
+- `THIRD_PARTY_NOTICES.md` contains the resolved package list and exact legal texts
+  present in the installed release environment.
+- `THIRD_PARTY_SBOM.cdx.json` is the corresponding CycloneDX 1.5 inventory.
+- `scripts/generate_third_party_notices.py --check` fails when those checked
+  artifacts no longer match the lockfiles.
+
+Packages locked only for another operating system or optional research environment are
+listed as not installed and require their own license-text review before they are used.

@@ -15,6 +15,7 @@ from .collaboration_schemas import (
     AccessGrantResponse,
     AccessHistoryItem,
     AdminReviewEvidence,
+    ClinicianIdentityRoleResponse,
     ClinicianReviewResponse,
     ClinicianVerificationResponse,
     ResourceRef,
@@ -35,6 +36,7 @@ from .models import (
     ClinicianAccessGrant,
     ClinicianReview,
     ClinicianVerification,
+    ClinicianVerificationStatus,
     LesionRecord,
     ReportArtifact,
     ReviewAnnotation,
@@ -43,6 +45,7 @@ from .models import (
     ShareLinkResource,
     ShareLinkStatus,
     ShareResourceType,
+    UserRole,
     utc_now,
 )
 from .routes.analysis import analysis_response
@@ -214,12 +217,22 @@ def append_access_event(
 
 def verification_response(
     value: ClinicianVerification,
+    *,
+    required_claim: str,
+    applicant_role: UserRole | None = None,
+    applicant_token_roles: frozenset[str] = frozenset(),
 ) -> ClinicianVerificationResponse:
     evidence = (
         AdminReviewEvidence.model_validate(value.reviewer_evidence)
         if value.reviewer_evidence
         else None
     )
+    if value.status is not ClinicianVerificationStatus.VERIFIED:
+        observation_status = "not_applicable"
+    elif value.oidc_role_observed_at is None:
+        observation_status = "awaiting_token_observation"
+    else:
+        observation_status = "observed"
     return ClinicianVerificationResponse(
         verification_id=value.id,
         applicant_user_id=value.user_id,
@@ -235,6 +248,15 @@ def verification_response(
         decision_reason=value.decision_reason,
         reviewed_at=value.reviewed_at,
         retention_expires_at=value.retention_expires_at,
+        identity_role=ClinicianIdentityRoleResponse(
+            required_claim=required_claim,
+            observation_status=observation_status,
+            oidc_role_observed_at=value.oidc_role_observed_at,
+            privileged_access_ready=(
+                applicant_role is UserRole.CLINICIAN
+                and UserRole.CLINICIAN.value in applicant_token_roles
+            ),
+        ),
     )
 
 
@@ -391,3 +413,4 @@ def history_item(value: AccessEvent) -> AccessHistoryItem:
         created_at=value.created_at,
         retention_expires_at=value.retention_expires_at,
     )
+    (ClinicianIdentityRoleResponse,)

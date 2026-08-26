@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import base64
 import hashlib
 import hmac
@@ -29,8 +30,11 @@ from oralsight_platform.models import (
     CandidateObservation,
     CaptureAsset,
     CaptureStatus,
+    DeletionRequest,
     InputOrigin,
     Job,
+    JobStatus,
+    JobType,
     MouthRegion,
     User,
     UserRole,
@@ -40,7 +44,9 @@ from oralsight_platform.models import (
 )
 from oralsight_platform.job_outbox import dispatch_job_outbox_once
 from oralsight_platform.object_storage import (
+    LocalObjectStorage,
     S3ObjectStorage,
+    StorageError,
     StorageIntegrityError,
     StorageNotFound,
 )
@@ -109,6 +115,75 @@ def _test_jpeg() -> bytes:
     output = BytesIO()
     Image.new("RGB", (640, 480), "#b66a62").save(output, format="JPEG", quality=92)
     return output.getvalue()
+
+
+async def _pending_capture(
+    client,
+    auth_headers,
+    *,
+    suffix: str,
+    data: bytes | None = None,
+) -> dict[str, object]:
+    data = data or _test_jpeg()
+    digest = hashlib.sha256(data).hexdigest()
+    consent_record_id = await _accept_consent(client, auth_headers, suffix=suffix)
+    scan = await client.post(
+        "/v2/scan-sessions",
+        headers=_idempotent(auth_headers, f"scan-{suffix}-00000000"),
+        json={
+            "protocol": "standard_eight_region",
+            "deviceId": None,
+            "consentRecordId": consent_record_id,
+        },
+    )
+    assert scan.status_code == 201, scan.text
+    scan_id = scan.json()["scanSessionId"]
+    capture_set = await client.post(
+        f"/v2/scan-sessions/{scan_id}/capture-sets",
+        headers=_idempotent(auth_headers, f"set-{suffix}-000000000"),
+        json={
+            "region": "left_buccal_mucosa",
+            "protocol": "standard_eight_region",
+        },
+    )
+    assert capture_set.status_code == 201, capture_set.text
+    capture_set_id = capture_set.json()["captureSetId"]
+    view = await client.post(
+        f"/v2/capture-sets/{capture_set_id}/views",
+        headers=_idempotent(auth_headers, f"view-{suffix}-00000000"),
+        json={
+            "angle": "primary",
+            "anatomicalSite": "left_buccal_mucosa",
+            "asset": {
+                "mediaKind": "image",
+                "mimeType": "image/jpeg",
+                "byteSize": len(data),
+                "sha256": digest,
+                "widthPx": 640,
+                "heightPx": 480,
+                "durationMs": None,
+                "inputOrigin": "live_capture",
+                "encrypted": True,
+                "retentionExpiresAt": None,
+            },
+            "sourceVideoAssetId": None,
+            "qualityAccepted": True,
+            "qualityReasons": [],
+            "ordinal": 0,
+            "capturedAt": datetime.now(UTC).isoformat(),
+            "makePrimary": True,
+        },
+    )
+    assert view.status_code == 201, view.text
+    asset_id = view.json()["views"][0]["asset"]["assetId"]
+    return {
+        "asset_id": asset_id,
+        "capture_set_id": capture_set_id,
+        "consent_record_id": consent_record_id,
+        "data": data,
+        "scan_id": scan_id,
+        "sha256": digest,
+    }
 
 
 async def _uploaded_capture(
@@ -204,7 +279,17 @@ async def _uploaded_capture(
         "size": len(data),
         "data": data,
         "captured_at": captured_at,
+        "upload_path": parsed.path,
+        "upload_headers": intent.json()["headers"],
     }
+
+
+async def _upload_intent(client, auth_headers, asset_id: str) -> dict:
+    response = await client.post(
+        f"/v2/capture-assets/{asset_id}/upload-intent", headers=auth_headers()
+    )
+    assert response.status_code == 200, response.text
+    return response.json()
 
 
 async def _insert_observation(app, capture: dict) -> str:
@@ -265,6 +350,326 @@ async def _insert_observation(app, capture: dict) -> str:
         session.add(observation)
         await session.commit()
         return observation.id
+
+
+async def test_s3_configured_capture_intent_uses_platform_upload_capability(
+    client, app, auth_headers
+) -> None:
+    pending = await _pending_capture(
+        client, auth_headers, suffix="s3-platform-upload-capability"
+    )
+
+    class RecordingClient:
+        def __init__(self) -> None:
+            self.presign_calls = 0
+
+        def generate_presigned_url(self, *_args, **_kwargs):
+            self.presign_calls += 1
+            return "https://private-bucket.example/direct-put"
+
+    storage = object.__new__(S3ObjectStorage)
+    storage.bucket = "private-test"
+    storage.settings = SimpleNamespace(
+        object_storage_sse="AES256", object_storage_kms_key_id=None
+    )
+    storage.client = RecordingClient()
+    original_storage = app.state.object_storage
+    app.state.object_storage = storage
+    try:
+        intent = await _upload_intent(client, auth_headers, str(pending["asset_id"]))
+    finally:
+        app.state.object_storage = original_storage
+
+    parsed = urlsplit(intent["url"])
+    assert parsed.netloc == "127.0.0.1:8001"
+    assert parsed.path.startswith("/v2/storage/uploads/")
+    assert storage.client.presign_calls == 0
+    assert intent["method"] == "PUT"
+
+
+async def test_real_v2_upload_route_accepts_body_above_public_json_limit(
+    client, app, auth_headers
+) -> None:
+    app.state.settings.capture_asset_max_bytes = 2_100_000
+    data = b"x" * 2_000_001
+    pending = await _pending_capture(
+        client,
+        auth_headers,
+        suffix="v2-upload-stream-limit",
+        data=data,
+    )
+    intent = await _upload_intent(client, auth_headers, str(pending["asset_id"]))
+
+    response = await client.put(
+        urlsplit(intent["url"]).path,
+        content=data,
+        headers=intent["headers"],
+    )
+
+    assert response.status_code == 204, response.text
+
+
+async def test_real_v2_upload_route_rejects_oversized_and_wrong_length_bodies(
+    client, app, auth_headers
+) -> None:
+    app.state.settings.capture_asset_max_bytes = 1_000_000
+    pending = await _pending_capture(
+        client,
+        auth_headers,
+        suffix="v2-upload-wrong-length",
+        data=b"expected-body",
+    )
+    intent = await _upload_intent(client, auth_headers, str(pending["asset_id"]))
+    upload_path = urlsplit(intent["url"]).path
+
+    wrong_length_headers = {
+        **intent["headers"],
+        "Content-Length": str(len(pending["data"]) + 1),
+    }
+    wrong_length = await client.put(
+        upload_path,
+        content=pending["data"],
+        headers=wrong_length_headers,
+    )
+    assert wrong_length.status_code == 400, wrong_length.text
+    assert wrong_length.json()["error"]["code"] == "invalid_content_length"
+
+    oversized = await client.put(
+        upload_path,
+        content=b"z" * 1_000_001,
+        headers={
+            **intent["headers"],
+            "Content-Length": "1000001",
+        },
+    )
+    assert oversized.status_code == 413, oversized.text
+    assert oversized.json()["error"]["code"] == "request_too_large"
+
+
+async def test_capture_upload_rejects_missing_content_length(
+    client, auth_headers
+) -> None:
+    pending = await _pending_capture(
+        client,
+        auth_headers,
+        suffix="v2-upload-missing-length",
+        data=b"streamed-body",
+    )
+    intent = await _upload_intent(client, auth_headers, str(pending["asset_id"]))
+
+    async def streamed_body():
+        yield pending["data"]
+
+    response = await client.put(
+        urlsplit(intent["url"]).path,
+        content=streamed_body(),
+        headers={"Content-Type": intent["headers"]["Content-Type"]},
+    )
+
+    assert response.status_code == 400, response.text
+    assert response.json()["error"]["code"] == "invalid_content_length"
+
+
+async def test_capture_upload_rejects_capability_fields_that_no_longer_match_database(
+    client, app, auth_headers
+) -> None:
+    pending = await _pending_capture(
+        client, auth_headers, suffix="upload-capability-database-match"
+    )
+    intent = await _upload_intent(client, auth_headers, str(pending["asset_id"]))
+    async with app.state.database.sessions() as session:
+        asset = await session.get(CaptureAsset, str(pending["asset_id"]))
+        assert asset is not None
+        object_key = asset.object_key
+        asset.media_type = "image/png"
+        await session.commit()
+
+    response = await client.put(
+        urlsplit(intent["url"]).path,
+        content=pending["data"],
+        headers=intent["headers"],
+    )
+
+    assert response.status_code == 403, response.text
+    assert response.json()["error"]["code"] == "invalid_upload_capability"
+    with pytest.raises(StorageNotFound):
+        await app.state.object_storage.stat(object_key)
+
+
+async def test_capture_upload_rejects_expired_database_upload_deadline(
+    client, app, auth_headers
+) -> None:
+    pending = await _pending_capture(
+        client, auth_headers, suffix="upload-expired-database-deadline"
+    )
+    intent = await _upload_intent(client, auth_headers, str(pending["asset_id"]))
+    async with app.state.database.sessions() as session:
+        asset = await session.get(CaptureAsset, str(pending["asset_id"]))
+        assert asset is not None
+        object_key = asset.object_key
+        asset.upload_expires_at = utc_now() - timedelta(seconds=1)
+        await session.commit()
+
+    response = await client.put(
+        urlsplit(intent["url"]).path,
+        content=pending["data"],
+        headers=intent["headers"],
+    )
+
+    assert response.status_code == 410, response.text
+    assert response.json()["error"]["code"] == "asset_upload_expired"
+    with pytest.raises(StorageNotFound):
+        await app.state.object_storage.stat(object_key)
+
+
+async def test_upload_after_account_deletion_pending_is_rejected_without_storage_write(
+    client, app, auth_headers
+) -> None:
+    pending = await _pending_capture(
+        client, auth_headers, suffix="reject-upload-after-delete-request"
+    )
+    intent = await _upload_intent(client, auth_headers, str(pending["asset_id"]))
+    async with app.state.database.sessions() as session:
+        asset = await session.get(CaptureAsset, str(pending["asset_id"]))
+        assert asset is not None
+        object_key = asset.object_key
+
+    deletion = await client.post(
+        "/v2/me/deletion-requests",
+        headers=_idempotent(auth_headers, "reject-upload-after-delete-0001"),
+        json={"confirmation": "DELETE"},
+    )
+    assert deletion.status_code == 202, deletion.text
+
+    response = await client.put(
+        urlsplit(intent["url"]).path,
+        content=pending["data"],
+        headers=intent["headers"],
+    )
+
+    assert response.status_code == 403, response.text
+    assert response.json()["error"]["code"] == "account_deletion_pending"
+    with pytest.raises(StorageNotFound):
+        await app.state.object_storage.stat(object_key)
+
+
+async def test_capture_upload_cleans_object_when_storage_writes_then_raises(
+    client, app, auth_headers, monkeypatch
+) -> None:
+    pending = await _pending_capture(
+        client, auth_headers, suffix="capture-ambiguous-storage-write"
+    )
+    intent = await _upload_intent(client, auth_headers, str(pending["asset_id"]))
+    async with app.state.database.sessions() as session:
+        asset = await session.get(CaptureAsset, str(pending["asset_id"]))
+        assert asset is not None
+        object_key = asset.object_key
+
+    storage = app.state.object_storage
+    original_put = storage.put_bytes
+
+    async def write_then_raise(object_key, data, *, media_type, sha256):
+        await original_put(
+            object_key,
+            data,
+            media_type=media_type,
+            sha256=sha256,
+        )
+        raise StorageError("ambiguous_write_failure")
+
+    monkeypatch.setattr(storage, "put_bytes", write_then_raise)
+    response = await client.put(
+        urlsplit(intent["url"]).path,
+        content=pending["data"],
+        headers=intent["headers"],
+    )
+
+    assert response.status_code == 503, response.text
+    assert response.json()["error"]["code"] == "object_storage_unavailable"
+    with pytest.raises(StorageNotFound):
+        await storage.stat(object_key)
+
+
+async def test_capture_upload_holds_user_lock_until_delete_all_can_remove_write(
+    client, app, settings, auth_headers, monkeypatch
+) -> None:
+    pending = await _pending_capture(
+        client, auth_headers, suffix="upload-delete-lock-order"
+    )
+    intent = await _upload_intent(client, auth_headers, str(pending["asset_id"]))
+    async with app.state.database.sessions() as session:
+        asset = await session.get(CaptureAsset, str(pending["asset_id"]))
+        assert asset is not None
+        object_key = asset.object_key
+        user_id = asset.user_id
+
+    entered_write = asyncio.Event()
+    release_write = asyncio.Event()
+    storage = app.state.object_storage
+    original_put = storage.put_bytes
+
+    async def held_put(object_key, data, *, media_type, sha256):
+        entered_write.set()
+        await release_write.wait()
+        return await original_put(
+            object_key,
+            data,
+            media_type=media_type,
+            sha256=sha256,
+        )
+
+    monkeypatch.setattr(storage, "put_bytes", held_put)
+    upload_task = asyncio.create_task(
+        client.put(
+            urlsplit(intent["url"]).path,
+            content=pending["data"],
+            headers=intent["headers"],
+        )
+    )
+    await asyncio.wait_for(entered_write.wait(), timeout=2)
+    deletion_task = asyncio.create_task(
+        client.post(
+            "/v2/me/deletion-requests",
+            headers=_idempotent(auth_headers, "upload-delete-lock-request-0001"),
+            json={"confirmation": "DELETE"},
+        )
+    )
+    done, _pending = await asyncio.wait({deletion_task}, timeout=0.1)
+    serialized = not done
+    release_write.set()
+    upload = await upload_task
+    deletion = await deletion_task
+
+    assert serialized, "delete-all passed the upload's user lock"
+    assert upload.status_code == 204, upload.text
+    assert deletion.status_code == 202, deletion.text
+
+    execute_path = (
+        f"/internal/v2/deletion-requests/{deletion.json()['requestId']}/execute"
+    )
+    execute_body = {
+        "jobId": deletion.json()["jobId"],
+        "subjectAccountId": user_id,
+        "scope": "all_oralsight_data",
+        "rotateInstallationKey": True,
+    }
+    initial = await _signed_json(client, settings, execute_path, execute_body)
+    assert initial.status_code == 503
+    assert initial.json()["error"]["code"] == "upload_capability_quiescing"
+    async with app.state.database.sessions() as session:
+        asset = await session.get(CaptureAsset, str(pending["asset_id"]))
+        deletion_row = await session.get(DeletionRequest, deletion.json()["requestId"])
+        assert asset is not None and deletion_row is not None
+        asset.upload_capability_expires_at = utc_now() - timedelta(
+            seconds=settings.upload_completion_quiet_seconds + 2
+        )
+        deletion_row.upload_quiescence_until = utc_now() - timedelta(seconds=1)
+        await session.commit()
+
+    completed = await _signed_json(client, settings, execute_path, execute_body)
+    assert completed.status_code == 200, completed.text
+    with pytest.raises(StorageNotFound):
+        await storage.stat(object_key)
 
 
 async def test_s3_upload_intent_signs_exact_content_length():
@@ -467,6 +872,164 @@ async def test_real_asset_queue_and_worker_fetch(
         {"outcome": "unavailable", "retention": envelope["retention"]},
     )
     assert retention.status_code == 200, retention.text
+
+
+@pytest.mark.parametrize(
+    ("job_type", "endpoint"),
+    [
+        (JobType.REPORT, "/internal/v2/reports/render"),
+        (JobType.DATA_EXPORT, "/internal/v2/exports/render"),
+    ],
+)
+async def test_internal_document_writes_reject_deletion_pending_account_before_storage(
+    client, app, settings, auth_headers, job_type: JobType, endpoint: str
+) -> None:
+    me = await client.get("/v2/me", headers=auth_headers())
+    assert me.status_code == 200
+    if job_type is JobType.REPORT:
+        payload = {
+            "scanSessionId": str(uuid4()),
+            "consentRecordId": str(uuid4()),
+            "observationIds": [str(uuid4())],
+            "comparisonIds": [],
+            "patientProfile": None,
+            "intakeSummary": None,
+            "appointmentQuestions": [],
+            "locale": "en-US",
+            "includeExperimentalResearchOutput": False,
+            "disclaimer": "This result is not a diagnosis.",
+        }
+    else:
+        recipient_public = (
+            X25519PrivateKey.generate()
+            .public_key()
+            .public_bytes(serialization.Encoding.Raw, serialization.PublicFormat.Raw)
+        )
+        payload = {
+            "exportRequestId": str(uuid4()),
+            "scope": "all_portable_data",
+            "format": "zip",
+            "encryption": {
+                "scheme": "x25519-hkdf-sha256-aes-256-gcm",
+                "recipientPublicKeyB64": base64.b64encode(recipient_public).decode(),
+            },
+            "includeFiles": True,
+            "disclaimer": "This result is not a diagnosis.",
+        }
+    async with app.state.database.sessions() as session:
+        job = Job(
+            user_id=me.json()["id"],
+            job_type=job_type,
+            status=JobStatus.QUEUED,
+            request_payload={"kind": job_type.value, **payload},
+            input_refs=[],
+            output_refs=[],
+        )
+        session.add(job)
+        await session.commit()
+        job_id = job.id
+
+    deletion = await client.post(
+        "/v2/me/deletion-requests",
+        headers=_idempotent(auth_headers, f"delete-internal-{job_type.value}-001"),
+        json={"confirmation": "DELETE"},
+    )
+    assert deletion.status_code == 202
+    before = sorted(
+        path.relative_to(settings.object_storage_root).as_posix()
+        for path in settings.object_storage_root.rglob("*")
+        if path.is_file()
+    )
+    rejected = await _signed_json(
+        client,
+        settings,
+        endpoint,
+        {"jobId": job_id, **payload},
+    )
+    assert rejected.status_code == 409
+    assert rejected.json()["error"]["code"] == "account_deletion_pending"
+    async with app.state.database.sessions() as session:
+        user = await session.get(User, me.json()["id"])
+        stored_job = await session.get(Job, job_id)
+        assert user is not None and user.status is UserStatus.DELETION_PENDING
+        assert stored_job is not None and stored_job.status is JobStatus.CANCELLED
+    after = sorted(
+        path.relative_to(settings.object_storage_root).as_posix()
+        for path in settings.object_storage_root.rglob("*")
+        if path.is_file()
+    )
+    assert after == before
+
+
+async def test_generated_artifact_upload_rejects_deletion_pending_before_storage(
+    client, app, settings, auth_headers
+) -> None:
+    me = await client.get("/v2/me", headers=auth_headers())
+    assert me.status_code == 200
+    async with app.state.database.sessions() as session:
+        job = Job(
+            user_id=me.json()["id"],
+            job_type=JobType.RECONSTRUCTION,
+            status=JobStatus.QUEUED,
+            request_payload={},
+            input_refs=[],
+            output_refs=[],
+        )
+        session.add(job)
+        await session.commit()
+        job_id = job.id
+    deletion = await client.post(
+        "/v2/me/deletion-requests",
+        headers=_idempotent(auth_headers, "delete-generated-upload-0001"),
+        json={"confirmation": "DELETE"},
+    )
+    assert deletion.status_code == 202
+
+    artifact = b"glTF" + b"\x02\x00\x00\x00" + b"\x0c\x00\x00\x00"
+    metadata = {
+        "jobId": job_id,
+        "purpose": "reconstruction",
+        "filename": "observation-map.glb",
+        "mediaType": "model/gltf-binary",
+        "sha256": hashlib.sha256(artifact).hexdigest(),
+        "sizeBytes": len(artifact),
+        "manifest": {"assetVersion": "test-v1"},
+    }
+    path = "/internal/v2/assets/generated"
+    request = client.build_request(
+        "POST",
+        path,
+        data={"metadata": json.dumps(metadata, separators=(",", ":"))},
+        files={
+            "artifact": (
+                metadata["filename"],
+                artifact,
+                metadata["mediaType"],
+            )
+        },
+    )
+    body = await request.aread()
+    before = sorted(
+        value.relative_to(settings.object_storage_root).as_posix()
+        for value in settings.object_storage_root.rglob("*")
+        if value.is_file()
+    )
+    response = await client.post(
+        path,
+        content=body,
+        headers={
+            "Content-Type": request.headers["Content-Type"],
+            **_service_headers(settings, "POST", path, body),
+        },
+    )
+    assert response.status_code == 409
+    assert response.json()["error"]["code"] == "account_deletion_pending"
+    after = sorted(
+        value.relative_to(settings.object_storage_root).as_posix()
+        for value in settings.object_storage_root.rglob("*")
+        if value.is_file()
+    )
+    assert after == before
 
 
 async def test_analytics_is_explicit_allowlisted_and_short_lived(
@@ -689,6 +1252,90 @@ async def test_real_pdf_and_recipient_encrypted_portable_export(
         assert archive.read(included_capture) == capture["data"]
 
 
+@pytest.mark.parametrize("artifact_kind", ["report", "export"])
+async def test_internal_document_write_cleans_ambiguous_storage_failure(
+    client, app, settings, auth_headers, monkeypatch, artifact_kind: str
+) -> None:
+    capture = await _uploaded_capture(
+        client, auth_headers, suffix=f"ambiguous-{artifact_kind}"
+    )
+    observation_id = await _insert_observation(app, capture)
+    if artifact_kind == "report":
+        payload = {
+            "scanSessionId": capture["scan_id"],
+            "consentRecordId": capture["consent_record_id"],
+            "observationIds": [observation_id],
+            "comparisonIds": [],
+            "patientProfile": None,
+            "intakeSummary": None,
+            "appointmentQuestions": [],
+            "locale": "en-US",
+            "includeExperimentalResearchOutput": False,
+            "disclaimer": "This result is not a diagnosis.",
+        }
+        job_type = "report"
+        endpoint = "/internal/v2/reports/render"
+        object_segment = "/reports/"
+    else:
+        recipient_public = (
+            X25519PrivateKey.generate()
+            .public_key()
+            .public_bytes(serialization.Encoding.Raw, serialization.PublicFormat.Raw)
+        )
+        payload = {
+            "exportRequestId": str(uuid4()),
+            "scope": "all_portable_data",
+            "format": "zip",
+            "encryption": {
+                "scheme": "x25519-hkdf-sha256-aes-256-gcm",
+                "recipientPublicKeyB64": base64.b64encode(recipient_public).decode(),
+            },
+            "includeFiles": False,
+            "disclaimer": "This result is not a diagnosis.",
+        }
+        job_type = "data_export"
+        endpoint = "/internal/v2/exports/render"
+        object_segment = "/exports/"
+    job = await client.post(
+        "/v2/jobs",
+        headers=_idempotent(auth_headers, f"ambiguous-{artifact_kind}-job-0001"),
+        json={"type": job_type, "payload": payload, "maxAttempts": 3},
+    )
+    assert job.status_code == 201, job.text
+
+    original = app.state.object_storage
+    assert isinstance(original, LocalObjectStorage)
+    written_keys: list[str] = []
+
+    async def write_then_raise(
+        object_key: str, data: bytes, *, media_type: str, sha256: str
+    ):
+        result = await LocalObjectStorage.put_bytes(
+            original,
+            object_key,
+            data,
+            media_type=media_type,
+            sha256=sha256,
+        )
+        if object_segment in object_key:
+            written_keys.append(object_key)
+            raise StorageError("ambiguous_write_failure")
+        return result
+
+    monkeypatch.setattr(original, "put_bytes", write_then_raise)
+    response = await _signed_json(
+        client,
+        settings,
+        endpoint,
+        {"jobId": job.json()["jobId"], **payload},
+    )
+    assert response.status_code == 503
+    assert response.json()["error"]["code"] == "object_storage_unavailable"
+    assert len(written_keys) == 1
+    with pytest.raises(StorageNotFound):
+        await original.stat(written_keys[0])
+
+
 async def test_delete_all_removes_bytes_rows_and_identity(
     client, app, settings, auth_headers
 ) -> None:
@@ -699,6 +1346,13 @@ async def test_delete_all_removes_bytes_rows_and_identity(
         json={"enabled": True, "policyVersion": "analytics-v1"},
     )
     assert consent.status_code == 200
+    async with app.state.database.sessions() as session:
+        asset = await session.get(CaptureAsset, capture["asset_id"])
+        assert asset is not None
+        asset.upload_capability_expires_at = utc_now() - timedelta(
+            seconds=settings.upload_completion_quiet_seconds + 1
+        )
+        await session.commit()
     deletion = await client.post(
         "/v2/me/deletion-requests",
         headers=_idempotent(auth_headers, "delete-all-runtime-00001"),
@@ -739,6 +1393,11 @@ async def test_delete_all_removes_bytes_rows_and_identity(
         # Polling a completed receipt authenticates the original subject without
         # silently provisioning a replacement account.
         assert await session.scalar(select(func.count(User.id))) == 1
+    recreated = await client.get("/v2/me", headers=auth_headers())
+    assert recreated.status_code == 410
+    assert recreated.json()["error"]["code"] == "account_deleted_recreation_required"
+    async with app.state.database.sessions() as session:
+        assert await session.scalar(select(func.count(User.id))) == 1
     try:
         await app.state.object_storage.stat(
             f"users/{user.id}/captures/{capture['asset_id']}"
@@ -747,3 +1406,71 @@ async def test_delete_all_removes_bytes_rows_and_identity(
         pass
     else:
         raise AssertionError("Deleted account capture bytes still exist")
+
+
+async def test_delete_all_keeps_recorded_capability_quiescence_as_defense_in_depth(
+    client, app, settings, auth_headers
+) -> None:
+    capture = await _uploaded_capture(
+        client, auth_headers, suffix="delete-capability-defense"
+    )
+    me = await client.get("/v2/me", headers=auth_headers())
+    deletion = await client.post(
+        "/v2/me/deletion-requests",
+        headers=_idempotent(auth_headers, "delete-capability-defense-001"),
+        json={"confirmation": "DELETE"},
+    )
+    assert deletion.status_code == 202
+    execute_path = (
+        f"/internal/v2/deletion-requests/{deletion.json()['requestId']}/execute"
+    )
+    execute_body = {
+        "jobId": deletion.json()["jobId"],
+        "subjectAccountId": me.json()["id"],
+        "scope": "all_oralsight_data",
+        "rotateInstallationKey": True,
+    }
+
+    initial = await _signed_json(client, settings, execute_path, execute_body)
+    assert initial.status_code == 503
+    assert initial.json()["error"]["code"] == "upload_capability_quiescing"
+    assert int(initial.headers["Retry-After"]) >= 1
+    pending = await client.get(
+        f"/v2/me/deletion-requests/{deletion.json()['requestId']}",
+        headers=auth_headers(),
+    )
+    assert pending.status_code == 200
+    assert pending.json()["status"] == "in_progress"
+    assert pending.json()["completedAt"] is None
+
+    rejected_upload = await client.put(
+        capture["upload_path"],
+        content=capture["data"],
+        headers=capture["upload_headers"],
+    )
+    assert rejected_upload.status_code == 403
+    assert rejected_upload.json()["error"]["code"] == "account_deletion_pending"
+    async with app.state.database.sessions() as session:
+        asset = await session.get(CaptureAsset, capture["asset_id"])
+        request_row = await session.get(DeletionRequest, deletion.json()["requestId"])
+        assert asset is not None and request_row is not None
+        assert request_row.upload_quiescence_until is not None
+        asset.upload_capability_expires_at = utc_now() - timedelta(
+            seconds=settings.upload_completion_quiet_seconds + 2
+        )
+        request_row.upload_quiescence_until = utc_now() - timedelta(seconds=1)
+        await session.commit()
+
+    completed_execute = await _signed_json(client, settings, execute_path, execute_body)
+    assert completed_execute.status_code == 200, completed_execute.text
+    assert completed_execute.json()["status"] == "complete"
+    completed = await client.get(
+        f"/v2/me/deletion-requests/{deletion.json()['requestId']}",
+        headers=auth_headers(),
+    )
+    assert completed.status_code == 200
+    assert completed.json()["status"] == "completed"
+    with pytest.raises(StorageNotFound):
+        await app.state.object_storage.stat(
+            f"users/{me.json()['id']}/captures/{capture['asset_id']}"
+        )

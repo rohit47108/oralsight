@@ -12,6 +12,7 @@ import {
   isCompleteRegionSet,
   modelCardSchema,
   modelOutputSchema,
+  registrationAlignmentSchema,
 } from "../src/testing";
 import bundledDemo from "../fixtures/bundled-demo.json";
 
@@ -135,6 +136,29 @@ describe("OralSight contracts", () => {
         fixtureSha256: "0".repeat(64),
       }),
     ).toThrow(/fixtureSha256/i);
+
+    expect(
+      analyzeMetadataSchema.parse({
+        ...live,
+        calibration: {
+          cardVersion: "oralsight-calibration-v1",
+          markerId: 17,
+          markerSideMm: 20,
+          planeConfirmed: true,
+        },
+      }).calibration?.planeConfirmed,
+    ).toBe(true);
+    expect(() =>
+      analyzeMetadataSchema.parse({
+        ...live,
+        calibration: {
+          cardVersion: "oralsight-calibration-v1",
+          markerId: 9,
+          markerSideMm: 20,
+          planeConfirmed: true,
+        },
+      }),
+    ).toThrow();
   });
 
   it("rejects predictions from a disabled model head", () => {
@@ -198,6 +222,17 @@ describe("OralSight contracts", () => {
       registrationConfidence: 0.92,
       inlierRatio: 0.81,
       reprojectionErrorRatio: 0.01,
+      repeatedCaptureAreaError: 0.08,
+      repeatabilityGatePassed: true,
+      registrationAlignment: {
+        method: "orb_ransac_homography",
+        coordinateSpace: "normalized_image_coordinates",
+        mapsFrom: "current",
+        mapsTo: "baseline",
+        matrix: [1, 0, -0.1, 0, 1, -0.2, 0, 0, 1],
+        sourceImageSize: { widthPx: 1280, heightPx: 960 },
+        targetImageSize: { widthPx: 1280, heightPx: 960 },
+      },
       normalizedChange: 0.2,
       descriptorChanges: {
         normalizedWidthChange: 0.1,
@@ -238,6 +273,52 @@ describe("OralSight contracts", () => {
 
     expect(result.descriptorChanges?.normalizedWidthChange).toBe(0.1);
     expect(result.calibratedMeasurementChanges?.widthChangeMm).toBe(0.5);
+    expect(result.registrationAlignment?.matrix[2]).toBe(-0.1);
+  });
+
+  it("rejects unsafe or malformed registration alignment metadata", () => {
+    expect(() =>
+      comparisonResultSchema.parse({
+        contractVersion: CONTRACT_VERSION,
+        baselineCaptureId: "baseline-1",
+        currentCaptureId: "current-1",
+        region: "left_buccal_mucosa",
+        candidateMatchScore: null,
+        userConfirmedMatch: true,
+        registrationConfidence: 0.92,
+        inlierRatio: 0.81,
+        reprojectionErrorRatio: 0.01,
+        repeatedCaptureAreaError: null,
+        repeatabilityGatePassed: false,
+        registrationAlignment: {
+          method: "orb_ransac_homography",
+          coordinateSpace: "normalized_image_coordinates",
+          mapsFrom: "current",
+          mapsTo: "baseline",
+          matrix: [1, 0, 0, 0, Number.NaN, 0, 0, 0, 1],
+          sourceImageSize: { widthPx: 1280, heightPx: 960 },
+          targetImageSize: { widthPx: 1280, heightPx: 960 },
+        },
+        normalizedChange: 0,
+        comparable: true,
+        suppressionReasons: [],
+        modelVersions: {},
+        inputOrigin: "live_capture",
+        analysisOrigin: "live_model",
+        disclaimer: DISCLAIMER,
+      }),
+    ).toThrow();
+    expect(() =>
+      registrationAlignmentSchema.parse({
+        method: "orb_ransac_homography",
+        coordinateSpace: "normalized_image_coordinates",
+        mapsFrom: "current",
+        mapsTo: "baseline",
+        matrix: [1, 0, 20, 0, 1, 0, 0, 0, 1],
+        sourceImageSize: { widthPx: 1280, heightPx: 960 },
+        targetImageSize: { widthPx: 1280, heightPx: 960 },
+      }),
+    ).toThrow(/safe render range/i);
   });
 
   it("rejects descriptor or calibrated changes when comparison is suppressed", () => {
@@ -252,6 +333,9 @@ describe("OralSight contracts", () => {
         registrationConfidence: 0,
         inlierRatio: 0,
         reprojectionErrorRatio: 1,
+        repeatedCaptureAreaError: null,
+        repeatabilityGatePassed: false,
+        registrationAlignment: null,
         normalizedChange: null,
         descriptorChanges: {
           normalizedWidthChange: 0,

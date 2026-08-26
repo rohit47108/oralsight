@@ -182,17 +182,17 @@ belong only in the deployment secret store. Never commit populated secret files.
 ## Deployment
 
 The native app is distributed as an Android or iOS build, not as a Vercel website.
-The OpenCV inference API can run either from the hardened container configuration
-or from the repository's Vercel entry point. An older inference-only source
-release is live at `https://oralsight-inference.vercel.app/api`; it is not proof
-that the current web, platform, worker, or full source tree is deployed.
+Vercel can host the Next.js web product and the stateless OpenCV inference API.
+The account API and continuous worker are stateful container services and are not
+replaced by Vercel. An older inference-only source release is live at
+`https://oralsight-inference.vercel.app/api`; it is not proof that the current web,
+platform, worker, or full source tree is deployed.
 
-Vercel is only the API host. It does not replace the installed mobile app, model
-artifacts, release manifest, signing secrets, or Apple/Google distribution.
-The supplied configuration uses the inference service's own Python workspace and
-the mobile/API pipeline caps each image at 1.75 MB so two-image comparisons fit
-under Vercel's request-body limit. That older service passed all four-route,
-live-model, no-store, and detached-signature verification on July 28, 2026.
+The supplied Vercel configuration keeps the web and inference build surfaces
+separate. The mobile/API pipeline caps each image at 1.75 MB so two-image
+comparisons fit within the documented request-body limit. The older inference
+service passed its four-route, live-model, no-store, and detached-signature checks
+on July 28, 2026, but it remains rollback evidence rather than the current release.
 
 See the complete [deployment handoff](docs/DEPLOYMENT.md),
 [mobile build instructions](docs/MOBILE_BUILD_AND_DEPLOY.md), and inference

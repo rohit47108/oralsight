@@ -15,6 +15,9 @@ DEFAULT_SHARE_DERIVATION_KEY = (
     "local-share-derivation-key-replace-before-any-public-deployment"
 )
 DEFAULT_WORKER_HMAC_SECRET = "local-worker-hmac-secret-replace-before-public-deployment"
+DEFAULT_DELETION_TOMBSTONE_KEY = (
+    "local-deletion-tombstone-key-replace-before-public-deployment"
+)
 
 
 class RuntimeEnvironment(StrEnum):
@@ -67,12 +70,19 @@ class Settings(BaseSettings):
     oidc_algorithms: tuple[str, ...] = ("RS256", "ES256")
     oidc_role_claim: str = "https://oralsight.app/roles"
     jwt_leeway_seconds: int = Field(default=30, ge=0, le=300)
+    privileged_token_max_age_seconds: int = Field(default=900, ge=60, le=3600)
 
     local_test_issuer_url: str = "https://oralsight.local.test"
     local_test_signing_secret: SecretStr = SecretStr(
         "local-development-only-replace-this-secret"
     )
     share_secret_derivation_key: SecretStr = SecretStr(DEFAULT_SHARE_DERIVATION_KEY)
+    deletion_tombstone_current_key: SecretStr = SecretStr(
+        DEFAULT_DELETION_TOMBSTONE_KEY
+    )
+    deletion_tombstone_current_key_version: str = "tombstone-v2"
+    deletion_tombstone_legacy_share_key: SecretStr | None = None
+    deletion_tombstone_retained_keys: dict[str, SecretStr] = Field(default_factory=dict)
     worker_service_hmac_secret: SecretStr = SecretStr(DEFAULT_WORKER_HMAC_SECRET)
     object_storage_backend: ObjectStorageBackend = ObjectStorageBackend.LOCAL
     object_storage_root: Path = Path(".data/object-storage")
@@ -86,6 +96,7 @@ class Settings(BaseSettings):
     object_storage_sse: str = "AES256"
     object_storage_kms_key_id: str | None = None
     object_transfer_lifetime_seconds: int = Field(default=300, ge=60, le=900)
+    upload_completion_quiet_seconds: int = Field(default=120, ge=1, le=900)
     pending_upload_lifetime_seconds: int = Field(default=3600, ge=900, le=86_400)
     capture_asset_max_bytes: int = Field(
         default=25_000_000, ge=1_000_000, le=100_000_000
@@ -175,6 +186,22 @@ class Settings(BaseSettings):
             raise ValueError(
                 "The default share-secret derivation key is forbidden outside development."
             )
+        tombstone_key = self.deletion_tombstone_current_key.get_secret_value()
+        if len(tombstone_key) < 32:
+            raise ValueError(
+                "The deletion-tombstone key must be at least 32 characters."
+            )
+        if (
+            self.environment
+            in {RuntimeEnvironment.STAGING, RuntimeEnvironment.PRODUCTION}
+            and tombstone_key == DEFAULT_DELETION_TOMBSTONE_KEY
+        ):
+            raise ValueError(
+                "The default deletion-tombstone key is forbidden outside development."
+            )
+        from .deletion_tombstones import validate_tombstone_settings
+
+        validate_tombstone_settings(self)
         worker_secret = self.worker_service_hmac_secret.get_secret_value()
         if len(worker_secret) < 32:
             raise ValueError(
@@ -202,6 +229,10 @@ class Settings(BaseSettings):
         if protected and self.retention_sweep_interval_seconds <= 0:
             raise ValueError(
                 "Staging and production must keep the retention sweep enabled."
+            )
+        if protected and self.upload_completion_quiet_seconds <= 0:
+            raise ValueError(
+                "Staging and production require a positive upload completion quiet period."
             )
         if protected:
             query = parse_qs(urlparse(self.database_url).query)

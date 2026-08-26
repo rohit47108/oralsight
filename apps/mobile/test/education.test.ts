@@ -20,6 +20,25 @@ describe("education content", () => {
     }
   });
 
+  it("practices every important capture failure without presenting patient results", () => {
+    expect(QUALITY_PRACTICE_SCENARIOS.map((scenario) => scenario.id)).toEqual([
+      "low_light",
+      "overexposure",
+      "too_near",
+      "too_far",
+      "glare",
+      "blur",
+      "obstruction",
+      "incomplete_coverage",
+      "ready",
+    ]);
+    for (const scenario of QUALITY_PRACTICE_SCENARIOS) {
+      expect(scenario.correction.toLowerCase()).not.toContain("diagnos");
+      expect(scenario.correction.toLowerCase()).not.toContain("patient");
+      expect(scenario.isPracticeOnly).toBe(true);
+    }
+  });
+
   it("keeps every knowledge answer within its choices", () => {
     for (const question of KNOWLEDGE_QUESTIONS) {
       expect(question.correctIndex).toBeGreaterThanOrEqual(0);

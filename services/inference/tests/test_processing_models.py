@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import base64
+import json
 from dataclasses import replace
+from pathlib import Path
 from types import MappingProxyType
 
 import cv2
@@ -8,7 +11,7 @@ import numpy as np
 import pytest
 
 from oralsight_api import processing
-from oralsight_api.calibration import CalibrationEstimate
+from oralsight_api.calibration import CalibrationEstimate, NeutralColorReference
 from oralsight_api.contracts import (
     AnalysisOrigin,
     AnalysisStatus,
@@ -16,10 +19,12 @@ from oralsight_api.contracts import (
     CompareMetadata,
     DistributionClass,
     InputOrigin,
+    ImagePixelSize,
     ModelHead,
     MouthRegion,
     QualityClass,
     QualityResult,
+    RegistrationAlignment,
 )
 from oralsight_api.model_adapters import (
     AdapterPrediction,
@@ -34,9 +39,11 @@ from oralsight_api.processing import (
     compare_sanitized_images,
 )
 from oralsight_api.release_manifest import (
+    RELEASE_MANIFEST_ENV,
     HeadReleaseState,
     ReleaseRuntimeState,
     empty_release_runtime,
+    load_release_runtime,
 )
 
 
@@ -191,17 +198,21 @@ def _analyze_metadata(
     )
 
 
-def _compare_metadata(*, with_calibration: bool = False) -> CompareMetadata:
+def _compare_metadata(
+    *,
+    with_calibration: bool = False,
+    region: MouthRegion = MouthRegion.LOWER_LIP,
+) -> CompareMetadata:
     payload: dict[str, object] = {
         "contractVersion": "1.1.0",
         "baselineCaptureId": "baseline-model-test",
         "currentCaptureId": "current-model-test",
-        "region": "lower_lip",
+        "region": region.value,
         "userConfirmedMatch": True,
         "inputOrigin": "live_capture",
         "baselineAnalysis": {
             "captureId": "baseline-model-test",
-            "region": "lower_lip",
+            "region": region.value,
             "status": "complete",
             "analysisOrigin": "live_model",
             "qualityAccepted": True,
@@ -210,7 +221,7 @@ def _compare_metadata(*, with_calibration: bool = False) -> CompareMetadata:
         },
         "currentAnalysis": {
             "captureId": "current-model-test",
-            "region": "lower_lip",
+            "region": region.value,
             "status": "complete",
             "analysisOrigin": "live_model",
             "qualityAccepted": True,
@@ -272,6 +283,85 @@ def test_real_adapter_outputs_complete_primary_analysis_and_mask_descriptors(
     assert result.model_versions["segmentation"] == "segmentation-test-onnx"
     assert anatomy.calls == 1
     assert segmentation.calls == 1
+
+
+def test_analysis_applies_requested_neutral_reference_to_descriptors_only(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(processing, "assess_quality", _accepted_quality)
+    observed: dict[str, object] = {}
+
+    def valid_reference(
+        _image_bgr: np.ndarray,
+        bounding_box: tuple[float, float, float, float],
+        *,
+        plane_confirmed: bool,
+        expected_marker_id: int,
+        marker_side_mm: float,
+    ) -> NeutralColorReference:
+        observed.update(
+            bounding_box=bounding_box,
+            plane_confirmed=plane_confirmed,
+            expected_marker_id=expected_marker_id,
+            marker_side_mm=marker_side_mm,
+        )
+        return NeutralColorReference(
+            card_version="oralsight-calibration-v1",
+            marker_id=17,
+            applied=True,
+            method="neutral-grayscale-patches-affine-rgb-v1",
+            rgb_scales=(1.0, 1.0, 1.0),
+            rgb_offsets=(0.0, 0.0, 0.0),
+            confidence=0.9,
+            suppression_reasons=(),
+        )
+
+    monkeypatch.setattr(
+        processing,
+        "estimate_neutral_color_reference",
+        valid_reference,
+    )
+    runtime = _runtime(
+        {
+            ModelHead.ANATOMY: _FakeAdapter(
+                ModelHead.ANATOMY,
+                [_anatomy_prediction(MouthRegion.LOWER_LIP)],
+            ),
+            ModelHead.SEGMENTATION: _FakeAdapter(
+                ModelHead.SEGMENTATION,
+                [_segmentation()],
+            ),
+        }
+    )
+    metadata = AnalyzeMetadata.model_validate(
+        {
+            "contractVersion": "1.1.0",
+            "captureId": "capture-color-reference",
+            "selectedRegion": "lower_lip",
+            "inputOrigin": "live_capture",
+            "requestedHeads": ["segmentation", "anatomy"],
+            "calibration": {
+                "cardVersion": "oralsight-calibration-v1",
+                "markerId": 17,
+                "markerSideMm": 20,
+                "planeConfirmed": True,
+            },
+        }
+    )
+
+    result = analyze_sanitized_image(_image(), metadata, runtime)
+
+    assert result.status is AnalysisStatus.COMPLETE
+    assert observed["plane_confirmed"] is True
+    assert observed["expected_marker_id"] == 17
+    assert observed["marker_side_mm"] == 20
+    assert result.model_versions["descriptor_color_reference"] == (
+        "neutral-grayscale-patches-affine-rgb-v1"
+    )
+    assert any(
+        "Mean redness and mean brightness were normalized" in limitation
+        for limitation in result.uncertainty.limitations
+    )
 
 
 def test_anatomy_mismatch_prevents_segmentation_and_exposes_no_candidate(
@@ -650,6 +740,259 @@ def test_user_confirmed_comparison_does_not_require_automated_reidentification(
     assert "lesion_reidentification_release_gate_unmet" not in (
         result.suppression_reasons
     )
+
+
+def test_user_confirmed_comparison_is_not_suppressed_when_reidentification_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(processing, "assess_quality", _accepted_quality)
+    monkeypatch.setattr(
+        processing,
+        "_orb_registration",
+        lambda _baseline, _current: (
+            0.8,
+            0.01,
+            0.9,
+            [],
+            np.eye(3, dtype=np.float64),
+        ),
+    )
+    runtime = _runtime(
+        {
+            ModelHead.SEGMENTATION: _FakeAdapter(
+                ModelHead.SEGMENTATION,
+                [_segmentation(x_stop=8), _segmentation(x_stop=12)],
+            ),
+            ModelHead.LESION_REIDENTIFICATION: _FakeAdapter(
+                ModelHead.LESION_REIDENTIFICATION,
+                [ModelAdapterError("simulated embedding failure")],
+            ),
+        },
+        repeated_capture_area_error=0.08,
+    )
+
+    result = compare_sanitized_images(
+        _image(),
+        _image(),
+        _compare_metadata(),
+        runtime,
+    )
+
+    assert result.candidate_match_score is None
+    assert result.comparable is True
+    assert result.suppression_reasons == []
+    assert result.normalized_change is not None
+
+
+def test_image_relative_change_stays_suppressed_without_repeatability_evidence(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(processing, "assess_quality", _accepted_quality)
+    monkeypatch.setattr(
+        processing,
+        "_orb_registration",
+        lambda _baseline, _current: (
+            0.8,
+            0.01,
+            0.9,
+            [],
+            np.eye(3, dtype=np.float64),
+        ),
+    )
+    runtime = _runtime(
+        {
+            ModelHead.SEGMENTATION: _FakeAdapter(
+                ModelHead.SEGMENTATION,
+                [_segmentation(x_stop=8), _segmentation(x_stop=12)],
+            ),
+        },
+    )
+
+    result = compare_sanitized_images(
+        _image(),
+        _image(),
+        _compare_metadata(),
+        runtime,
+    )
+
+    assert result.comparable is False
+    assert result.normalized_change is None
+    assert result.descriptor_changes is None
+    assert result.repeatability_gate_passed is False
+    assert result.repeated_capture_area_error is None
+    assert "repeated_capture_area_error_gate_unmet" in result.suppression_reasons
+
+
+def test_physical_change_stays_suppressed_without_repeatability_evidence(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(processing, "assess_quality", _accepted_quality)
+    monkeypatch.setattr(
+        processing,
+        "_orb_registration",
+        lambda _baseline, _current: (
+            0.8,
+            0.01,
+            0.9,
+            [],
+            np.eye(3, dtype=np.float64),
+        ),
+    )
+
+    def calibration_must_not_run(*_args: object, **_kwargs: object) -> None:
+        raise AssertionError("Calibration ran without released repeatability evidence.")
+
+    monkeypatch.setattr(
+        processing,
+        "estimate_calibrated_bounding_box",
+        calibration_must_not_run,
+    )
+    runtime = _runtime(
+        {
+            ModelHead.SEGMENTATION: _FakeAdapter(
+                ModelHead.SEGMENTATION,
+                [_segmentation(x_stop=8), _segmentation(x_stop=12)],
+            ),
+        },
+    )
+
+    result = compare_sanitized_images(
+        _image(),
+        _image(),
+        _compare_metadata(with_calibration=True),
+        runtime,
+    )
+
+    assert result.comparable is False
+    assert result.normalized_change is None
+    assert result.calibrated_measurement_changes is None
+    assert result.calibration_suppression_reasons == [
+        "comparison_not_comparable",
+        "repeated_capture_area_error_gate_unmet",
+    ]
+
+
+def test_comparison_returns_safe_normalized_current_to_baseline_homography(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(processing, "assess_quality", _accepted_quality)
+    # Registration internally maps baseline pixels to current pixels. The
+    # public transform is inverted and normalized so a client can align the
+    # current capture over the baseline without depending on pixel dimensions.
+    baseline_to_current = np.array(
+        [
+            [1.0, 0.0, 6.3],
+            [0.0, 1.0, 12.6],
+            [0.0, 0.0, 1.0],
+        ],
+        dtype=np.float64,
+    )
+    monkeypatch.setattr(
+        processing,
+        "_orb_registration",
+        lambda _baseline, _current: (
+            0.8,
+            0.01,
+            0.9,
+            [],
+            baseline_to_current,
+        ),
+    )
+    runtime = _runtime(
+        {
+            ModelHead.SEGMENTATION: _FakeAdapter(
+                ModelHead.SEGMENTATION,
+                [_segmentation(), _segmentation()],
+            ),
+        },
+    )
+
+    result = compare_sanitized_images(
+        _image(),
+        _image(),
+        _compare_metadata(),
+        runtime,
+    )
+
+    alignment = result.registration_alignment
+    assert alignment is not None
+    assert alignment.method == "orb_ransac_homography"
+    assert alignment.coordinate_space == "normalized_image_coordinates"
+    assert alignment.maps_from == "current"
+    assert alignment.maps_to == "baseline"
+    assert alignment.source_image_size.width_px == 64
+    assert alignment.source_image_size.height_px == 64
+    assert alignment.target_image_size.width_px == 64
+    assert alignment.target_image_size.height_px == 64
+    assert alignment.matrix == pytest.approx(
+        (1.0, 0.0, -0.1, 0.0, 1.0, -0.2, 0.0, 0.0, 1.0)
+    )
+
+
+def test_public_registration_alignment_rejects_extreme_off_canvas_transform() -> None:
+    extreme_translation = np.array(
+        [
+            [1.0, 0.0, 2_000.0],
+            [0.0, 1.0, 0.0],
+            [0.0, 0.0, 1.0],
+        ],
+        dtype=np.float64,
+    )
+
+    assert (
+        processing._public_registration_alignment(
+            _image(),
+            _image(),
+            extreme_translation,
+        )
+        is None
+    )
+
+
+def test_registration_alignment_contract_rejects_extreme_finite_transform() -> None:
+    with pytest.raises(ValueError, match="safe render range"):
+        RegistrationAlignment(
+            matrix=(1.0, 0.0, 20.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0),
+            source_image_size=ImagePixelSize(width_px=64, height_px=64),
+            target_image_size=ImagePixelSize(width_px=64, height_px=64),
+        )
+
+
+def test_packaged_release_runs_live_alignment_but_keeps_change_gate_closed() -> None:
+    repository_root = Path(__file__).resolve().parents[3]
+    fixture_payload = json.loads(
+        (repository_root / "packages/contracts/fixtures/bundled-demo.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    image = processing.sanitize_image(base64.b64decode(fixture_payload["base64"]))
+    release_manifest = (
+        repository_root / "services/inference/release/release-manifest.json"
+    )
+    runtime = load_release_runtime(
+        {RELEASE_MANIFEST_ENV: str(release_manifest.resolve(strict=True))}
+    )
+
+    result = compare_sanitized_images(
+        image,
+        image,
+        _compare_metadata(region=MouthRegion.LEFT_BUCCAL_MUCOSA),
+        runtime,
+    )
+
+    assert ModelHead.SEGMENTATION in runtime.enabled_heads
+    assert runtime.repeated_capture_area_error is None
+    assert result.analysis_origin is AnalysisOrigin.LIVE_MODEL
+    assert result.registration_alignment is not None
+    assert result.registration_alignment.matrix == pytest.approx(
+        (1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0), abs=1e-6
+    )
+    assert result.registration_alignment.source_image_size.width_px == 160
+    assert result.registration_alignment.target_image_size.height_px == 160
+    assert result.comparable is False
+    assert result.normalized_change is None
+    assert result.repeatability_gate_passed is False
+    assert result.suppression_reasons == ["repeated_capture_area_error_gate_unmet"]
 
 
 def test_comparison_normalizes_candidate_area_with_registration_homography(

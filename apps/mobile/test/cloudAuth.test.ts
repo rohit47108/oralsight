@@ -140,6 +140,9 @@ describe("OIDC authorization-code PKCE", () => {
             status: "active",
             createdAt: "2026-08-08T12:00:00.000Z",
             deletionPending: false,
+            requiredOidcRole: null,
+            privilegedAccessReady: true,
+            clinicianApplicationEligible: false,
           }),
           { status: 200, headers: { "Content-Type": "application/json" } },
         );

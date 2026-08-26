@@ -685,6 +685,16 @@ export default function CaptureRoute() {
           mimeType: prepared.capture.mimeType,
           inputOrigin: "live_capture",
           localQuality: prepared.quality,
+          ...(calibrationEnabled
+            ? {
+                calibration: {
+                  cardVersion: CALIBRATION_CARD_VERSION,
+                  markerId: 17,
+                  markerSideMm: 20,
+                  planeConfirmed: calibrationPlaneConfirmed,
+                } as const,
+              }
+            : {}),
         });
         const serverRejectionReasons = captureStorageRejectionReasons(
           analysis,

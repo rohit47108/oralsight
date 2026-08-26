@@ -3669,9 +3669,35 @@
         },
         "deletionPending": {
           "type": "boolean"
+        },
+        "requiredOidcRole": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": ["clinician", "admin"]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "privilegedAccessReady": {
+          "type": "boolean"
+        },
+        "clinicianApplicationEligible": {
+          "type": "boolean"
         }
       },
-      "required": ["id", "role", "status", "createdAt", "deletionPending"],
+      "required": [
+        "id",
+        "role",
+        "status",
+        "createdAt",
+        "deletionPending",
+        "requiredOidcRole",
+        "privilegedAccessReady",
+        "clinicianApplicationEligible"
+      ],
       "additionalProperties": false
     },
     "PlatformApiConsentResponse": {
@@ -6416,6 +6442,484 @@
         "retentionExpiresAt",
         "active"
       ],
+      "additionalProperties": false
+    },
+    "PlatformApiClinicianIdentityRoleResponse": {
+      "type": "object",
+      "properties": {
+        "requiredClaim": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "requiredValue": {
+          "type": "string",
+          "const": "clinician"
+        },
+        "observationStatus": {
+          "type": "string",
+          "enum": ["not_applicable", "awaiting_token_observation", "observed"]
+        },
+        "oidcRoleObservedAt": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Timestamp of the first validated clinician role observation."
+        },
+        "privilegedAccessReady": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "requiredClaim",
+        "requiredValue",
+        "observationStatus",
+        "oidcRoleObservedAt",
+        "privilegedAccessReady"
+      ],
+      "additionalProperties": false
+    },
+    "PlatformApiClinicianVerificationResponse": {
+      "type": "object",
+      "properties": {
+        "verificationId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "applicantUserId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "verified", "rejected"]
+        },
+        "profession": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "licenseJurisdiction": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "licenseNumberSuffix": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "organization": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 160
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "applicantEvidenceRef": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "submittedAt": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+        },
+        "reviewerUserId": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reviewerEvidence": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "source": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 160
+                },
+                "referenceId": {
+                  "type": "string",
+                  "minLength": 4,
+                  "maxLength": 160
+                },
+                "checkedAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                },
+                "reviewerNotes": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 1000
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "source",
+                "referenceId",
+                "checkedAt",
+                "reviewerNotes"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "decisionReason": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reviewedAt": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "retentionExpiresAt": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+        },
+        "identityRole": {
+          "type": "object",
+          "properties": {
+            "requiredClaim": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 160
+            },
+            "requiredValue": {
+              "type": "string",
+              "const": "clinician"
+            },
+            "observationStatus": {
+              "type": "string",
+              "enum": [
+                "not_applicable",
+                "awaiting_token_observation",
+                "observed"
+              ]
+            },
+            "oidcRoleObservedAt": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Timestamp of the first validated clinician role observation."
+            },
+            "privilegedAccessReady": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "requiredClaim",
+            "requiredValue",
+            "observationStatus",
+            "oidcRoleObservedAt",
+            "privilegedAccessReady"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "verificationId",
+        "applicantUserId",
+        "status",
+        "profession",
+        "licenseJurisdiction",
+        "licenseNumberSuffix",
+        "organization",
+        "applicantEvidenceRef",
+        "submittedAt",
+        "reviewerUserId",
+        "reviewerEvidence",
+        "decisionReason",
+        "reviewedAt",
+        "retentionExpiresAt",
+        "identityRole"
+      ],
+      "additionalProperties": false
+    },
+    "PlatformApiClinicianVerificationQueue": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "verificationId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              },
+              "applicantUserId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              },
+              "status": {
+                "type": "string",
+                "enum": ["pending", "verified", "rejected"]
+              },
+              "profession": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 80
+              },
+              "licenseJurisdiction": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 80
+              },
+              "licenseNumberSuffix": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 80
+              },
+              "organization": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 160
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "applicantEvidenceRef": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 160
+              },
+              "submittedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+              },
+              "reviewerUserId": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "reviewerEvidence": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 160
+                      },
+                      "referenceId": {
+                        "type": "string",
+                        "minLength": 4,
+                        "maxLength": 160
+                      },
+                      "checkedAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                      },
+                      "reviewerNotes": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 1000
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "source",
+                      "referenceId",
+                      "checkedAt",
+                      "reviewerNotes"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "decisionReason": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "reviewedAt": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "retentionExpiresAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+              },
+              "identityRole": {
+                "type": "object",
+                "properties": {
+                  "requiredClaim": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 160
+                  },
+                  "requiredValue": {
+                    "type": "string",
+                    "const": "clinician"
+                  },
+                  "observationStatus": {
+                    "type": "string",
+                    "enum": [
+                      "not_applicable",
+                      "awaiting_token_observation",
+                      "observed"
+                    ]
+                  },
+                  "oidcRoleObservedAt": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "Timestamp of the first validated clinician role observation."
+                  },
+                  "privilegedAccessReady": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "requiredClaim",
+                  "requiredValue",
+                  "observationStatus",
+                  "oidcRoleObservedAt",
+                  "privilegedAccessReady"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "verificationId",
+              "applicantUserId",
+              "status",
+              "profession",
+              "licenseJurisdiction",
+              "licenseNumberSuffix",
+              "organization",
+              "applicantEvidenceRef",
+              "submittedAt",
+              "reviewerUserId",
+              "reviewerEvidence",
+              "decisionReason",
+              "reviewedAt",
+              "retentionExpiresAt",
+              "identityRole"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "nextCursor": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": ["items", "nextCursor"],
       "additionalProperties": false
     },
     "PlatformApiReviewAnnotationResponse": {

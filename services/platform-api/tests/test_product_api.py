@@ -6,14 +6,20 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy import func, select
 
 from oralsight_platform.models import (
+    AccessGrantStatus,
     CandidateObservation,
     CaptureAsset,
     CaptureStatus,
+    ClinicianAccessGrant,
     ClinicianVerification,
     ClinicianVerificationStatus,
+    ConsentRecord,
     LesionObservationLink,
     LesionRecord,
     ReportArtifact,
+    ShareExchangeToken,
+    ShareLink,
+    ShareLinkStatus,
     User,
     UserRole,
     utc_now,
@@ -299,6 +305,185 @@ async def test_product_consent_is_versioned_revocable_and_required(
         client, auth_headers, key_suffix="replacement-contract"
     )
     assert replacement != consent_record_id
+
+
+async def test_delete_request_immediately_closes_account_access(
+    client, app, auth_headers
+) -> None:
+    capture = await _create_scan(
+        client,
+        auth_headers,
+        key_suffix="delete-access",
+        sha256=SHA_A,
+    )
+
+    clinician_subject = "auth0|delete-access-clinician"
+    clinician_headers = auth_headers(clinician_subject, ("clinician",))
+    clinician_me = await client.get("/v2/me", headers=clinician_headers)
+    assert clinician_me.status_code == 200
+    clinician_id = clinician_me.json()["id"]
+    now = utc_now()
+    async with app.state.database.sessions() as session:
+        clinician = await session.get(User, clinician_id)
+        assert clinician is not None
+        clinician.role = UserRole.CLINICIAN
+        session.add(
+            ClinicianVerification(
+                user_id=clinician_id,
+                status=ClinicianVerificationStatus.VERIFIED,
+                profession="dentist",
+                license_jurisdiction="NJ",
+                license_number_sha256=SHA_A,
+                license_number_suffix="1234",
+                organization="Deletion guard test clinic",
+                applicant_evidence_ref="test-evidence",
+                submitted_at=now,
+                reviewer_evidence={"source": "test"},
+                reviewed_at=now,
+                retention_expires_at=now + timedelta(days=365),
+            )
+        )
+        await session.commit()
+
+    grant = await client.post(
+        "/v2/access-grants",
+        headers=_idempotent(auth_headers, "delete-access-grant-001"),
+        json={
+            "clinicianUserId": clinician_id,
+            "resources": [
+                {
+                    "resourceType": "scan_session",
+                    "resourceId": capture["scan_id"],
+                }
+            ],
+            "label": "Deletion guard",
+            "expiresAt": None,
+        },
+    )
+    assert grant.status_code == 201, grant.text
+
+    share = await client.post(
+        "/v2/shares",
+        headers=_idempotent(auth_headers, "delete-access-share-001"),
+        json={
+            "resources": [
+                {
+                    "resourceType": "scan_session",
+                    "resourceId": capture["scan_id"],
+                }
+            ],
+            "expiresInSeconds": 3600,
+            "maxExchanges": 2,
+        },
+    )
+    assert share.status_code == 201, share.text
+    share_body = share.json()
+    share_id = share_body["share"]["shareId"]
+    fragment_secret = share_body["fragmentSecret"]
+
+    exchange = await client.post(
+        "/v2/share-exchanges",
+        headers={"Idempotency-Key": "delete-access-exchange-01"},
+        json={"shareId": share_id, "secret": fragment_secret},
+    )
+    assert exchange.status_code == 200, exchange.text
+    exchange_token = exchange.json()["exchangeToken"]
+    before_delete = await client.get(
+        "/v2/share-viewer/resources",
+        headers={"Authorization": f"Share {exchange_token}"},
+    )
+    assert before_delete.status_code == 200, before_delete.text
+
+    delete_headers = {
+        **auth_headers(),
+        "Idempotency-Key": "delete-access-request-001",
+    }
+    deletion = await client.post(
+        "/v2/me/deletion-requests",
+        headers=delete_headers,
+        json={"confirmation": "DELETE"},
+    )
+    assert deletion.status_code == 202, deletion.text
+
+    me = await client.get("/v2/me", headers=auth_headers())
+    assert me.status_code == 200
+    assert me.json()["deletionPending"] is True
+    replay = await client.post(
+        "/v2/me/deletion-requests",
+        headers=delete_headers,
+        json={"confirmation": "DELETE"},
+    )
+    assert replay.status_code == 202
+    assert replay.json() == deletion.json()
+    status_response = await client.get(
+        f"/v2/me/deletion-requests/{deletion.json()['requestId']}",
+        headers=auth_headers(),
+    )
+    assert status_response.status_code == 200
+    assert status_response.json() == deletion.json()
+
+    blocked_share = await client.post(
+        "/v2/shares",
+        headers=_idempotent(auth_headers, "delete-access-share-002"),
+        json={
+            "resources": [
+                {
+                    "resourceType": "scan_session",
+                    "resourceId": capture["scan_id"],
+                }
+            ],
+            "expiresInSeconds": 3600,
+            "maxExchanges": 1,
+        },
+    )
+    assert blocked_share.status_code == 403
+    assert blocked_share.json()["error"]["code"] == "account_deletion_pending"
+
+    blocked_scan = await client.post(
+        "/v2/scan-sessions",
+        headers=_idempotent(auth_headers, "delete-access-scan-001"),
+        json={
+            "protocol": "standard_eight_region",
+            "deviceId": None,
+            "consentRecordId": capture["consent_record_id"],
+        },
+    )
+    assert blocked_scan.status_code == 403
+    assert blocked_scan.json()["error"]["code"] == "account_deletion_pending"
+
+    blocked_read = await client.get("/v2/consents", headers=auth_headers())
+    assert blocked_read.status_code == 403
+    assert blocked_read.json()["error"]["code"] == "account_deletion_pending"
+
+    new_exchange = await client.post(
+        "/v2/share-exchanges",
+        headers={"Idempotency-Key": "delete-access-exchange-02"},
+        json={"shareId": share_id, "secret": fragment_secret},
+    )
+    assert new_exchange.status_code == 410
+    assert new_exchange.json()["error"]["code"] == "share_expired"
+    old_exchange = await client.get(
+        "/v2/share-viewer/resources",
+        headers={"Authorization": f"Share {exchange_token}"},
+    )
+    assert old_exchange.status_code == 401
+    assert old_exchange.json()["error"]["code"] == "invalid_share_token"
+
+    async with app.state.database.sessions() as session:
+        consent = await session.get(ConsentRecord, capture["consent_record_id"])
+        stored_share = await session.get(ShareLink, share_id)
+        token = await session.scalar(
+            select(ShareExchangeToken).where(ShareExchangeToken.share_id == share_id)
+        )
+        stored_grant = await session.get(ClinicianAccessGrant, grant.json()["grantId"])
+        assert consent is not None and consent.revoked_at is not None
+        assert stored_share is not None
+        assert stored_share.status is ShareLinkStatus.REVOKED
+        assert stored_share.revoked_at is not None
+        assert token is not None and token.revoked_at is not None
+        assert stored_grant is not None
+        assert stored_grant.status is AccessGrantStatus.REVOKED
+        assert stored_grant.revoked_at is not None
 
 
 async def test_clinician_annotations_cover_structured_review_corrections(

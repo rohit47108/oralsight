@@ -472,6 +472,13 @@ export default function CompareRoute() {
             <ComparisonViewer
               baselineUri={prepared.baselineUri}
               currentUri={prepared.currentUri}
+              baselineMask={
+                pair ? (analyses[pair[0].id]?.candidateMask ?? null) : null
+              }
+              currentMask={
+                pair ? (analyses[pair[1].id]?.candidateMask ?? null) : null
+              }
+              registrationAlignment={result?.registrationAlignment ?? null}
             />
             {pair?.[1].captureGuidance ? (
               <View style={styles.guidanceComparison}>

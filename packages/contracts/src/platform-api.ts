@@ -122,6 +122,9 @@ export const platformApiMeResponseSchema = z
     status: z.enum(["active", "deletion_pending", "suspended"]),
     createdAt: dateSchema,
     deletionPending: z.boolean(),
+    requiredOidcRole: z.enum(["clinician", "admin"]).nullable(),
+    privilegedAccessReady: z.boolean(),
+    clinicianApplicationEligible: z.boolean(),
   })
   .strict();
 
@@ -815,6 +818,58 @@ export const platformApiAccessGrantResponseSchema = z
   })
   .strict();
 
+export const platformApiClinicianIdentityRoleResponseSchema = z
+  .object({
+    requiredClaim: z.string().min(1).max(160),
+    requiredValue: z.literal("clinician"),
+    observationStatus: z.enum([
+      "not_applicable",
+      "awaiting_token_observation",
+      "observed",
+    ]),
+    oidcRoleObservedAt: dateSchema
+      .nullable()
+      .describe("Timestamp of the first validated clinician role observation."),
+    privilegedAccessReady: z.boolean(),
+  })
+  .strict();
+
+const platformApiClinicianReviewerEvidenceSchema = z
+  .object({
+    source: z.string().min(1).max(160),
+    referenceId: z.string().min(4).max(160),
+    checkedAt: dateSchema,
+    reviewerNotes: z.string().min(1).max(1_000).nullable(),
+  })
+  .strict();
+
+export const platformApiClinicianVerificationResponseSchema = z
+  .object({
+    verificationId: idSchema,
+    applicantUserId: idSchema,
+    status: z.enum(["pending", "verified", "rejected"]),
+    profession: z.string().min(1).max(80),
+    licenseJurisdiction: z.string().min(1).max(80),
+    licenseNumberSuffix: z.string().min(1).max(80),
+    organization: z.string().min(1).max(160).nullable(),
+    applicantEvidenceRef: z.string().min(1).max(160),
+    submittedAt: dateSchema,
+    reviewerUserId: idSchema.nullable(),
+    reviewerEvidence: platformApiClinicianReviewerEvidenceSchema.nullable(),
+    decisionReason: z.string().min(1).max(500).nullable(),
+    reviewedAt: dateSchema.nullable(),
+    retentionExpiresAt: dateSchema,
+    identityRole: platformApiClinicianIdentityRoleResponseSchema,
+  })
+  .strict();
+
+export const platformApiClinicianVerificationQueueSchema = z
+  .object({
+    items: z.array(platformApiClinicianVerificationResponseSchema),
+    nextCursor: idSchema.nullable(),
+  })
+  .strict();
+
 export const PLATFORM_API_REVIEW_ANNOTATION_KINDS = [
   "note",
   "question",
@@ -977,4 +1032,13 @@ export type PlatformApiMatchDecisionResponse = z.infer<
 >;
 export type PlatformApiReportResponse = z.infer<
   typeof platformApiReportResponseSchema
+>;
+export type PlatformApiClinicianIdentityRoleResponse = z.infer<
+  typeof platformApiClinicianIdentityRoleResponseSchema
+>;
+export type PlatformApiClinicianVerificationResponse = z.infer<
+  typeof platformApiClinicianVerificationResponseSchema
+>;
+export type PlatformApiClinicianVerificationQueue = z.infer<
+  typeof platformApiClinicianVerificationQueueSchema
 >;

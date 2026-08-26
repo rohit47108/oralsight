@@ -10,34 +10,52 @@ from datetime import timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Header, Request, status
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..collaboration_common import keyed_digest
 from ..dependencies import (
     Actor,
-    get_current_actor,
+    get_account_actor,
     get_session,
     get_token_claims,
+)
+from ..deletion_tombstones import (
+    current_deleted_subject_fingerprint,
+    matching_tombstone,
 )
 from ..errors import ServiceError
 from ..job_contracts import DeleteAllPayload
 from ..job_orchestration import build_job_envelope, envelope_json, publish_job
 from ..models import (
     AuditEvent,
+    AccessGrantStatus,
     CaptureAsset,
+    ClinicianAccessGrant,
+    ConsentRecord,
     DeletionRequest,
+    DeletedSubjectTombstone,
     DeletionStatus,
     IdempotencyRecord,
     Job,
     JobStatus,
     JobType,
+    ShareExchangeToken,
+    ShareLink,
+    ShareLinkStatus,
     User,
+    UserRole,
     UserStatus,
     utc_now,
 )
-from ..schemas import DeletionRequestCreate, DeletionRequestResponse, MeResponse
+from ..schemas import (
+    AccountRecreationRequest,
+    AccountRecreationResponse,
+    DeletionRequestCreate,
+    DeletionRequestResponse,
+    MeResponse,
+)
 from ..security import TokenClaims
 
 router = APIRouter(prefix="/v2/me", tags=["account"])
@@ -78,18 +96,34 @@ def _validate_idempotency_key(value: str | None) -> str:
 
 @router.get("", response_model=MeResponse)
 async def get_me(
-    actor: Annotated[Actor, Depends(get_current_actor)],
+    actor: Annotated[Actor, Depends(get_account_actor)],
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> MeResponse:
     user = await session.get(User, actor.user_id)
     if user is None:
         raise ServiceError(404, "account_not_found", "The account was not found.")
+    required_oidc_role = (
+        user.role if user.role in {UserRole.CLINICIAN, UserRole.ADMIN} else None
+    )
     return MeResponse(
         id=user.id,
         role=user.role,
         status=user.status,
         created_at=user.created_at,
         deletion_pending=user.status is UserStatus.DELETION_PENDING,
+        required_oidc_role=required_oidc_role,
+        privileged_access_ready=(
+            required_oidc_role is None or required_oidc_role.value in actor.token_roles
+        ),
+        clinician_application_eligible=(
+            user.role is UserRole.PATIENT
+            and not actor.token_roles.isdisjoint(
+                {
+                    UserRole.CLINICIAN_PENDING.value,
+                    UserRole.CLINICIAN.value,
+                }
+            )
+        ),
     )
 
 
@@ -101,7 +135,7 @@ async def get_me(
 async def request_delete_all(
     body: DeletionRequestCreate,
     request: Request,
-    actor: Annotated[Actor, Depends(get_current_actor)],
+    actor: Annotated[Actor, Depends(get_account_actor)],
     session: Annotated[AsyncSession, Depends(get_session)],
     idempotency_header: Annotated[str | None, Header(alias="Idempotency-Key")] = None,
 ) -> DeletionRequestResponse:
@@ -131,6 +165,15 @@ async def request_delete_all(
         await publish_job(request.app, session, existing_job)
         return response
 
+    user = await session.scalar(
+        select(User)
+        .where(User.id == actor.user_id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    )
+    if user is None:
+        raise ServiceError(404, "account_not_found", "The account was not found.")
+
     pending = await session.scalar(
         select(DeletionRequest).where(
             DeletionRequest.user_id == actor.user_id,
@@ -146,11 +189,83 @@ async def request_delete_all(
             "A delete-all request is already in progress.",
         )
 
-    user = await session.get(User, actor.user_id)
-    if user is None:
-        raise ServiceError(404, "account_not_found", "The account was not found.")
-
     now = utc_now()
+    cancelled_jobs = list(
+        await session.scalars(
+            select(Job).where(
+                Job.user_id == user.id,
+                Job.status.in_([JobStatus.QUEUED, JobStatus.RUNNING]),
+                Job.job_type.not_in([JobType.ACCOUNT_DELETION, JobType.DELETE_ALL]),
+            )
+        )
+    )
+    for pending_job in cancelled_jobs:
+        pending_job.cancellation_requested_at = now
+        pending_job.status = JobStatus.CANCELLED
+        pending_job.result_outcome = "cancelled"
+        pending_job.reason_code = "account_deletion_pending"
+        pending_job.completed_at = now
+
+    active_consents = list(
+        await session.scalars(
+            select(ConsentRecord)
+            .where(
+                ConsentRecord.user_id == user.id,
+                ConsentRecord.accepted.is_(True),
+                ConsentRecord.revoked_at.is_(None),
+            )
+            .with_for_update()
+        )
+    )
+    for consent in active_consents:
+        consent.revoked_at = now
+
+    owned_shares = list(
+        await session.scalars(
+            select(ShareLink)
+            .where(ShareLink.patient_user_id == user.id)
+            .with_for_update()
+        )
+    )
+    share_ids = [share.id for share in owned_shares]
+    for share in owned_shares:
+        if share.status is ShareLinkStatus.ACTIVE or share.revoked_at is None:
+            share.status = ShareLinkStatus.REVOKED
+            share.revoked_at = now
+    active_exchange_tokens = (
+        list(
+            await session.scalars(
+                select(ShareExchangeToken)
+                .where(
+                    ShareExchangeToken.share_id.in_(share_ids),
+                    ShareExchangeToken.revoked_at.is_(None),
+                )
+                .with_for_update()
+            )
+        )
+        if share_ids
+        else []
+    )
+    for token in active_exchange_tokens:
+        token.revoked_at = now
+
+    active_grants = list(
+        await session.scalars(
+            select(ClinicianAccessGrant)
+            .where(
+                or_(
+                    ClinicianAccessGrant.patient_user_id == user.id,
+                    ClinicianAccessGrant.clinician_user_id == user.id,
+                ),
+                ClinicianAccessGrant.status == AccessGrantStatus.ACTIVE,
+            )
+            .with_for_update()
+        )
+    )
+    for grant in active_grants:
+        grant.status = AccessGrantStatus.REVOKED
+        grant.revoked_at = now
+
     job = Job(
         user_id=user.id,
         job_type=JobType.DELETE_ALL,
@@ -172,6 +287,25 @@ async def request_delete_all(
     )
     session.add(deletion)
     await session.flush()
+    tombstone_fingerprint = current_deleted_subject_fingerprint(
+        request.app.state.settings, user.oidc_subject
+    )
+    tombstone = await session.scalar(
+        select(DeletedSubjectTombstone)
+        .where(DeletedSubjectTombstone.subject_fingerprint == tombstone_fingerprint)
+        .with_for_update()
+    )
+    if tombstone is None:
+        session.add(
+            DeletedSubjectTombstone(
+                subject_fingerprint=tombstone_fingerprint,
+                fingerprint_key_version=request.app.state.settings.deletion_tombstone_current_key_version,
+                first_deleted_at=now,
+                last_deleted_at=now,
+            )
+        )
+    else:
+        tombstone.last_deleted_at = now
     job.resource_id = deletion.id
     deletion_payload = DeleteAllPayload(
         deletion_request_id=deletion.id,
@@ -244,7 +378,70 @@ async def request_delete_all(
             "The request conflicted with another account operation.",
         ) from exc
     await publish_job(request.app, session, job)
+    for cancelled_job in cancelled_jobs:
+        try:
+            await request.app.state.job_queue.cancel(
+                cancelled_job.id, ttl_seconds=86_400
+            )
+        except Exception:  # durable cancellation remains authoritative
+            pass
     return response
+
+
+recreation_router = APIRouter(prefix="/v2", tags=["account"])
+
+
+def _recreation_account(user: User, claims: TokenClaims) -> MeResponse:
+    required = user.role if user.role in {UserRole.CLINICIAN, UserRole.ADMIN} else None
+    return MeResponse(
+        id=user.id,
+        role=user.role,
+        status=user.status,
+        created_at=user.created_at,
+        deletion_pending=False,
+        required_oidc_role=required,
+        privileged_access_ready=required is None or required.value in claims.roles,
+        clinician_application_eligible=user.role is UserRole.PATIENT
+        and not claims.roles.isdisjoint(
+            {UserRole.CLINICIAN_PENDING.value, UserRole.CLINICIAN.value}
+        ),
+    )
+
+
+@recreation_router.post(
+    "/account-recreations", response_model=AccountRecreationResponse
+)
+async def recreate_account(
+    body: AccountRecreationRequest,
+    claims: Annotated[TokenClaims, Depends(get_token_claims)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+    request: Request,
+) -> AccountRecreationResponse:
+    tombstone = await matching_tombstone(
+        session, request.app.state.settings, claims.subject, lock=True
+    )
+    if tombstone is None:
+        raise ServiceError(
+            409, "recreation_not_required", "No deleted account requires recreation."
+        )
+    existing = await session.scalar(
+        select(User).where(User.oidc_subject == claims.subject)
+    )
+    if existing is None:
+        existing = User(oidc_subject=claims.subject, role=UserRole.PATIENT)
+        session.add(existing)
+        try:
+            await session.commit()
+        except IntegrityError:
+            await session.rollback()
+            existing = await session.scalar(
+                select(User).where(User.oidc_subject == claims.subject)
+            )
+            if existing is None:
+                raise
+    return AccountRecreationResponse(
+        account=_recreation_account(existing, claims), recreated_after_deletion=True
+    )
 
 
 @router.get(

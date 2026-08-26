@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import hmac
 from collections.abc import AsyncIterator, Callable
 from dataclasses import dataclass
 from typing import Annotated
@@ -13,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from .database import Database
 from .errors import ServiceError
+from .deletion_tombstones import matching_tombstone
 from .models import User, UserRole, UserStatus
 from .security import TokenClaims, TokenValidationError, TokenValidator
 
@@ -67,10 +70,30 @@ async def get_token_claims(
         ) from exc
 
 
-async def _provision_user(session: AsyncSession, claims: TokenClaims) -> User:
+def _deletion_subject_fingerprint(request: Request, subject: str) -> str:
+    key = request.app.state.settings.share_secret_derivation_key.get_secret_value().encode(
+        "utf-8"
+    )
+    return hmac.new(
+        key,
+        f"oralsight:deletion-status-subject:v1:{subject}".encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
+
+
+async def _provision_user(
+    session: AsyncSession, claims: TokenClaims, request: Request
+) -> User:
     user = await session.scalar(select(User).where(User.oidc_subject == claims.subject))
     if user is not None:
         return user
+
+    if await matching_tombstone(session, request.app.state.settings, claims.subject):
+        raise ServiceError(
+            410,
+            "account_deleted_recreation_required",
+            "This account was deleted. Confirm recreation before using OralSight again.",
+        )
 
     user = User(oidc_subject=claims.subject, role=UserRole.PATIENT)
     session.add(user)
@@ -86,19 +109,70 @@ async def _provision_user(session: AsyncSession, claims: TokenClaims) -> User:
     return user
 
 
-async def get_current_actor(
-    claims: Annotated[TokenClaims, Depends(get_token_claims)],
-    session: Annotated[AsyncSession, Depends(get_session)],
-) -> Actor:
-    user = await _provision_user(session, claims)
-    if user.status is UserStatus.SUSPENDED:
-        raise ServiceError(403, "account_suspended", "This account is not available.")
+def _actor(user: User, claims: TokenClaims) -> Actor:
     return Actor(
         user_id=user.id,
         role=user.role,
         status=user.status,
         token_roles=claims.roles,
     )
+
+
+async def get_account_actor(
+    request: Request,
+    claims: Annotated[TokenClaims, Depends(get_token_claims)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> AsyncIterator[Actor]:
+    """Authenticate an account without hiding its deletion lifecycle.
+
+    This dependency is deliberately reserved for ``GET /v2/me`` and the
+    delete-all request endpoint. Ordinary account routes must use
+    :func:`get_current_actor`, which rejects deletion-pending accounts.
+    """
+
+    provisioned = await _provision_user(session, claims, request)
+    async with request.app.state.user_operation_locks.hold(provisioned.id):
+        user = await session.scalar(
+            select(User)
+            .where(User.id == provisioned.id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
+        if user is None or user.status is UserStatus.SUSPENDED:
+            raise ServiceError(
+                403, "account_suspended", "This account is not available."
+            )
+        yield _actor(user, claims)
+
+
+async def get_current_actor(
+    request: Request,
+    claims: Annotated[TokenClaims, Depends(get_token_claims)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> Actor:
+    """Authenticate and lock an account that may perform ordinary work.
+
+    The row lock serializes normal account requests with delete-all. Once the
+    deletion transaction marks the account pending, new or waiting requests
+    fail closed before their route handler can read or create account data.
+    """
+
+    provisioned = await _provision_user(session, claims, request)
+    user = await session.scalar(
+        select(User)
+        .where(User.id == provisioned.id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    )
+    if user is None or user.status is UserStatus.SUSPENDED:
+        raise ServiceError(403, "account_suspended", "This account is not available.")
+    if user.status is UserStatus.DELETION_PENDING:
+        raise ServiceError(
+            403,
+            "account_deletion_pending",
+            "This account is pending deletion.",
+        )
+    return _actor(user, claims)
 
 
 def require_roles(*allowed_roles: UserRole) -> Callable[..., Actor]:
@@ -119,8 +193,10 @@ def require_roles(*allowed_roles: UserRole) -> Callable[..., Actor]:
 def require_oidc_roles(*allowed_roles: UserRole) -> Callable[..., Actor]:
     """Require both the persisted role and its trusted OIDC role claim.
 
-    OIDC claims never provision or promote database roles. Privileged endpoints use
-    this dependency so a stale database role or a token claim alone is insufficient.
+    OIDC claims alone never provision or promote database roles. Explicit
+    verification flows may require a validated claim before changing a saved role.
+    Privileged endpoints use this dependency so a stale database role or a token
+    claim alone is insufficient.
     """
 
     allowed = frozenset(allowed_roles)

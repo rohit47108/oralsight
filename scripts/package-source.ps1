@@ -39,6 +39,38 @@ if ($relativeFiles.Count -eq 0) {
     throw "No source files were found."
 }
 
+$secretFilePatterns = @(
+    '(^|/|\\)\.env($|\.)',
+    '(^|/|\\)production\.env$',
+    '(^|/|\\)[^/\\]+\.env$',
+    '(^|/|\\)(id_rsa|id_ed25519|credentials)(\.|$)',
+    '\.(pem|p12|pfx|key)$'
+)
+$unsafeFiles = @(
+    foreach ($relativePath in $relativeFiles) {
+        $normalized = $relativePath.Replace("\", "/")
+        $isPublicExample = $normalized.EndsWith(
+            ".env.example",
+            [System.StringComparison]::OrdinalIgnoreCase
+        ) -or $normalized.EndsWith(
+            ".example",
+            [System.StringComparison]::OrdinalIgnoreCase
+        )
+        if ($isPublicExample) {
+            continue
+        }
+        foreach ($pattern in $secretFilePatterns) {
+            if ($normalized -match $pattern) {
+                $relativePath
+                break
+            }
+        }
+    }
+)
+if ($unsafeFiles.Count -gt 0) {
+    throw "Refusing to package secret-like files: $($unsafeFiles -join ', ')"
+}
+
 Add-Type -AssemblyName System.IO.Compression
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 $archive = [System.IO.Compression.ZipFile]::Open(

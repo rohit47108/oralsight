@@ -6,6 +6,7 @@ import { useOralSightStore } from "../store/useOralSightStore";
 import { PlatformClient } from "./client";
 import { analyticsEventSchema, type AnalyticsEvent } from "./contracts";
 import { readCloudConfig } from "./config";
+import { readDeletionPollingReceipt } from "./deletionReceiptStorage";
 import { restoreCloudSession } from "./session";
 
 export type ProductAnalyticsEvent = Pick<
@@ -25,7 +26,11 @@ function appVersion(): string {
 export async function trackProductEvent(
   event: ProductAnalyticsEvent,
 ): Promise<boolean> {
+  const deletionReceipt = await readDeletionPollingReceipt().catch(() => ({
+    kind: "invalid" as const,
+  }));
   if (
+    deletionReceipt.kind !== "missing" ||
     !useOralSightStore.getState().settings.analyticsOptIn ||
     !readCloudConfig() ||
     !(await restoreCloudSession())

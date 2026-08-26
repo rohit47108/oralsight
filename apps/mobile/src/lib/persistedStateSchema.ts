@@ -257,8 +257,71 @@ function migrateLegacyAnalysis(value: unknown): unknown {
 
 function migrateLegacyComparison(value: unknown): unknown {
   const comparison = objectRecord(value);
-  if (!comparison || comparison.contractVersion !== "1.0.0") return value;
-  return { ...comparison, contractVersion: CONTRACT_VERSION };
+  if (!comparison) return value;
+  const migrated =
+    comparison.contractVersion === "1.0.0"
+      ? { ...comparison, contractVersion: CONTRACT_VERSION }
+      : comparison;
+
+  const hasRepeatabilityEvidence =
+    "repeatedCaptureAreaError" in migrated &&
+    "repeatabilityGatePassed" in migrated;
+  if (!hasRepeatabilityEvidence) {
+    const suppressionReasons = Array.isArray(migrated.suppressionReasons)
+      ? migrated.suppressionReasons.filter(
+          (reason): reason is string => typeof reason === "string",
+        )
+      : [];
+    const calibrationSuppressionReasons = Array.isArray(
+      migrated.calibrationSuppressionReasons,
+    )
+      ? migrated.calibrationSuppressionReasons.filter(
+          (reason): reason is string => typeof reason === "string",
+        )
+      : [];
+    const hadCalibratedMeasurements =
+      migrated.calibratedMeasurementChanges != null;
+    const repeatabilityReason = "repeated_capture_area_error_gate_unmet";
+
+    return {
+      ...migrated,
+      repeatedCaptureAreaError: null,
+      repeatabilityGatePassed: false,
+      registrationAlignment:
+        "registrationAlignment" in migrated
+          ? migrated.registrationAlignment
+          : null,
+      normalizedChange: null,
+      descriptorChanges: null,
+      calibratedMeasurementChanges: null,
+      calibrationSuppressionReasons:
+        hadCalibratedMeasurements || calibrationSuppressionReasons.length > 0
+          ? Array.from(
+              new Set([...calibrationSuppressionReasons, repeatabilityReason]),
+            )
+          : calibrationSuppressionReasons,
+      comparable: false,
+      suppressionReasons: Array.from(
+        new Set([...suppressionReasons, repeatabilityReason]),
+      ),
+    };
+  }
+
+  return {
+    ...migrated,
+    repeatedCaptureAreaError:
+      "repeatedCaptureAreaError" in migrated
+        ? migrated.repeatedCaptureAreaError
+        : null,
+    repeatabilityGatePassed:
+      "repeatabilityGatePassed" in migrated
+        ? migrated.repeatabilityGatePassed
+        : false,
+    registrationAlignment:
+      "registrationAlignment" in migrated
+        ? migrated.registrationAlignment
+        : null,
+  };
 }
 
 function migratePersistedAppState(value: unknown): unknown {
@@ -316,6 +379,12 @@ function migratePersistedAppState(value: unknown): unknown {
             animationSpeed: "standard",
           }
         : state.settings,
+    };
+  }
+  if (Array.isArray(state.comparisons)) {
+    state = {
+      ...state,
+      comparisons: state.comparisons.map(migrateLegacyComparison),
     };
   }
   return state;

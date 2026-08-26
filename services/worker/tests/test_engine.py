@@ -176,6 +176,20 @@ async def test_retryable_failure_increments_attempt_and_delays(envelope) -> None
     assert not reporter.reports
 
 
+async def test_retryable_failure_honors_server_retry_after(envelope) -> None:
+    queue = FakeQueue()
+    reporter = FakeReporter()
+    processor = ErrorProcessor(
+        RetryableJobError("upstream_http_503", retry_after_seconds=240)
+    )
+    await make_engine(queue, reporter, processor).process(QueueMessage("1-0", envelope))
+    assert len(queue.retried) == 1
+    _, retried, delay = queue.retried[0]
+    assert retried.attempt == 2
+    assert delay == 240
+    assert retried.not_before == NOW + timedelta(seconds=240)
+
+
 async def test_permanent_failure_is_reported_and_dead_lettered(envelope) -> None:
     queue = FakeQueue()
     reporter = FakeReporter()

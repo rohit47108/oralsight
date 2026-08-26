@@ -62,6 +62,40 @@
                 ]
               }
             },
+            "calibration": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "cardVersion": {
+                      "type": "string",
+                      "const": "oralsight-calibration-v1"
+                    },
+                    "markerId": {
+                      "type": "number",
+                      "const": 17
+                    },
+                    "markerSideMm": {
+                      "type": "number",
+                      "const": 20
+                    },
+                    "planeConfirmed": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "cardVersion",
+                    "markerId",
+                    "markerSideMm",
+                    "planeConfirmed"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
             "inputOrigin": {
               "type": "string",
               "const": "live_capture"
@@ -118,6 +152,40 @@
                   "secondary_segmentation"
                 ]
               }
+            },
+            "calibration": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "cardVersion": {
+                      "type": "string",
+                      "const": "oralsight-calibration-v1"
+                    },
+                    "markerId": {
+                      "type": "number",
+                      "const": 17
+                    },
+                    "markerSideMm": {
+                      "type": "number",
+                      "const": 20
+                    },
+                    "planeConfirmed": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "cardVersion",
+                    "markerId",
+                    "markerSideMm",
+                    "planeConfirmed"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "inputOrigin": {
               "type": "string",
@@ -948,6 +1016,125 @@
           "type": "number",
           "minimum": 0
         },
+        "repeatedCaptureAreaError": {
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 0.1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "repeatabilityGatePassed": {
+          "type": "boolean"
+        },
+        "registrationAlignment": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "method": {
+                  "type": "string",
+                  "const": "orb_ransac_homography"
+                },
+                "coordinateSpace": {
+                  "type": "string",
+                  "const": "normalized_image_coordinates"
+                },
+                "mapsFrom": {
+                  "type": "string",
+                  "const": "current"
+                },
+                "mapsTo": {
+                  "type": "string",
+                  "const": "baseline"
+                },
+                "matrix": {
+                  "type": "array",
+                  "prefixItems": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "number"
+                    }
+                  ]
+                },
+                "sourceImageSize": {
+                  "type": "object",
+                  "properties": {
+                    "widthPx": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 2048
+                    },
+                    "heightPx": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 2048
+                    }
+                  },
+                  "required": ["widthPx", "heightPx"],
+                  "additionalProperties": false
+                },
+                "targetImageSize": {
+                  "type": "object",
+                  "properties": {
+                    "widthPx": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 2048
+                    },
+                    "heightPx": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 2048
+                    }
+                  },
+                  "required": ["widthPx", "heightPx"],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "method",
+                "coordinateSpace",
+                "mapsFrom",
+                "mapsTo",
+                "matrix",
+                "sourceImageSize",
+                "targetImageSize"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "normalizedChange": {
           "anyOf": [
             {
@@ -1170,6 +1357,9 @@
         "registrationConfidence",
         "inlierRatio",
         "reprojectionErrorRatio",
+        "repeatedCaptureAreaError",
+        "repeatabilityGatePassed",
+        "registrationAlignment",
         "normalizedChange",
         "comparable",
         "suppressionReasons",
@@ -1307,6 +1497,21 @@
             ],
             "additionalProperties": false
           }
+        },
+        "comparisonRepeatedCaptureAreaError": {
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 0.1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "comparisonRepeatabilityGatePassed": {
+          "type": "boolean"
         },
         "limitations": {
           "type": "array",

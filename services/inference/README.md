@@ -66,6 +66,8 @@ Only four routes are exposed; interactive docs and the OpenAPI route are disable
 
 - `image`: one JPEG, PNG, or WebP image, at most 1.75 MB.
 - `metadata`: a JSON string matching `AnalyzeMetadata` in `packages/contracts`.
+  It may include the exact versioned calibration-card metadata. When provided,
+  the service independently gates optional neutral-patch color normalization.
 
 `POST /v1/compare` is `multipart/form-data` with:
 
@@ -108,6 +110,16 @@ probability map returned by the released segmentation ONNX model. An empty mask 
 only that no candidate crossed the threshold. Appearance,
 disease-category, and re-identification values likewise come only from their
 corresponding released heads.
+
+When the exact OralSight card is requested and detected, the service may use all
+four neutral patches to normalize only the candidate's approximate mean-redness
+and mean-brightness descriptors. The correction is applied to a copied pixel
+array only after the marker, pose, proximity, same-plane, patch-visibility,
+uniformity, range, clipping, and bounded-fit checks pass. It never changes the
+stored or sanitized image, candidate mask, anatomy and quality results, texture
+descriptor, classifier inputs, or guidance. A failed color-reference gate keeps
+the uncorrected descriptors and reports the reason; it does not invalidate an
+otherwise valid physical-size estimate.
 
 Anatomy is run before segmentation. A calibrated anatomy abstention or a predicted region
 that does not match the user-selected region prevents candidate output. Request-time

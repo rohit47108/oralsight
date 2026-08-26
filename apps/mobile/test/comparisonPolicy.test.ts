@@ -42,6 +42,9 @@ const validResult: ComparisonResult = {
   registrationConfidence: 0.9,
   inlierRatio: 0.8,
   reprojectionErrorRatio: 0.02,
+  repeatedCaptureAreaError: 0.08,
+  repeatabilityGatePassed: true,
+  registrationAlignment: null,
   normalizedChange: 0.2,
   descriptorChanges: {
     normalizedWidthChange: 0.1,

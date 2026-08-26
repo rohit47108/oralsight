@@ -3,6 +3,8 @@ node_modules/
 .next/
 .vercel/
 outputs/
+docs/licenses-model-cards/THIRD_PARTY_NOTICES.md
+docs/licenses-model-cards/THIRD_PARTY_SBOM.cdx.json
 .venv/
 .expo/
 dist/

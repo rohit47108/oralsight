@@ -72,7 +72,7 @@ def internal_client(handler) -> tuple[InternalHttpClient, httpx.AsyncClient]:
             client=client,
             signer=ServiceRequestSigner("oralsight-worker", b"x" * 32),
             platform_api_url="https://platform.internal",
-            inference_api_url="https://inference.internal",
+            inference_api_url="http://127.0.0.1:8000",
             max_asset_bytes=8_000_000,
         ),
         client,
@@ -123,6 +123,10 @@ async def test_analysis_fetches_hash_verified_asset_and_calls_real_inference(
                 "status": "abstained",
                 "analysisOrigin": "live_model",
             },
+            headers={
+                "Cache-Control": "no-store",
+                "X-Request-ID": request.headers["X-Request-ID"],
+            },
         )
 
     internal, raw = internal_client(handler)
@@ -155,6 +159,10 @@ async def test_analysis_returns_calibration_only_after_real_marker_gates(
             return httpx.Response(
                 200, content=image, headers={"Content-Type": "image/jpeg"}
             )
+        body = await request.aread()
+        assert b'"calibration":{"cardVersion":"oralsight-calibration-v1"' in body
+        assert b'"markerId":17' in body
+        assert b'"planeConfirmed":true' in body
         return httpx.Response(
             200,
             json={
@@ -172,6 +180,10 @@ async def test_analysis_returns_calibration_only_after_real_marker_gates(
                     "boundingBox": [0.45, 0.383333, 0.125, 0.083333],
                     "normalizedArea": 5_000 / (800 * 600),
                 },
+            },
+            headers={
+                "Cache-Control": "no-store",
+                "X-Request-ID": request.headers["X-Request-ID"],
             },
         )
 
@@ -336,6 +348,18 @@ async def test_upstream_http_errors_are_classified(status, error_type) -> None:
         await raw.aclose()
 
 
+async def test_upstream_retry_after_is_preserved_for_retained_job_retry() -> None:
+    internal, raw = internal_client(
+        lambda request: httpx.Response(503, headers={"Retry-After": "240"})
+    )
+    try:
+        with pytest.raises(RetryableJobError) as caught:
+            await internal.post_json("https://platform.internal", "/internal/test", {})
+    finally:
+        await raw.aclose()
+    assert caught.value.retry_after_seconds == 240
+
+
 def prior(capture_id: UUID) -> PriorAnalysisMetadata:
     return PriorAnalysisMetadata(
         capture_id=capture_id,
@@ -381,6 +405,10 @@ async def test_comparison_fetches_both_assets_and_calls_inference(envelope) -> N
                 "baselineCaptureId": str(CAPTURE_ID),
                 "currentCaptureId": str(current_id),
                 "comparable": False,
+            },
+            headers={
+                "Cache-Control": "no-store",
+                "X-Request-ID": request.headers["X-Request-ID"],
             },
         )
 

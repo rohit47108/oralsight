@@ -85,6 +85,16 @@ export const meResponseSchema = z
     status: z.enum(["active", "deletion_pending", "suspended"]),
     createdAt: dateSchema,
     deletionPending: z.boolean(),
+    requiredOidcRole: z.enum(["clinician", "admin"]).nullable(),
+    privilegedAccessReady: z.boolean(),
+    clinicianApplicationEligible: z.boolean(),
+  })
+  .strict();
+
+export const accountRecreationResponseSchema = z
+  .object({
+    account: meResponseSchema,
+    recreatedAfterDeletion: z.literal(true),
   })
   .strict();
 
@@ -636,6 +646,9 @@ export type SyncOperationInput = z.infer<typeof syncOperationInputSchema>;
 export type SyncPushResponse = z.infer<typeof syncPushResponseSchema>;
 export type SyncPullResponse = z.infer<typeof syncPullResponseSchema>;
 export type MeResponse = z.infer<typeof meResponseSchema>;
+export type AccountRecreationResponse = z.infer<
+  typeof accountRecreationResponseSchema
+>;
 export type JobListResponse = z.infer<typeof jobListResponseSchema>;
 export type GeneratedArtifact = z.infer<typeof generatedArtifactSchema>;
 export type ResourceRef = z.infer<typeof resourceRefSchema>;

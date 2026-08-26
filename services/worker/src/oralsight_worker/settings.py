@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 from enum import StrEnum
+from ipaddress import ip_address
 from urllib.parse import urlparse
 
 from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from .response_verification import InferenceResponseVerifier
 
 
 class Environment(StrEnum):
@@ -31,6 +34,7 @@ class Settings(BaseSettings):
     redis_url: SecretStr = SecretStr("redis://127.0.0.1:6379/0")
     platform_api_url: str = "http://127.0.0.1:8001"
     inference_api_url: str = "http://127.0.0.1:8000"
+    inference_response_signing_public_key_b64: str | None = None
 
     consumer_name: str = Field(
         default="worker-local-1", pattern=r"^[A-Za-z0-9._-]{3,64}$"
@@ -74,6 +78,31 @@ class Settings(BaseSettings):
                     )
             if urlparse(self.redis_url.get_secret_value()).scheme != "rediss":
                 raise ValueError("Redis must use TLS outside local development.")
+        encoded_public_key = (
+            self.inference_response_signing_public_key_b64.strip()
+            if self.inference_response_signing_public_key_b64 is not None
+            else ""
+        )
+        if encoded_public_key:
+            try:
+                InferenceResponseVerifier.from_standard_base64(encoded_public_key)
+            except ValueError as exc:
+                raise ValueError(
+                    "The inference response signing public key must be a raw "
+                    "32-byte Ed25519 public key in canonical standard base64."
+                ) from exc
+        elif protected:
+            raise ValueError(
+                "Staging and production require a pinned inference response "
+                "signing public key."
+            )
+        elif (
+            self.environment is Environment.DEVELOPMENT
+            and not self._inference_url_is_loopback()
+        ):
+            raise ValueError(
+                "Unsigned development inference is permitted only for a loopback URL."
+            )
         if self.heartbeat_ttl_seconds <= self.heartbeat_interval_seconds * 2:
             raise ValueError("Heartbeat TTL must be more than twice its interval.")
         return self
@@ -81,3 +110,23 @@ class Settings(BaseSettings):
     @property
     def production(self) -> bool:
         return self.environment is Environment.PRODUCTION
+
+    def _inference_url_is_loopback(self) -> bool:
+        hostname = (urlparse(self.inference_api_url).hostname or "").lower()
+        if hostname == "localhost" or hostname.endswith(".localhost"):
+            return True
+        try:
+            return ip_address(hostname).is_loopback
+        except ValueError:
+            return False
+
+    @property
+    def inference_response_verifier(self) -> InferenceResponseVerifier | None:
+        encoded_public_key = (
+            self.inference_response_signing_public_key_b64.strip()
+            if self.inference_response_signing_public_key_b64 is not None
+            else ""
+        )
+        if not encoded_public_key:
+            return None
+        return InferenceResponseVerifier.from_standard_base64(encoded_public_key)

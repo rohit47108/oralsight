@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { productAreaForRole, productHomeForRole } from "@/lib/product-auth";
+import {
+  productAreaForRole,
+  productHomeForAccount,
+  productHomeForRole,
+} from "@/lib/product-auth";
 
 describe("role routing", () => {
   it.each([
@@ -12,5 +16,22 @@ describe("role routing", () => {
   ] as const)("routes %s to its permitted area", (role, area, home) => {
     expect(productAreaForRole(role)).toBe(area);
     expect(productHomeForRole(role)).toBe(home);
+  });
+
+  it("keeps a privileged account locked until its token role is ready", () => {
+    expect(
+      productHomeForAccount({
+        role: "admin",
+        requiredOidcRole: "admin",
+        privilegedAccessReady: false,
+      }),
+    ).toBe("/clinician/access-setup");
+    expect(
+      productHomeForAccount({
+        role: "clinician",
+        requiredOidcRole: "clinician",
+        privilegedAccessReady: true,
+      }),
+    ).toBe("/clinician/reviews");
   });
 });

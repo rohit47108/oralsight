@@ -66,19 +66,35 @@ class TokenValidator:
         if not isinstance(subject, str) or not subject.strip() or len(subject) > 255:
             raise TokenValidationError
 
-        role_value: Any = payload.get(
-            self.settings.oidc_role_claim, payload.get("roles", [])
-        )
+        role_value: Any = payload.get(self.settings.oidc_role_claim, [])
         if isinstance(role_value, str):
             raw_roles = [role_value]
         elif isinstance(role_value, list):
             raw_roles = role_value
         else:
             raw_roles = []
-        roles = frozenset(
+        roles = {
             role for role in raw_roles if isinstance(role, str) and 0 < len(role) <= 64
+        }
+        issued_at_value = payload.get("iat")
+        if isinstance(issued_at_value, bool) or not isinstance(
+            issued_at_value, (int, float)
+        ):
+            raise TokenValidationError
+        try:
+            issued_at = datetime.fromtimestamp(issued_at_value, UTC)
+        except (OverflowError, OSError, ValueError) as exc:
+            raise TokenValidationError from exc
+        privileged_roles = {"clinician_pending", "clinician", "admin"}
+        maximum_age = timedelta(
+            seconds=(
+                self.settings.privileged_token_max_age_seconds
+                + self.settings.jwt_leeway_seconds
+            )
         )
-        return TokenClaims(subject=subject, roles=roles)
+        if datetime.now(UTC) - issued_at > maximum_age:
+            roles.difference_update(privileged_roles)
+        return TokenClaims(subject=subject, roles=frozenset(roles))
 
 
 def issue_local_test_token(

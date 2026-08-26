@@ -61,6 +61,8 @@ class ObjectStorage(Protocol):
 
     async def delete(self, object_key: str) -> None: ...
 
+    async def list_prefix(self, prefix: str) -> list[str]: ...
+
     async def presign_upload(
         self,
         object_key: str,
@@ -200,6 +202,17 @@ class LocalObjectStorage:
         await asyncio.to_thread(
             target.with_suffix(target.suffix + ".metadata.json").unlink,
             missing_ok=True,
+        )
+
+    async def list_prefix(self, prefix: str) -> list[str]:
+        root = _safe_target(self.root, prefix.rstrip("/"))
+        if not root.exists():
+            return []
+        files = await asyncio.to_thread(lambda: list(root.rglob("*")))
+        return sorted(
+            path.relative_to(self.root).as_posix()
+            for path in files
+            if path.is_file() and not path.name.endswith(".metadata.json")
         )
 
     async def presign_upload(
@@ -377,6 +390,22 @@ class S3ObjectStorage:
             await asyncio.to_thread(
                 self.client.delete_object, Bucket=self.bucket, Key=object_key
             )
+        except (BotoCoreError, ClientError) as exc:
+            raise self._translate(exc) from exc
+
+    async def list_prefix(self, prefix: str) -> list[str]:
+        def _list() -> list[str]:
+            paginator = self.client.get_paginator("list_objects_v2")
+            keys: list[str] = []
+            for page in paginator.paginate(Bucket=self.bucket, Prefix=prefix):
+                for value in page.get("Contents", []):
+                    key = value.get("Key")
+                    if isinstance(key, str):
+                        keys.append(key)
+            return sorted(set(keys))
+
+        try:
+            return await asyncio.to_thread(_list)
         except (BotoCoreError, ClientError) as exc:
             raise self._translate(exc) from exc
 

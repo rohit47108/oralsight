@@ -2,6 +2,7 @@ import * as BackgroundTask from "expo-background-task";
 import * as TaskManager from "expo-task-manager";
 
 import { readCloudConfig } from "./config";
+import { readDeletionPollingReceipt } from "./deletionReceiptStorage";
 import { restoreCloudSession } from "./session";
 import { rememberCloudSyncError, runCloudSync } from "./sync";
 
@@ -10,6 +11,12 @@ export const CLOUD_SYNC_TASK = "oralsight-encrypted-cloud-sync-v1";
 if (!TaskManager.isTaskDefined(CLOUD_SYNC_TASK)) {
   TaskManager.defineTask(CLOUD_SYNC_TASK, async () => {
     try {
+      const deletionReceipt = await readDeletionPollingReceipt().catch(() => ({
+        kind: "invalid" as const,
+      }));
+      if (deletionReceipt.kind !== "missing") {
+        return BackgroundTask.BackgroundTaskResult.Success;
+      }
       if (!readCloudConfig() || !(await restoreCloudSession())) {
         return BackgroundTask.BackgroundTaskResult.Success;
       }

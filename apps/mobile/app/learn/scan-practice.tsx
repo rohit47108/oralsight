@@ -40,7 +40,11 @@ export default function ScanPracticeRoute() {
           styles.preview,
           {
             backgroundColor:
-              scenario.visual === "dark" ? theme.navy : theme.mint,
+              scenario.visual === "low_light"
+                ? theme.navy
+                : scenario.visual === "overexposure"
+                  ? "#FFFDF5"
+                  : theme.mint,
             borderColor: theme.border,
             opacity: scenario.visual === "blur" ? 0.72 : 1,
           },
@@ -52,9 +56,25 @@ export default function ScanPracticeRoute() {
             style={[
               styles.contour,
               {
-                width: `${82 - line * 8}%`,
-                height: 22 + line * 11,
+                width:
+                  scenario.visual === "too_near"
+                    ? `${128 - line * 5}%`
+                    : scenario.visual === "too_far"
+                      ? `${42 - line * 3}%`
+                      : `${82 - line * 8}%`,
+                height:
+                  scenario.visual === "too_near"
+                    ? 90 + line * 16
+                    : scenario.visual === "too_far"
+                      ? 12 + line * 5
+                      : 22 + line * 11,
                 borderColor: theme.primary,
+                opacity:
+                  scenario.visual === "low_light"
+                    ? 0.24
+                    : scenario.visual === "overexposure"
+                      ? 0.12
+                      : 0.65,
               },
             ]}
           />
@@ -63,11 +83,24 @@ export default function ScanPracticeRoute() {
         {scenario.visual === "obstruction" ? (
           <View style={[styles.obstruction, { backgroundColor: theme.navy }]} />
         ) : null}
+        {scenario.visual === "incomplete_coverage" ? (
+          <View
+            style={[styles.incompleteCoverage, { backgroundColor: theme.navy }]}
+          />
+        ) : null}
+        {scenario.visual === "overexposure" ? (
+          <View style={styles.overexposure} />
+        ) : null}
         <View style={[styles.focusCorner, styles.topLeft]} />
         <View style={[styles.focusCorner, styles.topRight]} />
         <View style={[styles.focusCorner, styles.bottomLeft]} />
         <View style={[styles.focusCorner, styles.bottomRight]} />
       </View>
+
+      <Text style={[styles.practiceNote, { color: theme.secondaryText }]}>
+        Practice illustration only. It does not contain or produce a health
+        result.
+      </Text>
 
       <Card>
         <SectionTitle
@@ -164,6 +197,24 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 70,
     opacity: 0.88,
   },
+  incompleteCoverage: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    bottom: 0,
+    width: "32%",
+    opacity: 0.82,
+  },
+  overexposure: {
+    position: "absolute",
+    top: 24,
+    right: 18,
+    bottom: 24,
+    left: 18,
+    borderRadius: 120,
+    backgroundColor: "#FFFFFF",
+    opacity: 0.62,
+  },
   focusCorner: {
     position: "absolute",
     width: 28,
@@ -184,6 +235,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 3,
     borderRightWidth: 3,
   },
+  practiceNote: { fontSize: 12, lineHeight: 18, textAlign: "center" },
   choices: { gap: 9 },
   choice: {
     minHeight: 50,

@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 
 import { VerificationForm } from "@/components/verification-form";
 import { WorkspaceState } from "@/components/workspace-state";
-import { getProductContext } from "@/lib/product-auth";
+import { getProductContext, productHomeForAccount } from "@/lib/product-auth";
 import {
   PlatformApiError,
   getCurrentClinicianVerification,
@@ -14,12 +15,21 @@ export const metadata: Metadata = { title: "Professional verification" };
 export default async function VerificationPage() {
   const context = await getProductContext();
   if (context.state !== "ready") return null;
+  if (
+    context.account.requiredOidcRole &&
+    !context.account.privilegedAccessReady
+  ) {
+    redirect(productHomeForAccount(context.account));
+  }
   const record = await getCurrentClinicianVerification().then(
     (value) => ({ ok: true as const, value }),
     (error: unknown) => ({ ok: false as const, error }),
   );
   const isAdmin = context.account.role === "admin";
   const verified = record.ok && record.value.status === "verified";
+  const rejected = record.ok && record.value.status === "rejected";
+  const accessReady =
+    verified && record.value.identityRole.privilegedAccessReady;
   const notSubmitted =
     !isAdmin &&
     !record.ok &&
@@ -33,11 +43,15 @@ export default async function VerificationPage() {
           <h1>
             {isAdmin
               ? "Administrator access is active."
-              : verified
+              : accessReady
                 ? "Professional access is active."
-                : notSubmitted
-                  ? "Request professional access."
-                  : "Credential review in progress."}
+                : verified
+                  ? "Credentials approved. Sign-in access is pending."
+                  : rejected
+                    ? "Credential request not approved."
+                    : notSubmitted
+                      ? "Request professional access."
+                      : "Credential review in progress."}
           </h1>
           <p>
             The platform verification record, not a profile label, controls
@@ -46,7 +60,7 @@ export default async function VerificationPage() {
         </div>
         <span
           className="account-state"
-          data-state={verified || isAdmin ? "active" : "pending"}
+          data-state={accessReady || isAdmin ? "active" : "pending"}
         >
           {isAdmin
             ? "Administrator"
@@ -90,6 +104,16 @@ export default async function VerificationPage() {
                 : "Awaiting review"}
             </dd>
           </div>
+          <div>
+            <dt>Sign-in access</dt>
+            <dd>
+              {record.value.identityRole.privilegedAccessReady
+                ? "Verified in this sign-in"
+                : record.value.status === "verified"
+                  ? "Awaiting clinician role"
+                  : "Not applicable"}
+            </dd>
+          </div>
         </dl>
       ) : notSubmitted ? (
         <VerificationForm operationKey={crypto.randomUUID()} />
@@ -100,13 +124,16 @@ export default async function VerificationPage() {
         />
       )}
       {record.ok && record.value.status === "rejected" ? (
-        <WorkspaceState
-          title="The verification request was not approved."
-          body={
-            record.value.decisionReason ??
-            "Contact the verification administrator for next steps."
-          }
-        />
+        <>
+          <WorkspaceState
+            title="The verification request was not approved."
+            body={
+              record.value.decisionReason ??
+              "Contact the verification administrator for next steps."
+            }
+          />
+          <VerificationForm operationKey={crypto.randomUUID()} />
+        </>
       ) : null}
     </div>
   );
