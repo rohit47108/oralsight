@@ -115,13 +115,13 @@
 
 **Acceptance criteria:**
 
-- [ ] Commit messages describe real changes and the branch is clean.
-- [ ] ZIP excludes secrets, local work, build outputs, caches, and Git metadata.
-- [ ] SHA-256 checksum and archive inventory verification pass.
+- [x] Commit messages describe real changes and the branch is clean.
+- [x] ZIP excludes secrets, local work, build outputs, caches, and Git metadata.
+- [x] SHA-256 checksum and archive inventory verification pass.
 
 **Verification:**
 
-- [ ] Git status, archive audit, and checksum comparison pass.
+- [x] Git status, archive audit, and checksum comparison pass.
 
 **Dependencies:** Task 7
 
