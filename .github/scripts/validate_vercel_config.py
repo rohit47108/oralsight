@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import sys
+import tomllib
 from pathlib import Path
 from typing import Any
 from urllib.request import Request, urlopen
@@ -60,68 +61,45 @@ def require_file(root: Path, relative: str, label: str) -> None:
 
 def validate_repository_contract(root_config: dict[str, Any]) -> None:
     services = root_config.get("services")
-    if not isinstance(services, dict) or set(services) != {"web", "inference"}:
-        raise ValueError(
-            "root vercel.json must define exactly web and inference services"
-        )
+    if not isinstance(services, dict) or set(services) != {"web"}:
+        raise ValueError("root vercel.json must define exactly the web service")
 
     web = services["web"]
-    inference = services["inference"]
-    if web.get("framework") != "nextjs" or inference.get("framework") != "fastapi":
-        raise ValueError("Vercel service frameworks must remain nextjs and fastapi")
+    if web.get("framework") != "nextjs":
+        raise ValueError("the Vercel web service framework must remain nextjs")
 
     web_root = REPOSITORY_ROOT / str(web.get("root", ""))
-    inference_root = REPOSITORY_ROOT / str(inference.get("root", ""))
     require_file(web_root, "package.json", "web build manifest")
     require_file(web_root, "next.config.ts", "web build configuration")
-    require_file(inference_root, "pyproject.toml", "inference build manifest")
-
-    entrypoint = inference.get("entrypoint")
-    if not isinstance(entrypoint, str) or ":" not in entrypoint:
-        raise ValueError("inference entrypoint must use module:object syntax")
-    module_name, object_name = entrypoint.split(":", 1)
-    if not module_name or not object_name:
-        raise ValueError("inference entrypoint must name both module and object")
-    require_file(
-        inference_root,
-        f"{module_name.replace('.', '/')}.py",
-        "inference entrypoint module",
-    )
-
-    functions = inference.get("functions", {})
-    python_settings = (
-        functions.get("**/*.py", {}) if isinstance(functions, dict) else {}
-    )
-    if python_settings.get("maxDuration", 0) < 18:
-        raise ValueError(
-            "inference maxDuration must cover the 18-second mobile deadline"
-        )
 
     rewrites = root_config.get("rewrites")
     if not isinstance(rewrites, list) or not rewrites:
         raise ValueError("root vercel.json must expose services through rewrites")
     for rewrite in rewrites:
         destination = rewrite.get("destination") if isinstance(rewrite, dict) else None
-        if (
-            not isinstance(destination, dict)
-            or destination.get("service") not in services
+        if isinstance(destination, dict):
+            if destination.get("service") not in services:
+                raise ValueError("service rewrites must target a declared service")
+        elif not (
+            isinstance(destination, str)
+            and destination.startswith("https://oralsight-inference.vercel.app/api/")
         ):
-            raise ValueError("every root rewrite must target a declared service")
+            raise ValueError(
+                "external rewrites must target the verified OralSight inference origin"
+            )
 
     expected_inference_rewrites = {
-        "/api/v1/:path*": "/v1/:path*",
-        "/api/healthz": "/healthz",
+        "/api/v1/:path*": "https://oralsight-inference.vercel.app/api/v1/:path*",
+        "/api/healthz": "https://oralsight-inference.vercel.app/api/healthz",
     }
     actual_inference_rewrites = {
-        rewrite.get("source"): rewrite.get("destination", {}).get("path")
+        rewrite.get("source"): rewrite.get("destination")
         for rewrite in rewrites
-        if isinstance(rewrite, dict)
-        and isinstance(rewrite.get("destination"), dict)
-        and rewrite["destination"].get("service") == "inference"
+        if isinstance(rewrite, dict) and isinstance(rewrite.get("destination"), str)
     }
     if actual_inference_rewrites != expected_inference_rewrites:
         raise ValueError(
-            "inference rewrites must remove the public /api prefix before dispatch"
+            "inference rewrites must proxy the verified standalone deployment"
         )
     if (
         rewrites[-1].get("source") != "/(.*)"
@@ -160,6 +138,22 @@ def validate_standalone_inference(value: dict[str, Any]) -> None:
         raise ValueError(
             "standalone inference vercel.json must cover the 18-second mobile deadline"
         )
+
+    inference_root = REPOSITORY_ROOT / "services" / "inference"
+    project = tomllib.loads(
+        (inference_root / "pyproject.toml").read_text(encoding="utf-8")
+    )
+    entrypoint = project.get("tool", {}).get("vercel", {}).get("entrypoint")
+    if not isinstance(entrypoint, str) or ":" not in entrypoint:
+        raise ValueError("standalone inference must declare a module:object entrypoint")
+    module_name, object_name = entrypoint.split(":", 1)
+    if not module_name or not object_name:
+        raise ValueError("standalone inference entrypoint must name module and object")
+    require_file(
+        inference_root,
+        f"{module_name.replace('.', '/')}.py",
+        "standalone inference entrypoint module",
+    )
 
 
 def main() -> int:

@@ -180,10 +180,10 @@ Vercel cannot host or install the iOS/Android binary. A custom web domain can
 point to a public information site or the HTTPS API, but opening that domain is
 not the same as installing OralSight.
 
-The repository includes a root Vercel Services configuration for the web app and
-stateless inference API, plus a standalone inference configuration. Both are validated
-against Vercel's current configuration schema. Vercel Services is still a beta release
-surface; the deployment guide also describes separate stable web and inference projects.
+The repository includes a root Vercel configuration for the web app that proxies
+its public API paths to the separately deployed inference service. The inference
+service also has its own Vercel configuration. Both are validated against Vercel's
+current configuration schema.
 
 ```text
 https://oralsight-inference.vercel.app/api/healthz
@@ -199,10 +199,10 @@ Every mobile image is re-encoded below 1.75 MB. Two comparison images plus
 multipart metadata therefore remain below Vercel's 4.5 MB function request-body
 ceiling. The API enforces the same per-image limit for non-mobile callers.
 
-An older inference-only deployment passed health, model-card, live analyze, and
-fail-closed compare requests on July 28, 2026. That is not evidence that the current
-combined tree is deployed. Build a fresh preview, inspect its file inventory, and run the
-full acceptance flow before promotion. Proxy-level body logging, temporary storage,
+The inference-only deployment passed health, model-card, live analyze, and
+fail-closed compare requests on July 28, 2026. Recheck those live routes before each
+web promotion, then build a fresh web preview and run the full acceptance flow.
+Proxy-level body logging, temporary storage,
 connection limits, and rate limits still belong in the final host review. The container
 route remains available when encrypted `tmpfs` and tighter host controls are required.
 

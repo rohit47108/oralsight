@@ -4,26 +4,16 @@
     "web": {
       "root": "apps/web",
       "framework": "nextjs"
-    },
-    "inference": {
-      "root": "services/inference",
-      "framework": "fastapi",
-      "entrypoint": "vercel_entrypoint:app",
-      "functions": {
-        "**/*.py": {
-          "maxDuration": 60
-        }
-      }
     }
   },
   "rewrites": [
     {
       "source": "/api/v1/:path*",
-      "destination": { "service": "inference", "path": "/v1/:path*" }
+      "destination": "https://oralsight-inference.vercel.app/api/v1/:path*"
     },
     {
       "source": "/api/healthz",
-      "destination": { "service": "inference", "path": "/healthz" }
+      "destination": "https://oralsight-inference.vercel.app/api/healthz"
     },
     {
       "source": "/(.*)",

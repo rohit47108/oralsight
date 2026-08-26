@@ -258,19 +258,20 @@ strategy is added.
 
 ## Deploy web and inference on Vercel
 
-### Option A: one Vercel Services project
+### Current competition deployment
 
-The root [`vercel.json`](../vercel.json) describes a web service plus inference
-service with `/api/v1/*` and `/api/healthz` routed to FastAPI and all remaining
-paths routed to Next.js. Vercel's June 2026 documentation lists Services as a
-beta available on all plans. The project framework preset must still be
-**Services**.
+The root [`vercel.json`](../vercel.json) deploys the Next.js product and proxies
+`/api/v1/*` plus `/api/healthz` to the independently deployed, signed inference
+service at `https://oralsight-inference.vercel.app/api`. Keeping these releases
+separate lets the public website deploy without copying the private model bundle
+into its build. The standalone inference deployment remains defined by
+[`services/inference/vercel.json`](../services/inference/vercel.json) and the
+`[tool.vercel]` entry point in its `pyproject.toml`.
 
-Services is still a Vercel Beta. Vercel's release-phase documentation says Beta
-products are not recommended for a full production environment and are outside
-the Enterprise SLA. Use this path for a preview or only after the owner accepts
-that limitation. For the lower-risk production handoff, prefer the separate
-stable projects below until Services leaves Beta.
+The linked web project is `oralsight`. The inference project is
+`oralsight-inference`. Never replace the inference proxy with an unverified model
+build; its health and model-card responses must report signing, the expected
+release ID, and the enabled heads before a web deployment is promoted.
 
 Use Vercel CLI 48.1.8 or newer. The globally installed CLI in this workspace is
 older, so use a pinned current CLI for release work:
@@ -290,34 +291,20 @@ pnpm dlx vercel@58.8.0 logs <preview-url>
 pnpm dlx vercel@58.8.0 promote <preview-url>
 ```
 
-Do not reuse an existing project link without checking its project name and
-intended framework. In the current development workspace, the root `.vercel`
-link points to `oralsight`; the older live `oralsight-inference` deployment is a
-separate release and is not evidence that this tree is deployed. The source ZIP
-excludes `.vercel`, so a fresh extraction starts unlinked.
-
-### Option B: two stable Vercel projects
-
-If the team prefers separate release and domain lifecycles, or the Services beta
-is unsuitable for the account, connect the same Git repository twice:
-
-- Web project root: `apps/web`
-- Inference project root: `services/inference`
-
-Keep the monorepo checkout intact so the web workspace dependency on
-`packages/contracts` resolves. Configure the web and inference environment
-variables in their own projects and use their separate HTTPS origins. The
-inference package declares `vercel_entrypoint:app` in `pyproject.toml` for a
-standalone FastAPI deployment.
+Do not reuse an existing project link without checking its project name. In the
+current development workspace, the root `.vercel` link points to `oralsight`.
+Link and deploy `services/inference` separately only when intentionally replacing
+the live model release, because that deployment also requires the ignored private
+release bundle and the response-signing secret.
 
 Vercel's current FastAPI runtime turns the service into one Function and applies
 Function limits, including request size, duration, memory, and bundle size. Run
 an actual preview build and live analyze/compare smoke before production; source
 inspection is not a substitute for a successful Vercel build.
 
-Both Vercel configurations set the inference Function duration to 60 seconds
-through the inference service's `functions` glob. Confirm that the selected plan
-supports that value, then exercise analyze and compare against a real preview.
+The standalone inference configuration sets the Function duration to 60 seconds.
+Confirm that the selected plan supports that value, then exercise analyze and
+compare against a real preview.
 The mobile request timeout remains a separate client limit and does not prove
 that a 60-second Function is appropriate under load.
 
