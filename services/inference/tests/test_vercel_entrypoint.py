@@ -4,7 +4,7 @@ from pathlib import Path
 from oralsight_api.deployment import packaged_release_manifest
 
 
-def test_vercel_runtime_dependencies_do_not_install_an_asgi_server() -> None:
+def test_vercel_runtime_uses_uvicorn_without_websocket_extras() -> None:
     service_root = Path(__file__).resolve().parents[1]
     project = tomllib.loads(
         (service_root / "pyproject.toml").read_text(encoding="utf-8")
@@ -12,8 +12,9 @@ def test_vercel_runtime_dependencies_do_not_install_an_asgi_server() -> None:
 
     runtime_dependencies = project["project"]["dependencies"]
 
+    assert "uvicorn==0.51.0" in runtime_dependencies
     assert not any(
-        dependency.lower().startswith("uvicorn") for dependency in runtime_dependencies
+        "uvicorn[" in dependency.lower() for dependency in runtime_dependencies
     )
     assert any(
         dependency.lower().startswith("uvicorn")
