@@ -2658,6 +2658,10 @@ p {
   gap: clamp(34px, 5vw, 64px);
 }
 
+.professional-application-page {
+  padding-block: clamp(48px, 7vw, 96px);
+}
+
 .workspace-heading,
 .record-heading {
   display: flex;

@@ -33,7 +33,10 @@ import {
   platformApiAnalyticsEventInputSchema,
   platformApiCaptureAssetResponseSchema,
   platformApiCaptureSetResponseSchema,
+  platformApiClinicianIdentityRoleResponseSchema,
   platformApiClinicianReviewResponseSchema,
+  platformApiClinicianVerificationQueueSchema,
+  platformApiClinicianVerificationResponseSchema,
   platformApiConsentResponseSchema,
   platformApiDataExportArtifactResponseSchema,
   platformApiDeletionRequestResponseSchema,
@@ -154,6 +157,15 @@ const platformDocument = {
     ),
     PlatformApiAccessGrantResponse: definition(
       platformApiAccessGrantResponseSchema,
+    ),
+    PlatformApiClinicianIdentityRoleResponse: definition(
+      platformApiClinicianIdentityRoleResponseSchema,
+    ),
+    PlatformApiClinicianVerificationResponse: definition(
+      platformApiClinicianVerificationResponseSchema,
+    ),
+    PlatformApiClinicianVerificationQueue: definition(
+      platformApiClinicianVerificationQueueSchema,
     ),
     PlatformApiReviewAnnotationResponse: definition(
       platformApiReviewAnnotationResponseSchema,

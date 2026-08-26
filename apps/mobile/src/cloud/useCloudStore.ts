@@ -29,6 +29,21 @@ import type {
   ShareLink,
 } from "./contracts";
 import { deleteCloudSyncKey, importCloudRecoveryCode } from "./crypto";
+import {
+  guardUnreceiptedServerDeletion,
+  protectRequestedDeletion,
+  resumePendingDeletion,
+} from "./deletionCoordinator";
+import {
+  deletionReceiptFromResponse,
+  deletionResponseFromReceipt,
+  type DeletionPollingReceipt,
+} from "./deletionReceipt";
+import {
+  clearDeletionPollingReceipt,
+  persistDeletionPollingReceipt,
+  readDeletionPollingReceipt,
+} from "./deletionReceiptStorage";
 import { isCloudError } from "./errors";
 import {
   clearCloudCredentials,
@@ -48,7 +63,13 @@ import {
 } from "./sync";
 
 export type CloudSessionStatus =
-  "checking" | "signed_out" | "signing_in" | "signed_in" | "unavailable";
+  | "checking"
+  | "signed_out"
+  | "signing_in"
+  | "signed_in"
+  | "deletion_pending"
+  | "recreation_required"
+  | "unavailable";
 
 interface CloudState {
   configured: boolean;
@@ -71,6 +92,7 @@ interface CloudState {
   reportArtifacts: Record<string, ReportArtifact>;
   dataExports: Record<string, DataExportArtifact>;
   deletion: DeletionResponse | null;
+  deletionAccountId: string | null;
   analyticsConsent: AnalyticsConsent | null;
   consentDocument: ConsentDocument | null;
   productConsent: ProductConsent | null;
@@ -80,6 +102,7 @@ interface CloudState {
   syncNow: (confirmAccountRebind?: boolean) => Promise<void>;
   importRecoveryCode: (value: string) => Promise<void>;
   refreshAccountData: () => Promise<void>;
+  recreateAccount: () => Promise<void>;
   createShare: (
     resources: ResourceRef[],
     options?: { expiresInSeconds?: number; maxExchanges?: number },
@@ -118,6 +141,81 @@ async function loadRemoteLists(client: PlatformClient) {
   };
 }
 
+async function finalizeCompletedDeletion(
+  receipt: DeletionPollingReceipt,
+): Promise<void> {
+  await unregisterCloudBackgroundSync().catch(() => undefined);
+  await clearCloudState();
+  await deleteCloudSyncKey(receipt.accountId);
+  await clearCloudInstallationIdentity(receipt.accountId);
+  useOralSightStore.getState().updateSettings({ analyticsOptIn: false });
+  await clearCloudCredentials();
+  // The receipt is deliberately cleared last. If any prior cleanup step fails,
+  // the completed receipt keeps the next launch in fail-closed deletion mode.
+  await clearDeletionPollingReceipt();
+}
+
+async function abandonCloudSession(accountId: string): Promise<void> {
+  // Remove the opaque token first so a crash during later cleanup cannot
+  // silently enter normal account bootstrap on the next launch.
+  await clearCloudCredentials().catch(() => undefined);
+  await unregisterCloudBackgroundSync().catch(() => undefined);
+  await Promise.allSettled([
+    clearCloudState(),
+    deleteCloudSyncKey(accountId),
+    clearCloudInstallationIdentity(accountId),
+  ]);
+  useOralSightStore.getState().updateSettings({ analyticsOptIn: false });
+}
+
+function deletionState(
+  receipt: DeletionPollingReceipt | null,
+  error: string | null,
+) {
+  return {
+    sessionStatus: "deletion_pending" as const,
+    account: null,
+    deletion: receipt ? deletionResponseFromReceipt(receipt) : null,
+    deletionAccountId: receipt?.accountId ?? null,
+    error,
+    analyticsConsent: null,
+    consentDocument: null,
+    productConsent: null,
+    shares: [],
+    accessHistory: [],
+    jobs: [],
+    artifacts: {},
+    reportArtifacts: {},
+    dataExports: {},
+    shareUrls: {},
+    latestShareUrl: null,
+    recoveryCode: null,
+    recoveryCodeWasCreated: false,
+  };
+}
+
+function cloudDeletionIsPending(state: Pick<CloudState, "sessionStatus">) {
+  return state.sessionStatus === "deletion_pending";
+}
+
+const DELETION_MODE_MESSAGE =
+  "Cloud deletion is active. Only the deletion status can be checked until cleanup finishes.";
+
+function completedDeletionState(receipt: DeletionPollingReceipt) {
+  return {
+    ...deletionState(receipt, null),
+    sessionStatus: "signed_out" as const,
+    deletionAccountId: null,
+  };
+}
+
+function untrackableDeletionState(error: string) {
+  return {
+    ...deletionState(null, error),
+    sessionStatus: "unavailable" as const,
+  };
+}
+
 export const useCloudStore = create<CloudState>((set, get) => {
   const configuration = cloudConfigurationStatus();
   return {
@@ -141,11 +239,29 @@ export const useCloudStore = create<CloudState>((set, get) => {
     reportArtifacts: {},
     dataExports: {},
     deletion: null,
+    deletionAccountId: null,
     analyticsConsent: null,
     consentDocument: null,
     productConsent: null,
 
     bootstrap: async () => {
+      const deletionOutcome = await resumePendingDeletion({
+        readReceipt: readDeletionPollingReceipt,
+        pollStatus: (requestId) =>
+          new PlatformClient().deletionStatus(requestId),
+        persistReceipt: persistDeletionPollingReceipt,
+        finalizeCompleted: finalizeCompletedDeletion,
+      });
+      if (deletionOutcome.mode !== "normal") {
+        await unregisterCloudBackgroundSync().catch(() => undefined);
+        useOralSightStore.getState().updateSettings({ analyticsOptIn: false });
+        set(
+          deletionOutcome.mode === "deletion_completed"
+            ? completedDeletionState(deletionOutcome.receipt)
+            : deletionState(deletionOutcome.receipt, deletionOutcome.error),
+        );
+        return;
+      }
       if (!configuration.configured) {
         set({ sessionStatus: "unavailable" });
         return;
@@ -157,14 +273,21 @@ export const useCloudStore = create<CloudState>((set, get) => {
           return;
         }
         const client = new PlatformClient();
-        const [
+        const account = await client.account();
+        const deletionGuard = await guardUnreceiptedServerDeletion(
           account,
+          abandonCloudSession,
+        );
+        if (deletionGuard.kind === "blocked") {
+          set(untrackableDeletionState(deletionGuard.error));
+          return;
+        }
+        const [
           summary,
           storedShareUrls,
           analyticsConsent,
           productConsentState,
         ] = await Promise.all([
-          client.account(),
           cloudSyncSummary(),
           cloudMetadata("cloud.share_url."),
           client.analyticsConsent(),
@@ -209,6 +332,14 @@ export const useCloudStore = create<CloudState>((set, get) => {
           set({ sessionStatus: "signed_out", account: null });
           return;
         }
+        if (isCloudError(error) && error.code === "recreation_required") {
+          set({
+            sessionStatus: "recreation_required",
+            account: null,
+            error: error.message,
+          });
+          return;
+        }
         const summary = await cloudSyncSummary().catch(() => null);
         set({
           sessionStatus: "signed_in",
@@ -225,19 +356,30 @@ export const useCloudStore = create<CloudState>((set, get) => {
     },
 
     signIn: async () => {
-      if (!get().configured) return;
+      if (!get().configured || get().sessionStatus === "unavailable") return;
+      if (cloudDeletionIsPending(get())) {
+        set({ error: DELETION_MODE_MESSAGE });
+        return;
+      }
       set({ busy: true, error: null, sessionStatus: "signing_in" });
       let authenticated = false;
       try {
         await signInToCloud();
         authenticated = true;
         const client = new PlatformClient();
-        const [account, analyticsConsent, productConsentState] =
-          await Promise.all([
-            client.account(),
-            client.analyticsConsent(),
-            loadProductConsentState(client),
-          ]);
+        const account = await client.account();
+        const deletionGuard = await guardUnreceiptedServerDeletion(
+          account,
+          abandonCloudSession,
+        );
+        if (deletionGuard.kind === "blocked") {
+          set(untrackableDeletionState(deletionGuard.error));
+          return;
+        }
+        const [analyticsConsent, productConsentState] = await Promise.all([
+          client.analyticsConsent(),
+          loadProductConsentState(client),
+        ]);
         const cloudWorkEnabled = !account.deletionPending;
         useOralSightStore.getState().updateSettings({
           analyticsOptIn: cloudWorkEnabled && analyticsConsent.enabled,
@@ -259,6 +401,14 @@ export const useCloudStore = create<CloudState>((set, get) => {
       } catch (error) {
         const sessionRejected =
           isCloudError(error) && error.code === "unauthenticated";
+        if (isCloudError(error) && error.code === "recreation_required") {
+          set({
+            sessionStatus: "recreation_required",
+            account: null,
+            error: error.message,
+          });
+          return;
+        }
         if (authenticated && !sessionRejected) {
           set({
             sessionStatus: "signed_in",
@@ -281,6 +431,10 @@ export const useCloudStore = create<CloudState>((set, get) => {
     },
 
     signOut: async () => {
+      if (cloudDeletionIsPending(get())) {
+        set({ error: DELETION_MODE_MESSAGE });
+        return;
+      }
       set({ busy: true, error: null });
       try {
         await unregisterCloudBackgroundSync().catch(() => undefined);
@@ -300,10 +454,29 @@ export const useCloudStore = create<CloudState>((set, get) => {
           recoveryCode: null,
           recoveryCodeWasCreated: false,
           deletion: null,
+          deletionAccountId: null,
           analyticsConsent: null,
           consentDocument: null,
           productConsent: null,
         });
+      } catch (error) {
+        set({ error: friendlyError(error) });
+      } finally {
+        set({ busy: false });
+      }
+    },
+
+    recreateAccount: async () => {
+      if (get().sessionStatus !== "recreation_required") return;
+      set({ busy: true, error: null });
+      try {
+        const response = await new PlatformClient().recreateAccount();
+        set({
+          account: response.account,
+          sessionStatus: "signed_in",
+          error: null,
+        });
+        await get().refreshAccountData();
       } catch (error) {
         set({ error: friendlyError(error) });
       } finally {
@@ -370,9 +543,17 @@ export const useCloudStore = create<CloudState>((set, get) => {
       set({ busy: true, error: null });
       try {
         const client = new PlatformClient();
-        const [account, lists, analyticsConsent, productConsentState] =
+        const account = await client.account();
+        const deletionGuard = await guardUnreceiptedServerDeletion(
+          account,
+          abandonCloudSession,
+        );
+        if (deletionGuard.kind === "blocked") {
+          set(untrackableDeletionState(deletionGuard.error));
+          return;
+        }
+        const [lists, analyticsConsent, productConsentState] =
           await Promise.all([
-            client.account(),
             loadRemoteLists(client),
             client.analyticsConsent(),
             loadProductConsentState(client),
@@ -448,6 +629,10 @@ export const useCloudStore = create<CloudState>((set, get) => {
     },
 
     revokeShare: async (shareId) => {
+      if (cloudDeletionIsPending(get())) {
+        set({ error: DELETION_MODE_MESSAGE });
+        return;
+      }
       set({ busy: true, error: null });
       try {
         const share = await new PlatformClient().revokeShare(
@@ -513,6 +698,10 @@ export const useCloudStore = create<CloudState>((set, get) => {
     },
 
     refreshJob: async (jobId) => {
+      if (cloudDeletionIsPending(get())) {
+        set({ error: DELETION_MODE_MESSAGE });
+        return;
+      }
       try {
         const job = await new PlatformClient().job(jobId);
         set((state) => ({
@@ -524,6 +713,10 @@ export const useCloudStore = create<CloudState>((set, get) => {
     },
 
     loadArtifact: async (artifactId) => {
+      if (cloudDeletionIsPending(get())) {
+        set({ error: DELETION_MODE_MESSAGE });
+        return;
+      }
       try {
         const artifact = await new PlatformClient().generatedArtifact(
           artifactId,
@@ -537,6 +730,10 @@ export const useCloudStore = create<CloudState>((set, get) => {
     },
 
     loadJobOutput: async (type, outputId) => {
+      if (cloudDeletionIsPending(get())) {
+        set({ error: DELETION_MODE_MESSAGE });
+        return;
+      }
       try {
         const client = new PlatformClient();
         if (type === "report") {
@@ -563,6 +760,10 @@ export const useCloudStore = create<CloudState>((set, get) => {
     },
 
     cancelJob: async (jobId) => {
+      if (cloudDeletionIsPending(get())) {
+        set({ error: DELETION_MODE_MESSAGE });
+        return;
+      }
       try {
         const job = await new PlatformClient().cancelJob(
           jobId,
@@ -577,35 +778,40 @@ export const useCloudStore = create<CloudState>((set, get) => {
     },
 
     requestCloudDeletion: async () => {
+      if (cloudDeletionIsPending(get())) {
+        set({ error: DELETION_MODE_MESSAGE });
+        return;
+      }
+      const account = get().account;
+      if (get().sessionStatus !== "signed_in" || !account) {
+        throw new Error(
+          "Refresh the signed-in account before requesting cloud deletion.",
+        );
+      }
       set({ busy: true, error: null });
+      let requestedReceipt: DeletionPollingReceipt | null = null;
       try {
         const deletion = await new PlatformClient().requestAccountDeletion(
           newIdempotencyKey("account-delete"),
         );
-        const accountId = get().account?.id;
+        const protection = await protectRequestedDeletion({
+          accountId: account.id,
+          response: deletion,
+          persistReceipt: persistDeletionPollingReceipt,
+          abandonUntrackableDeletion: () => abandonCloudSession(account.id),
+        });
+        if (protection.kind === "untrackable") {
+          set(untrackableDeletionState(protection.error));
+          return;
+        }
+        requestedReceipt = protection.receipt;
         await unregisterCloudBackgroundSync().catch(() => undefined);
         useOralSightStore.getState().updateSettings({ analyticsOptIn: false });
-        set({
-          deletion,
-          productConsent: null,
-          recoveryCode: null,
-          recoveryCodeWasCreated: false,
-          account: get().account
-            ? {
-                ...get().account!,
-                deletionPending: true,
-                status: "deletion_pending",
-              }
-            : null,
-        });
+        set(deletionState(requestedReceipt, null));
         const cleanup = await Promise.allSettled([
           clearCloudState(),
-          ...(accountId
-            ? [
-                deleteCloudSyncKey(accountId),
-                clearCloudInstallationIdentity(accountId),
-              ]
-            : []),
+          deleteCloudSyncKey(account.id),
+          clearCloudInstallationIdentity(account.id),
         ]);
         if (cleanup.some((result) => result.status === "rejected")) {
           set({
@@ -613,8 +819,34 @@ export const useCloudStore = create<CloudState>((set, get) => {
               "Cloud deletion started, but one or more device-side cloud keys still need cleanup. Keep this app installed and refresh the deletion status.",
           });
         }
+        if (requestedReceipt.status === "completed") {
+          try {
+            await finalizeCompletedDeletion(requestedReceipt);
+            set(completedDeletionState(requestedReceipt));
+          } catch {
+            set(
+              deletionState(
+                requestedReceipt,
+                "Cloud data was deleted, but protected device cleanup is incomplete. Retry the status check.",
+              ),
+            );
+          }
+        }
       } catch (error) {
-        set({ error: friendlyError(error) });
+        if (requestedReceipt) {
+          await unregisterCloudBackgroundSync().catch(() => undefined);
+          useOralSightStore
+            .getState()
+            .updateSettings({ analyticsOptIn: false });
+          set(
+            deletionState(
+              requestedReceipt,
+              "Cloud deletion started and its protected receipt was saved, but device cleanup did not finish. Retry the status check and keep the app installed.",
+            ),
+          );
+        } else {
+          set({ error: friendlyError(error) });
+        }
         throw error;
       } finally {
         set({ busy: false });
@@ -622,48 +854,40 @@ export const useCloudStore = create<CloudState>((set, get) => {
     },
 
     refreshDeletion: async () => {
-      const deletion = get().deletion;
-      if (!deletion) return;
+      if (!cloudDeletionIsPending(get()) && !get().deletion) return;
+      set({ busy: true, error: null });
       try {
-        const refreshed = await new PlatformClient().deletionStatus(
-          deletion.requestId,
-        );
-        if (refreshed.status === "completed") {
-          const accountId = get().account?.id;
-          await unregisterCloudBackgroundSync().catch(() => undefined);
-          await clearCloudCredentials().catch(() => undefined);
-          await clearCloudState().catch(() => undefined);
-          if (accountId)
-            await deleteCloudSyncKey(accountId).catch(() => undefined);
-          if (accountId)
-            await clearCloudInstallationIdentity(accountId).catch(
-              () => undefined,
-            );
-          useOralSightStore
-            .getState()
-            .updateSettings({ analyticsOptIn: false });
+        const outcome = await resumePendingDeletion({
+          readReceipt: async () => {
+            const read = await readDeletionPollingReceipt();
+            const deletion = get().deletion;
+            const accountId = get().deletionAccountId;
+            if (read.kind !== "missing" || !deletion || !accountId) {
+              return read;
+            }
+            const recovered = deletionReceiptFromResponse(accountId, deletion);
+            await persistDeletionPollingReceipt(recovered);
+            return { kind: "present" as const, receipt: recovered };
+          },
+          pollStatus: (requestId) =>
+            new PlatformClient().deletionStatus(requestId),
+          persistReceipt: persistDeletionPollingReceipt,
+          finalizeCompleted: finalizeCompletedDeletion,
+        });
+        if (outcome.mode === "normal") {
           set({
-            deletion: refreshed,
-            sessionStatus: "signed_out",
-            account: null,
-            analyticsConsent: null,
-            consentDocument: null,
-            productConsent: null,
-            shares: [],
-            accessHistory: [],
-            jobs: [],
-            artifacts: {},
-            reportArtifacts: {},
-            dataExports: {},
-            shareUrls: {},
-            latestShareUrl: null,
-            recoveryCode: null,
+            error:
+              "No protected deletion receipt is available. Cloud features remain paused to prevent account recreation.",
           });
           return;
         }
-        set({ deletion: refreshed });
-      } catch (error) {
-        set({ error: friendlyError(error) });
+        set(
+          outcome.mode === "deletion_completed"
+            ? completedDeletionState(outcome.receipt)
+            : deletionState(outcome.receipt, outcome.error),
+        );
+      } finally {
+        set({ busy: false });
       }
     },
 

@@ -105,6 +105,8 @@ jobs:
           uv lock --directory /tmp/oralsight-platform-lock --check
           uv lock --directory /tmp/oralsight-worker-lock --check
       - name: Run all Python tests
+        env:
+          ORALSIGHT_TEST_POSTGRES_URL: postgresql+asyncpg://oralsight:local-development-only@127.0.0.1:5432/oralsight
         run: >-
           uv run --frozen --all-packages --no-sync pytest
           services/inference/tests services/platform-api/tests services/worker/tests ml/tests

@@ -42,6 +42,18 @@ export function productHomeForRole(role: UserRole): string {
   return "/clinician/reviews";
 }
 
+export function productHomeForAccount(
+  account: Pick<
+    PlatformMe,
+    "role" | "requiredOidcRole" | "privilegedAccessReady"
+  >,
+): string {
+  if (account.requiredOidcRole && !account.privilegedAccessReady) {
+    return "/clinician/access-setup";
+  }
+  return productHomeForRole(account.role);
+}
+
 function identityFromUser(user: Record<string, unknown>): ViewerIdentity {
   const name = typeof user.name === "string" ? user.name.trim() : "";
   const email = typeof user.email === "string" ? user.email.trim() : "";

@@ -48,7 +48,10 @@ services:
     environment:
       ORALSIGHT_DEPLOYMENT_MODE: development
       ORALSIGHT_ENABLE_DEMO_FIXTURES: "false"
-      ORALSIGHT_REQUIRE_RESPONSE_SIGNING: "false"
+      ORALSIGHT_REQUIRE_RESPONSE_SIGNING: "true"
+      # Public, deterministic local-development key. Never use it outside this stack.
+      ORALSIGHT_RESPONSE_SIGNING_PRIVATE_KEY_B64: ${ORALSIGHT_LOCAL_RESPONSE_SIGNING_PRIVATE_KEY_B64:-QkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkI=}
+      ORALSIGHT_RESPONSE_SIGNING_KEY_ID: ${ORALSIGHT_LOCAL_RESPONSE_SIGNING_KEY_ID:-3097e2dee2cb4a34}
     read_only: true
     tmpfs:
       - /tmp:size=64m,mode=1777
@@ -139,6 +142,8 @@ services:
       ORALSIGHT_WORKER_HEALTH_PORT: "8010"
       ORALSIGHT_WORKER_PLATFORM_API_URL: http://platform-api:8080
       ORALSIGHT_WORKER_INFERENCE_API_URL: http://inference:8000
+      # Public half matching the local-development inference key above.
+      ORALSIGHT_WORKER_INFERENCE_RESPONSE_SIGNING_PUBLIC_KEY_B64: ${ORALSIGHT_LOCAL_RESPONSE_SIGNING_PUBLIC_KEY_B64:-IVL40Zt5HSRFMkLhXy6rbLfP+ntqXtMAl5YOBpiB2xI=}
       ORALSIGHT_WORKER_SERVICE_ID: oralsight-worker
       ORALSIGHT_WORKER_SERVICE_HMAC_SECRET: ${ORALSIGHT_LOCAL_SERVICE_HMAC_SECRET:-local-development-worker-hmac-secret-change-me}
       ORALSIGHT_WORKER_CONCURRENCY: "2"

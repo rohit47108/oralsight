@@ -22,14 +22,14 @@ export function VerificationForm({ operationKey }: { operationKey: string }) {
           <h2>Credential review requested</h2>
           <p>
             Professional access stays locked until an administrator records a
-            decision.
+            decision and a fresh clinician sign-in role is verified.
           </p>
         </div>
       </div>
     );
   }
   return (
-    <form className="verification-form" action={action}>
+    <form className="verification-form" action={action} aria-busy={pending}>
       <input type="hidden" name="operationKey" value={operationKey} />
       <fieldset disabled={pending}>
         <legend>Professional credentials</legend>
@@ -63,18 +63,22 @@ export function VerificationForm({ operationKey }: { operationKey: string }) {
           </label>
         </div>
         <label>
-          Credential evidence reference
+          Invitation reference
           <input
             name="applicantEvidenceRef"
             required
             minLength={4}
             maxLength={160}
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
             aria-describedby="evidence-help"
           />
         </label>
         <p id="evidence-help" className="field-help">
-          Enter the secure reference supplied by the verification administrator.
-          Do not paste a password or access token.
+          Enter the searchable reference supplied by the OralSight identity
+          administrator. They will use it to find this account later. Do not
+          paste a password, access token, or private key.
         </p>
         <button className="button" type="submit" disabled={!operationKey}>
           {pending ? "Submitting…" : "Submit for review"}

@@ -4,10 +4,14 @@ import {
   PLATFORM_API_DISCLAIMER,
   platformApiAnalysisRunResponseSchema,
   platformApiCaptureSetResponseSchema,
+  platformApiClinicianIdentityRoleResponseSchema,
+  platformApiClinicianVerificationQueueSchema,
+  platformApiClinicianVerificationResponseSchema,
   platformApiJobCreateSchema,
   platformApiJobResponseSchema,
   platformApiMatchDecisionResponseSchema,
   platformApiMatchProposalCreateSchema,
+  platformApiMeResponseSchema,
   platformApiReviewAnnotationResponseSchema,
   platformApiScanSessionResponseSchema,
   platformApiSyncOperationInputSchema,
@@ -18,6 +22,147 @@ const CREATED_AT = "2026-08-08T12:00:00.000Z";
 const SHA256 = "0".repeat(64);
 
 describe("authenticated platform API wire contracts", () => {
+  it("makes privileged identity-provider readiness explicit", () => {
+    const clinician = {
+      id: "clinician-1",
+      role: "clinician",
+      status: "active",
+      createdAt: CREATED_AT,
+      deletionPending: false,
+      requiredOidcRole: "clinician",
+      privilegedAccessReady: false,
+      clinicianApplicationEligible: false,
+    } as const;
+
+    expect(platformApiMeResponseSchema.parse(clinician)).toEqual(clinician);
+    const { privilegedAccessReady: _omitted, ...incomplete } = clinician;
+    expect(platformApiMeResponseSchema.safeParse(incomplete).success).toBe(
+      false,
+    );
+  });
+
+  it("keeps clinician approval separate from observed identity-provider access", () => {
+    const awaiting = {
+      verificationId: "verification-1",
+      applicantUserId: "applicant-1",
+      status: "verified",
+      profession: "Dentist",
+      licenseJurisdiction: "New Jersey",
+      licenseNumberSuffix: "4821",
+      organization: "Oral Health Research Clinic",
+      applicantEvidenceRef: "identity-invitation-1",
+      submittedAt: CREATED_AT,
+      reviewerUserId: "admin-1",
+      reviewerEvidence: {
+        source: "State licensing registry",
+        referenceId: "registry-check-1",
+        checkedAt: CREATED_AT,
+        reviewerNotes: null,
+      },
+      decisionReason: null,
+      reviewedAt: CREATED_AT,
+      retentionExpiresAt: "2033-08-08T12:00:00.000Z",
+      identityRole: {
+        requiredClaim: "https://oralsight.app/roles",
+        requiredValue: "clinician",
+        observationStatus: "awaiting_token_observation",
+        oidcRoleObservedAt: null,
+        privilegedAccessReady: false,
+      },
+    } as const;
+
+    expect(
+      platformApiClinicianVerificationResponseSchema.parse(awaiting),
+    ).toEqual(awaiting);
+    expect(
+      platformApiClinicianIdentityRoleResponseSchema.parse({
+        ...awaiting.identityRole,
+        observationStatus: "observed",
+        oidcRoleObservedAt: CREATED_AT,
+        privilegedAccessReady: true,
+      }).observationStatus,
+    ).toBe("observed");
+  });
+
+  it("keeps raw identity-provider subjects outside clinician verification contracts", () => {
+    const response = {
+      verificationId: "verification-1",
+      applicantUserId: "applicant-1",
+      status: "pending",
+      profession: "Dentist",
+      licenseJurisdiction: "New Jersey",
+      licenseNumberSuffix: "4821",
+      organization: null,
+      applicantEvidenceRef: "identity-invitation-1",
+      submittedAt: CREATED_AT,
+      reviewerUserId: null,
+      reviewerEvidence: null,
+      decisionReason: null,
+      reviewedAt: null,
+      retentionExpiresAt: "2033-08-08T12:00:00.000Z",
+      identityRole: {
+        requiredClaim: "https://oralsight.app/roles",
+        requiredValue: "clinician",
+        observationStatus: "not_applicable",
+        oidcRoleObservedAt: null,
+        privilegedAccessReady: false,
+      },
+      oidcSubject: "auth0|must-not-cross-the-wire",
+    } as const;
+
+    expect(
+      platformApiClinicianVerificationResponseSchema.safeParse(response)
+        .success,
+    ).toBe(false);
+    expect(
+      platformApiClinicianIdentityRoleResponseSchema.safeParse({
+        ...response.identityRole,
+        oidcSubject: "auth0|must-not-cross-the-wire",
+      }).success,
+    ).toBe(false);
+  });
+
+  it("validates clinician verification queues with the canonical response", () => {
+    const queue = {
+      items: [
+        {
+          verificationId: "verification-1",
+          applicantUserId: "applicant-1",
+          status: "pending",
+          profession: "Dentist",
+          licenseJurisdiction: "New Jersey",
+          licenseNumberSuffix: "4821",
+          organization: null,
+          applicantEvidenceRef: "identity-invitation-1",
+          submittedAt: CREATED_AT,
+          reviewerUserId: null,
+          reviewerEvidence: null,
+          decisionReason: null,
+          reviewedAt: null,
+          retentionExpiresAt: "2033-08-08T12:00:00.000Z",
+          identityRole: {
+            requiredClaim: "https://oralsight.app/roles",
+            requiredValue: "clinician",
+            observationStatus: "not_applicable",
+            oidcRoleObservedAt: null,
+            privilegedAccessReady: false,
+          },
+        },
+      ],
+      nextCursor: "verification-0",
+    } as const;
+
+    expect(platformApiClinicianVerificationQueueSchema.parse(queue)).toEqual(
+      queue,
+    );
+    expect(
+      platformApiClinicianVerificationQueueSchema.safeParse({
+        ...queue,
+        items: [{ ...queue.items[0], identityRole: undefined }],
+      }).success,
+    ).toBe(false);
+  });
+
   it("requires the consent record returned with every scan session", () => {
     const response = {
       contractVersion: "2.0.0",

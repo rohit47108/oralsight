@@ -1,7 +1,7 @@
 # OralSight web
 
 Next.js App Router site for the public OralSight pages plus authenticated patient,
-shared-viewer, clinician-pending, clinician, and administrator workspaces.
+shared-viewer, `clinician_pending`, clinician, and administrator workspaces.
 
 ## Local use
 
@@ -64,8 +64,27 @@ analysis contains a valid calibration result, and they are still approximate.
 
 Analytics are off until the account owner opts in and saves the setting. Account
 deletion uses the platform deletion job and reports its live status. Professional
-workspaces also require a verified platform clinician record; an Auth0 profile
-claim cannot grant that access by itself.
+workspaces require a verified platform clinician record and the exact configured
+access-token role; an Auth0 profile field or generic `roles` claim cannot grant
+access by itself.
+
+New applicants begin at `/professional-apply`. The identity administrator first
+assigns `clinician_pending` and supplies a searchable invitation reference. The
+applicant signs in again and submits credentials. Approval still leaves the
+workspace locked until the identity administrator replaces that role with
+`clinician`, the applicant signs in again, and **Check secure access** observes
+the fresh signed role. Removing a provider role is effective on refresh and no
+later than the configured privileged-token maximum age plus clock leeway.
+
+The platform reads only `ORALSIGHT_PLATFORM_OIDC_ROLE_CLAIM` from the signed API
+access token. It does not accept a generic `roles` claim as a fallback. Keep the
+provider's access-token lifetime and refresh policy within the configured
+privileged-token age limit.
+
+The first administrator and recovery-administrator operator commands are
+documented in [the deployment guide](../../docs/DEPLOYMENT.md#bootstrap-the-first-administrator).
+The same guide documents the
+[clinician approval path](../../docs/DEPLOYMENT.md#complete-a-clinician-approval).
 
 ## Vercel
 

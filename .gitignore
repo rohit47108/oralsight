@@ -29,7 +29,10 @@ ml/mlruns/
 .vercel/
 .env
 .env.*
+*.env
+production.env
 !.env.example
+!*.env.example
 !apps/mobile/.env.production.example
 !deploy/production/production.env.example
 *.db
@@ -56,3 +59,4 @@ Thumbs.db
 .vscode/
 
 .vercel
+OralSight-source.zip

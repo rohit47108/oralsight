@@ -68,10 +68,97 @@ export interface QualityPracticeScenario {
   choices: readonly string[];
   correctChoice: string;
   correction: string;
-  visual: "blur" | "dark" | "glare" | "obstruction" | "distance" | "ready";
+  visual:
+    | "low_light"
+    | "overexposure"
+    | "too_near"
+    | "too_far"
+    | "glare"
+    | "blur"
+    | "obstruction"
+    | "incomplete_coverage"
+    | "ready";
+  isPracticeOnly: true;
 }
 
 export const QUALITY_PRACTICE_SCENARIOS: readonly QualityPracticeScenario[] = [
+  {
+    id: "low_light",
+    title: "Not enough light",
+    prompt:
+      "The target is dim and its edges disappear into shadow. What should change?",
+    choices: [
+      "Add soft, even light",
+      "Move closer until the camera touches",
+      "Accept the dark image",
+    ],
+    correctChoice: "Add soft, even light",
+    correction:
+      "Move to a brighter area or add a steady, diffuse light in front of the mouth without aiming a harsh beam at wet tissue.",
+    visual: "low_light",
+    isPracticeOnly: true,
+  },
+  {
+    id: "overexposure",
+    title: "Too much light",
+    prompt: "Large pale areas have lost visible detail. What should change?",
+    choices: [
+      "Reduce or redirect the light",
+      "Turn on another direct flash",
+      "Cover the pale area",
+    ],
+    correctChoice: "Reduce or redirect the light",
+    correction:
+      "Turn down a direct light, move it farther away, or change its angle until natural tissue detail returns across the frame.",
+    visual: "overexposure",
+    isPracticeOnly: true,
+  },
+  {
+    id: "too_near",
+    title: "Too close",
+    prompt:
+      "A small patch fills the frame and the surrounding landmarks are missing. What should change?",
+    choices: [
+      "Back away slightly",
+      "Zoom in farther",
+      "Crop out the remaining landmarks",
+    ],
+    correctChoice: "Back away slightly",
+    correction:
+      "Back away until the full named region and nearby landmarks are visible, then wait for focus before capturing.",
+    visual: "too_near",
+    isPracticeOnly: true,
+  },
+  {
+    id: "too_far",
+    title: "Too far away",
+    prompt: "The target is only a tiny part of the frame. What should change?",
+    choices: [
+      "Move closer while keeping context",
+      "Use the distant image",
+      "Cover the empty space with a finger",
+    ],
+    correctChoice: "Move closer while keeping context",
+    correction:
+      "Move closer until the named region is large enough to inspect while keeping enough surrounding tissue to recognize the location later.",
+    visual: "too_far",
+    isPracticeOnly: true,
+  },
+  {
+    id: "glare",
+    title: "Bright reflection",
+    prompt: "A white reflection hides part of the target. What should change?",
+    choices: [
+      "Change the light angle",
+      "Crop the reflection out",
+      "Accept it anyway",
+    ],
+    correctChoice: "Change the light angle",
+    correction:
+      "Move the light or phone slightly so the reflection no longer covers the area, then check that the rest of the frame stays evenly lit.",
+    visual: "glare",
+    isPracticeOnly: true,
+  },
   {
     id: "blur",
     title: "Soft detail",
@@ -86,20 +173,7 @@ export const QUALITY_PRACTICE_SCENARIOS: readonly QualityPracticeScenario[] = [
     correction:
       "Brace your hands, wait for the stability ring, and let the camera refocus.",
     visual: "blur",
-  },
-  {
-    id: "glare",
-    title: "Bright reflection",
-    prompt: "A white reflection hides part of the target. What should change?",
-    choices: [
-      "Change the light angle",
-      "Crop the reflection out",
-      "Accept it anyway",
-    ],
-    correctChoice: "Change the light angle",
-    correction:
-      "Move the light or phone slightly so the reflection no longer covers the area.",
-    visual: "glare",
+    isPracticeOnly: true,
   },
   {
     id: "obstruction",
@@ -112,8 +186,25 @@ export const QUALITY_PRACTICE_SCENARIOS: readonly QualityPracticeScenario[] = [
     ],
     correctChoice: "Move the obstruction",
     correction:
-      "Reposition the hand or ask a helper to retract tissue without covering the view.",
+      "Reposition the hand or ask a helper to move tissue gently without covering the named region or nearby landmarks.",
     visual: "obstruction",
+    isPracticeOnly: true,
+  },
+  {
+    id: "incomplete_coverage",
+    title: "Region partly missing",
+    prompt:
+      "The center is visible, but one side of the named region is outside the frame. What should change?",
+    choices: [
+      "Reframe to include the whole region",
+      "Treat the visible center as complete",
+      "Stretch the saved image afterward",
+    ],
+    correctChoice: "Reframe to include the whole region",
+    correction:
+      "Reposition the phone and tissue until the full named region is visible from boundary to boundary with useful landmarks around it.",
+    visual: "incomplete_coverage",
+    isPracticeOnly: true,
   },
   {
     id: "ready",
@@ -123,8 +214,9 @@ export const QUALITY_PRACTICE_SCENARIOS: readonly QualityPracticeScenario[] = [
     choices: ["Capture the image", "Add more glare", "Hide the landmarks"],
     correctChoice: "Capture the image",
     correction:
-      "This framing is ready for the app's live quality and anatomy checks.",
+      "This practice framing is ready for the app's live quality and anatomy checks. Those checks can still ask for another image.",
     visual: "ready",
+    isPracticeOnly: true,
   },
 ];
 

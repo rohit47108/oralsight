@@ -3,6 +3,7 @@ export type CloudErrorCode =
   | "timeout"
   | "unauthenticated"
   | "forbidden"
+  | "recreation_required"
   | "not_found"
   | "conflict"
   | "validation"
@@ -71,6 +72,16 @@ export function cloudErrorFromStatus(
       ...common,
       code: "forbidden",
       message: "This action is not allowed.",
+    });
+  }
+  if (
+    status === 410 &&
+    options.serverCode === "account_deleted_recreation_required"
+  ) {
+    return new CloudError({
+      ...common,
+      code: "recreation_required",
+      message: "This account was deleted. Confirm recreation to continue.",
     });
   }
   if (status === 404) {

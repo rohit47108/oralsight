@@ -10,6 +10,7 @@ import {
   CONTRACT_VERSION,
   DISCLAIMER,
   modelCardSchema,
+  type AnalysisCalibrationRequest,
   type AnalysisResult,
   type ComparisonCalibrationRequest,
   type ComparisonResult,
@@ -61,6 +62,7 @@ interface AnalyzeCaptureInput {
   inputOrigin: "live_capture";
   requestedHeads?: ModelHead[];
   localQuality: QualityResult;
+  calibration?: AnalysisCalibrationRequest | null;
 }
 
 export type { ComparisonAnalysisReference } from "@/lib/comparisonPolicy";
@@ -290,6 +292,7 @@ export async function analyzeCapture(
       "appearance",
       "disease_research",
     ],
+    ...(input.calibration ? { calibration: input.calibration } : {}),
   });
   const form = new FormData();
   form.append(
@@ -395,6 +398,9 @@ export async function compareCaptures(
       registrationConfidence: 0,
       inlierRatio: 0,
       reprojectionErrorRatio: 1,
+      repeatedCaptureAreaError: null,
+      repeatabilityGatePassed: false,
+      registrationAlignment: null,
       normalizedChange: null,
       descriptorChanges: null,
       calibratedMeasurementChanges: null,

@@ -26,6 +26,9 @@ The mobile installation remains local-first. Cloud sync, clinician review, shari
 reports, and encrypted export require explicit versioned product consent. The platform
 service owns accounts, PostgreSQL metadata, private S3 objects, Redis Streams delivery,
 audit history, retention, and deletion. It never treats Redis as the only job record.
+Capture upload capabilities terminate at the platform API for every storage backend;
+the API verifies and streams the exact bytes to private storage while holding the
+owner row lock. Downloads may still use short-lived object-store presigned URLs.
 
 The inference service remains stateless: it has no accounts or application-managed image
 retention. FastAPI's multipart parser may spool a bounded upload to temporary storage
@@ -99,22 +102,28 @@ the sanitized comparison images. A change value requires:
 - the corresponding locked validation/release artifact.
 
 If any requirement is absent, `comparable` is false and `normalizedChange` is
-null. The current mobile comparison preview is an unwarped opacity blend of the two
-source images. It must not be described as an aligned or registered visual overlay;
-registration diagnostics gate the numeric research output only.
+null. The mobile viewer keeps both originals visible, provides a true clipped
+before/after reveal, and may apply a validated current-to-baseline homography to
+the comparison canvas. When no safe transform is present it explicitly shows the
+original framing. Visual alignment never bypasses the separate repeatability gate
+for numeric change.
 
 ## Response authenticity
 
-Non-loopback mobile deployments require HTTPS and a pinned Ed25519 public key.
+Non-loopback mobile deployments and protected worker deployments require HTTPS
+and a pinned Ed25519 public key.
 The server signs the exact UTF-8 JSON body using the domain-separated message:
 
 ```text
 oralsight-response-v1\n<request-id>\n<raw-response-body>
 ```
 
-The client verifies the signature, request ID, derived key ID, schema, capture
-identifiers, region, provenance, and cross-field invariants before storing a
-result. Unsigned HTTP is accepted only for an explicit loopback development URL.
+The mobile client verifies the signature, request ID, derived key ID, schema,
+capture identifiers, region, provenance, and cross-field invariants before
+storing a result. The worker verifies the exact bounded response bytes,
+`Cache-Control: no-store`, echoed request ID, derived key ID, and signature before
+it parses JSON. Unsigned responses are accepted only for an explicit loopback
+development URL.
 
 ## Deletion
 

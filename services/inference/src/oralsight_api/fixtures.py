@@ -16,7 +16,6 @@ from .contracts import (
     CandidateMask,
     ComparisonResult,
     CompareMetadata,
-    DescriptorChanges,
     InputOrigin,
     ModelHead,
     ModelOutput,
@@ -238,16 +237,16 @@ def manual_demo_comparison(metadata: CompareMetadata) -> ComparisonResult:
         if prior.candidate_normalized_area is None:
             reasons.append(f"{prefix}_prior_candidate_area_unavailable")
 
-    baseline_area = metadata.baseline_analysis.candidate_normalized_area
-    current_area = metadata.current_analysis.candidate_normalized_area
-    normalized_change: float | None = None
-    if baseline_area is not None and current_area is not None:
-        if baseline_area <= 0:
-            reasons.append("baseline_candidate_area_zero")
-        else:
-            normalized_change = (current_area - baseline_area) / baseline_area
-
-    comparable = not reasons
+    # A hash-bound demonstration fixture can illustrate provenance and UI states,
+    # but it is not a released repeated-capture validation study. Keep every
+    # quantitative change output closed under the same repeatability gate as live
+    # captures instead of letting a perfect synthetic pair create false evidence.
+    reasons.extend(
+        [
+            "repeated_capture_area_error_gate_unmet",
+            "fixture_comparison_not_eligible",
+        ]
+    )
     return ComparisonResult(
         baseline_capture_id=metadata.baseline_capture_id,
         current_capture_id=metadata.current_capture_id,
@@ -257,21 +256,11 @@ def manual_demo_comparison(metadata: CompareMetadata) -> ComparisonResult:
         registration_confidence=1.0,
         inlier_ratio=1.0,
         reprojection_error_ratio=0.0,
-        normalized_change=normalized_change if comparable else None,
-        descriptor_changes=(
-            DescriptorChanges(
-                normalized_width_change=0.0,
-                normalized_height_change=0.0,
-                normalized_perimeter_change=0.0,
-                border_irregularity_change=0.0,
-                mean_redness_change=0.0,
-                mean_brightness_change=0.0,
-                texture_contrast_change=0.0,
-                ulceration_like_contrast_change=0.0,
-            )
-            if comparable
-            else None
-        ),
+        repeated_capture_area_error=None,
+        repeatability_gate_passed=False,
+        registration_alignment=None,
+        normalized_change=None,
+        descriptor_changes=None,
         calibrated_measurement_changes=None,
         calibration_suppression_reasons=(
             ["fixture_calibration_not_available"]
@@ -279,8 +268,8 @@ def manual_demo_comparison(metadata: CompareMetadata) -> ComparisonResult:
             or metadata.current_calibration is not None
             else []
         ),
-        comparable=comparable,
-        suppression_reasons=reasons,
+        comparable=False,
+        suppression_reasons=list(dict.fromkeys(reasons)),
         model_versions={**MODEL_VERSIONS, "fixture": "bundled-demo-left-cheek-v1"},
         input_origin=InputOrigin.BUNDLED_DEMO,
         analysis_origin=AnalysisOrigin.MANUAL_FIXTURE,

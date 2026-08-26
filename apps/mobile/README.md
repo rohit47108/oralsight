@@ -58,8 +58,10 @@ response.
 - No synthetic image or fixture fallback is compiled into the installed app.
 - Delete-all removes the local stores and rotates installation keys.
 
-Learned medical analysis is disabled until genuine model artifacts and release
-evidence pass the service gates. The UI displays that unavailable state instead of
-showing a sample answer.
+Released anatomy matching and candidate outlining run with their pinned model
+artifacts and release evidence. Appearance, disease-category, automatic
+re-identification, and other learned research heads remain disabled until their
+separate gates pass. The UI shows an unavailable or abstained state instead of a
+sample answer whenever a requested output is not released.
 
 See [mobile build and deployment](../../docs/MOBILE_BUILD_AND_DEPLOY.md).

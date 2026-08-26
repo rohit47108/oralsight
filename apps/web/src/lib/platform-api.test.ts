@@ -14,6 +14,9 @@ describe("platform response boundaries", () => {
         status: "active",
         createdAt: "2026-08-04T12:00:00Z",
         deletionPending: false,
+        requiredOidcRole: null,
+        privilegedAccessReady: true,
+        clinicianApplicationEligible: false,
       }).role,
     ).toBe("clinician_pending");
   });
@@ -26,6 +29,9 @@ describe("platform response boundaries", () => {
         status: "active",
         createdAt: "2026-08-04T12:00:00Z",
         deletionPending: false,
+        requiredOidcRole: null,
+        privilegedAccessReady: true,
+        clinicianApplicationEligible: false,
       }),
     ).toThrow();
   });
@@ -190,6 +196,42 @@ describe("platform response boundaries", () => {
         accessActive: true,
       }).status,
     ).toBe("in_review");
+  });
+
+  it("distinguishes approval from a currently verified clinician token role", () => {
+    const parsed = platformSchemasForTesting.clinicianVerification.parse({
+      verificationId: "verification-1",
+      applicantUserId: "applicant-1",
+      status: "verified",
+      profession: "Dentist",
+      licenseJurisdiction: "New Jersey",
+      licenseNumberSuffix: "4821",
+      organization: "Oral Health Research Clinic",
+      applicantEvidenceRef: "credential-review-1",
+      submittedAt: CREATED_AT,
+      reviewerUserId: "admin-1",
+      reviewerEvidence: {
+        source: "State licensing registry",
+        referenceId: "registry-check-1",
+        checkedAt: CREATED_AT,
+        reviewerNotes: null,
+      },
+      decisionReason: null,
+      reviewedAt: CREATED_AT,
+      retentionExpiresAt: "2033-08-04T12:00:00Z",
+      identityRole: {
+        requiredClaim: "https://oralsight.app/roles",
+        requiredValue: "clinician",
+        observationStatus: "awaiting_token_observation",
+        oidcRoleObservedAt: null,
+        privilegedAccessReady: false,
+      },
+    });
+
+    expect(parsed.identityRole.observationStatus).toBe(
+      "awaiting_token_observation",
+    );
+    expect(parsed.identityRole.privilegedAccessReady).toBe(false);
   });
 
   it("rejects a shared record without the exact disclaimer", () => {

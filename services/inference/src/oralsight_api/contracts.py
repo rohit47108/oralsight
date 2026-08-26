@@ -7,6 +7,7 @@ the canonical camelCase field names.
 
 from __future__ import annotations
 
+import math
 from datetime import datetime, timedelta, timezone
 from enum import StrEnum
 from typing import Annotated, Literal
@@ -114,6 +115,13 @@ class DiseaseResearchClass(StrEnum):
     ORAL_CANCER = "oral_cancer"
 
 
+class AnalysisCalibrationRequest(ContractModel):
+    card_version: Literal["oralsight-calibration-v1"]
+    marker_id: Literal[17]
+    marker_side_mm: Literal[20]
+    plane_confirmed: bool
+
+
 class AnalyzeMetadata(ContractModel):
     contract_version: Literal[CONTRACT_VERSION]
     capture_id: Annotated[str, Field(min_length=1, max_length=128)]
@@ -122,6 +130,7 @@ class AnalyzeMetadata(ContractModel):
     requested_heads: list[ModelHead] = Field(
         default_factory=lambda: [ModelHead.SEGMENTATION, ModelHead.ANATOMY]
     )
+    calibration: AnalysisCalibrationRequest | None = None
     fixture_sha256: str | None = Field(default=None, pattern=r"^[a-f0-9]{64}$")
 
     @model_validator(mode="after")
@@ -393,6 +402,74 @@ class CalibratedMeasurementChanges(ContractModel):
     measurement_label: Literal["calibrated estimate"] = "calibrated estimate"
 
 
+class ImagePixelSize(ContractModel):
+    width_px: Annotated[int, Field(ge=1, le=2048)]
+    height_px: Annotated[int, Field(ge=1, le=2048)]
+
+
+class RegistrationAlignment(ContractModel):
+    method: Literal["orb_ransac_homography"] = "orb_ransac_homography"
+    coordinate_space: Literal["normalized_image_coordinates"] = (
+        "normalized_image_coordinates"
+    )
+    maps_from: Literal["current"] = "current"
+    maps_to: Literal["baseline"] = "baseline"
+    matrix: tuple[
+        float,
+        float,
+        float,
+        float,
+        float,
+        float,
+        float,
+        float,
+        float,
+    ]
+    source_image_size: ImagePixelSize
+    target_image_size: ImagePixelSize
+
+    @model_validator(mode="after")
+    def matrix_is_safe_to_render(self) -> "RegistrationAlignment":
+        if not all(math.isfinite(value) for value in self.matrix):
+            raise ValueError("Registration alignment matrix must be finite.")
+        if not math.isclose(self.matrix[8], 1.0, abs_tol=1e-6):
+            raise ValueError("Registration alignment matrix must be normalized.")
+        determinant = (
+            self.matrix[0]
+            * (self.matrix[4] * self.matrix[8] - self.matrix[5] * self.matrix[7])
+            - self.matrix[1]
+            * (self.matrix[3] * self.matrix[8] - self.matrix[5] * self.matrix[6])
+            + self.matrix[2]
+            * (self.matrix[3] * self.matrix[7] - self.matrix[4] * self.matrix[6])
+        )
+        if not math.isfinite(determinant) or abs(determinant) < 1e-10:
+            raise ValueError("Registration alignment matrix must be invertible.")
+        for x_value in (0.0, 0.5, 1.0):
+            for y_value in (0.0, 0.5, 1.0):
+                denominator = (
+                    self.matrix[6] * x_value + self.matrix[7] * y_value + self.matrix[8]
+                )
+                if abs(denominator) < 1e-6:
+                    raise ValueError(
+                        "Registration alignment has an unsafe projective horizon."
+                    )
+                projected_x = (
+                    self.matrix[0] * x_value + self.matrix[1] * y_value + self.matrix[2]
+                ) / denominator
+                projected_y = (
+                    self.matrix[3] * x_value + self.matrix[4] * y_value + self.matrix[5]
+                ) / denominator
+                if (
+                    not math.isfinite(projected_x)
+                    or not math.isfinite(projected_y)
+                    or max(abs(projected_x), abs(projected_y)) > 16.0
+                ):
+                    raise ValueError(
+                        "Registration alignment projects outside the safe render range."
+                    )
+        return self
+
+
 class ComparisonResult(ContractModel):
     contract_version: Literal[CONTRACT_VERSION] = CONTRACT_VERSION
     baseline_capture_id: Annotated[str, Field(min_length=1)]
@@ -403,6 +480,9 @@ class ComparisonResult(ContractModel):
     registration_confidence: Annotated[float, Field(ge=0, le=1)]
     inlier_ratio: Annotated[float, Field(ge=0, le=1)]
     reprojection_error_ratio: Annotated[float, Field(ge=0)]
+    repeated_capture_area_error: Annotated[float, Field(ge=0, le=0.1)] | None = None
+    repeatability_gate_passed: bool = False
+    registration_alignment: RegistrationAlignment | None = None
     normalized_change: Annotated[float, Field(ge=-1)] | None
     descriptor_changes: DescriptorChanges | None = None
     calibrated_measurement_changes: CalibratedMeasurementChanges | None = None
@@ -416,8 +496,30 @@ class ComparisonResult(ContractModel):
 
     @model_validator(mode="after")
     def comparison_invariants(self) -> "ComparisonResult":
+        if self.repeatability_gate_passed != (
+            self.repeated_capture_area_error is not None
+        ):
+            raise ValueError(
+                "Repeatability gate status requires matching released evidence."
+            )
+        if (
+            self.calibrated_measurement_changes is not None
+            and not self.repeatability_gate_passed
+        ):
+            raise ValueError(
+                "Calibrated physical change requires released repeatability evidence."
+            )
+        if self.registration_alignment is not None and (
+            self.inlier_ratio < 0.60
+            or self.reprojection_error_ratio > 0.03
+            or self.analysis_origin is not AnalysisOrigin.LIVE_MODEL
+        ):
+            raise ValueError(
+                "Registration alignment requires a gated live-model homography."
+            )
         if self.comparable and (
             not self.user_confirmed_match
+            or not self.repeatability_gate_passed
             or self.normalized_change is None
             or self.inlier_ratio < 0.60
             or self.reprojection_error_ratio > 0.03
@@ -484,11 +586,21 @@ class ModelCard(ContractModel):
     artifact_hashes: dict[str, Annotated[str, Field(pattern=r"^[a-f0-9]{64}$")] | None]
     enabled_heads: list[ModelHead]
     release_gates: list[ReleaseGate]
+    comparison_repeated_capture_area_error: (
+        Annotated[float, Field(ge=0, le=0.1)] | None
+    ) = None
+    comparison_repeatability_gate_passed: bool = False
     limitations: list[str]
     disclaimer: Literal[DISCLAIMER] = DISCLAIMER
 
     @model_validator(mode="after")
     def enabled_heads_have_release_evidence(self) -> "ModelCard":
+        if self.comparison_repeatability_gate_passed != (
+            self.comparison_repeated_capture_area_error is not None
+        ):
+            raise ValueError(
+                "Comparison repeatability status requires matching released evidence."
+            )
         gates = {gate.head: gate for gate in self.release_gates}
         for head in self.enabled_heads:
             gate = gates.get(head)

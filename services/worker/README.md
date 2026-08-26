@@ -57,9 +57,25 @@ The worker returns estimated width, height, and area only when:
 
 Any failed gate returns null physical values plus specific reasons. Passing
 values remain labeled "calibrated estimate," not exact clinical measurements.
-The generated GLB is labeled a "personalized oral observation surface," never
-an anatomical digital twin. Only observations the user confirmed are embedded
-as pin geometry. Unconfirmed automated match suggestions are never added.
+
+The same optional calibration request can also normalize two approximate color
+descriptors. The inference service projects the fixed interiors of all four
+neutral patches (printed values 35, 100, 170, and 235) from the detected marker,
+then requires sufficient pixels, uniform patches, monotonic channel values,
+useful range, no clipping, and a bounded affine RGB fit. A passing fit adjusts
+only candidate `meanRedness` and `meanBrightness` on a copied pixel array. It
+does not alter the stored/sanitized image, candidate mask, anatomy, quality,
+texture, appearance or disease heads, or guidance. It records
+`descriptor_color_reference=neutral-grayscale-patches-affine-rgb-v1` in model
+versions and explains the scope in limitations. A failed color gate leaves the
+original descriptors in place with a suppression reason and does not invalidate
+an independently passing size estimate.
+
+The generated GLB may be labeled a "personalized oral observation surface" only
+because it carries the user's image-colored observations and confirmed pins. Its
+geometry remains the generic region map; it is never described as reconstructed
+anatomy or a digital twin. Unconfirmed automated match suggestions are never
+added.
 
 ## Local summary-video renderer
 
@@ -76,6 +92,12 @@ estimate. The closing guidance scene accepts only fixed codes; professional or
 prompt review wording requires a clinician-approved rule version. Missing or
 invalid source evidence makes the render unavailable instead of producing a
 generic substitute.
+
+The current release contains no approved repeated-capture evidence at the fixed
+10% area-error gate, so its live comparisons are not quantitatively comparable
+and summary videos omit normalized and calibrated change. A client-safe
+registration transform may still support an explicitly visual aligned reveal;
+that transform is not measurement evidence.
 
 The result manifest records source capture and asset provenance without image
 bytes, candidate-outline presence, confirmation and comparability state,
@@ -138,6 +160,28 @@ Receiving services must reject stale timestamps, reused nonces, unknown service
 IDs, bad body hashes, and invalid signatures. Authorization still belongs to
 the platform service; a valid worker signature is not permission to access a
 different account.
+
+## Inference response integrity
+
+The analyze and compare calls use a fresh UUIDv4 `X-Request-ID`. Before parsing
+JSON, the worker buffers the bounded response bytes and requires
+`Cache-Control: no-store` plus the exact echoed request ID. When
+`ORALSIGHT_WORKER_INFERENCE_RESPONSE_SIGNING_PUBLIC_KEY_B64` is configured, it
+also requires `X-OralSight-Key-Id` and `X-OralSight-Signature`, derives the
+expected key ID from the pinned raw Ed25519 public key, and verifies the
+signature over:
+
+```text
+oralsight-response-v1\n<request-id>\n<exact-response-body>
+```
+
+The worker requests `Accept-Encoding: identity` and rejects an encoded response
+so the verified bytes are the bytes supplied to JSON parsing.
+
+Staging and production cannot start without the pinned public key. Development
+may omit it only for a loopback inference URL. Configuring a key in any
+environment makes signatures mandatory; there is no unsigned fallback after a
+verification failure.
 
 ## Local development
 

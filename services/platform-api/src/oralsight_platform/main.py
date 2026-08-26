@@ -19,7 +19,8 @@ from .errors import ServiceError, error_response
 from .job_outbox import job_outbox_loop
 from .job_queue import create_job_queue
 from .object_storage import create_object_storage
-from .routes.account import router as account_router
+from .operation_locks import UserOperationLocks
+from .routes.account import recreation_router, router as account_router
 from .routes.analysis import router as analysis_router
 from .routes.analytics import router as analytics_router
 from .routes.artifacts import router as artifacts_router
@@ -95,6 +96,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.settings = resolved_settings
     app.state.database = database
     app.state.object_storage = object_storage
+    app.state.user_operation_locks = UserOperationLocks()
     app.state.job_queue = job_queue
     app.state.token_validator = TokenValidator(resolved_settings)
     app.add_middleware(RequestBodyLimitMiddleware, settings=resolved_settings)
@@ -173,6 +175,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     app.include_router(health_router)
     app.include_router(account_router)
+    app.include_router(recreation_router)
     app.include_router(capture_router)
     app.include_router(consent_router)
     app.include_router(analysis_router)

@@ -141,13 +141,16 @@ export default function ProfessionalsPage() {
 
       <section className="professional-close">
         <div className="page-width professional-close__inner">
-          <h2>Review the evidence rules before the interface.</h2>
+          <h2>Review the evidence rules, then request secure access.</h2>
           <p>
             Release gates, data requirements, and known limitations are part of
             the product, not fine print.
           </p>
           <Link className="button button--light" href="/research">
             Read research & limits
+          </Link>
+          <Link className="text-link" href="/professional-apply">
+            Apply for clinician access
           </Link>
         </div>
       </section>

@@ -331,6 +331,39 @@
         "title": "AccessHistoryResponse",
         "type": "object"
       },
+      "AccountRecreationRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "confirmation": {
+            "const": "RECREATE_AND_ALLOW_LOCAL_RESYNC",
+            "title": "Confirmation",
+            "type": "string"
+          }
+        },
+        "required": [
+          "confirmation"
+        ],
+        "title": "AccountRecreationRequest",
+        "type": "object"
+      },
+      "AccountRecreationResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "account": {
+            "$ref": "#/components/schemas/MeResponse"
+          },
+          "recreatedAfterDeletion": {
+            "default": true,
+            "title": "Recreatedafterdeletion",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "account"
+        ],
+        "title": "AccountRecreationResponse",
+        "type": "object"
+      },
       "AdminReviewEvidence": {
         "additionalProperties": false,
         "properties": {
@@ -2014,6 +2047,57 @@
         "title": "ClassScore",
         "type": "object"
       },
+      "ClinicianIdentityRoleResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "observationStatus": {
+            "enum": [
+              "not_applicable",
+              "awaiting_token_observation",
+              "observed"
+            ],
+            "title": "Observationstatus",
+            "type": "string"
+          },
+          "oidcRoleObservedAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Timestamp of the first validated clinician role observation.",
+            "title": "Oidcroleobservedat"
+          },
+          "privilegedAccessReady": {
+            "title": "Privilegedaccessready",
+            "type": "boolean"
+          },
+          "requiredClaim": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Requiredclaim",
+            "type": "string"
+          },
+          "requiredValue": {
+            "const": "clinician",
+            "default": "clinician",
+            "title": "Requiredvalue",
+            "type": "string"
+          }
+        },
+        "required": [
+          "requiredClaim",
+          "observationStatus",
+          "oidcRoleObservedAt",
+          "privilegedAccessReady"
+        ],
+        "title": "ClinicianIdentityRoleResponse",
+        "type": "object"
+      },
       "ClinicianReviewQueue": {
         "additionalProperties": false,
         "properties": {
@@ -2350,6 +2434,9 @@
             ],
             "title": "Decisionreason"
           },
+          "identityRole": {
+            "$ref": "#/components/schemas/ClinicianIdentityRoleResponse"
+          },
           "licenseJurisdiction": {
             "title": "Licensejurisdiction",
             "type": "string"
@@ -2438,7 +2525,8 @@
           "reviewerEvidence",
           "decisionReason",
           "reviewedAt",
-          "retentionExpiresAt"
+          "retentionExpiresAt",
+          "identityRole"
         ],
         "title": "ClinicianVerificationResponse",
         "type": "object"
@@ -3895,6 +3983,10 @@
       "MeResponse": {
         "additionalProperties": false,
         "properties": {
+          "clinicianApplicationEligible": {
+            "title": "Clinicianapplicationeligible",
+            "type": "boolean"
+          },
           "createdAt": {
             "format": "date-time",
             "title": "Createdat",
@@ -3908,6 +4000,20 @@
             "title": "Id",
             "type": "string"
           },
+          "privilegedAccessReady": {
+            "title": "Privilegedaccessready",
+            "type": "boolean"
+          },
+          "requiredOidcRole": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/UserRole"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "role": {
             "$ref": "#/components/schemas/UserRole"
           },
@@ -3920,7 +4026,10 @@
           "role",
           "status",
           "createdAt",
-          "deletionPending"
+          "deletionPending",
+          "requiredOidcRole",
+          "privilegedAccessReady",
+          "clinicianApplicationEligible"
         ],
         "title": "MeResponse",
         "type": "object"
@@ -6696,6 +6805,65 @@
         ]
       }
     },
+    "/v2/account-recreations": {
+      "post": {
+        "operationId": "recreate_account_v2_account_recreations_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccountRecreationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountRecreationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Recreate Account",
+        "tags": [
+          "account"
+        ]
+      }
+    },
     "/v2/admin/analytics/summary": {
       "get": {
         "operationId": "aggregate_analytics_v2_admin_analytics_summary_get",
@@ -7829,6 +7997,55 @@
           }
         },
         "summary": "Get Current Clinician Verification",
+        "tags": [
+          "clinician collaboration"
+        ]
+      }
+    },
+    "/v2/clinician-verifications/current/activate": {
+      "post": {
+        "operationId": "activate_current_clinician_verification_v2_clinician_verifications_current_activate_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClinicianVerificationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Activate Current Clinician Verification",
         "tags": [
           "clinician collaboration"
         ]

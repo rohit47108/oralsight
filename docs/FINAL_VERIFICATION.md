@@ -1,35 +1,41 @@
 # OralSight verification record
 
-Snapshot date: 2026-08-10
+Snapshot date: 2026-08-25
 
 > **This result is not a diagnosis.** This document records engineering evidence,
 > not clinical validation, regulatory clearance, or a production-host sign-off.
 
-## Passing source checks
+The privileged-access contract changed after the previous release pass. Rows
+marked pending must be replaced with exact evidence from the final rerun. This
+record deliberately does not guess counts, hashes, route totals, a commit, or an
+archive filename.
 
-The following checks passed against the current source tree:
+## Source checks
 
-| Surface                        | Evidence                                                                                                                           |
-| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
-| Locked install                 | `pnpm install --frozen-lockfile` passed                                                                                            |
-| TypeScript tests               | 206 passed: contracts 28, mobile 132, web 46                                                                                       |
-| TypeScript checking            | Contracts, mobile, and web passed                                                                                                  |
-| Web lint                       | Passed                                                                                                                             |
-| Python tests                   | 229 passed across inference, platform API, worker, and ML                                                                          |
-| Python lint/format             | Ruff check and format check passed                                                                                                 |
-| Repository formatting          | Prettier check passed after final documentation formatting                                                                         |
-| Contract generation            | Both public JSON schemas regenerated without changing their hashes                                                                 |
-| Platform API contract          | OpenAPI regenerated idempotently; snapshot test passed; SHA-256 `309a83e02773d433cdb1712df10df0ea5623e416413c4d9727ae969a30a6d1cb` |
-| Web build                      | Next.js production build passed with 31 routes using explicit CI-only dummy values                                                 |
-| Missing web secrets            | Production build failed early on missing `AUTH0_DOMAIN`, as required                                                               |
-| Android/iOS JavaScript bundles | Both Expo exports passed                                                                                                           |
-| JavaScript dependency audit    | Patched `image-size` regression harness and high-severity audit passed                                                             |
-| Python dependency audits       | Inference, platform, and worker production locks reported no known vulnerabilities                                                 |
-| Standalone service locks       | Inference, platform, and worker `uv lock --check` passed in isolated directories                                                   |
-| Deployment configuration       | Official Vercel schema/build-surface validator and both Compose parses passed                                                      |
-| Vercel entry point             | Imported and exposed the expected inference application                                                                            |
-| Workflow security              | Zizmor reported no findings; actions are immutable-SHA pinned and checkout credentials are disabled                                |
-| Repository safety              | Forbidden-artifact, fixture, inventory, model hash, asset hash, and taxonomy audit passed                                          |
+The previous release pass covered the checks below. Rows marked pending changed
+with the privileged-access work and need current evidence before sign-off.
+
+| Surface                        | Evidence                                                                                            |
+| ------------------------------ | --------------------------------------------------------------------------------------------------- |
+| Locked install                 | `pnpm install --frozen-lockfile` passed                                                             |
+| TypeScript tests               | `pnpm test` passed: contracts 33, mobile 155, web 56                                                |
+| TypeScript checking            | `pnpm typecheck` passed                                                                             |
+| Web lint                       | Pending final rerun                                                                                 |
+| Python tests                   | Platform suite passed; inference/worker 151 passed                                                   |
+| Python lint/format             | Ruff check and format passed                                                                        |
+| Repository formatting          | `pnpm format:check` passed                                                                          |
+| Contract generation            | Regenerated checked schemas successfully                                                            |
+| Platform API contract          | OpenAPI regenerated and snapshot test passed                                                        |
+| Web build                      | Production Next build passed with explicit CI-only dummy env bypass                                 |
+| Missing web secrets            | Production config still fails closed when required values are missing                               |
+| Android/iOS JavaScript bundles | Both Expo exports passed                                                                            |
+| JavaScript dependency audit    | Patched `image-size` regression harness and high-severity audit passed                              |
+| Python dependency audits       | Inference, platform, and worker production locks reported no known vulnerabilities                  |
+| Standalone service locks       | Inference, platform, and worker `uv lock --check` passed in isolated directories                    |
+| Deployment configuration       | Official Vercel schema/build-surface validator and both Compose parses passed                       |
+| Vercel entry point             | Imported and exposed the expected inference application                                             |
+| Workflow security              | Zizmor reported no findings; actions are immutable-SHA pinned and checkout credentials are disabled |
+| Repository safety              | Forbidden-artifact, fixture, inventory, model hash, asset hash, and taxonomy audit passed           |
 
 The web CSP implementation also has focused tests and a rendered response check on
 the same code: a per-request nonce is present in the CSP and HTML, `strict-dynamic`
@@ -83,11 +89,14 @@ The following also require owner accounts or physical resources:
 
 ## Packaging acceptance
 
-The final source archive must be created only after the release commit is clean:
+Create the final source archive only after the release commit is clean. Read the
+destination at release time so this record does not claim an archive that does
+not exist:
 
 ```powershell
+$releaseArchive = Read-Host "Absolute path for the final OralSight source archive"
 .\scripts\package-source.ps1 `
-  -OutputPath .\outputs\release\OralSight-complete-2026-08-10.zip `
+  -OutputPath $releaseArchive `
   -Force
 ```
 

@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 
 import { ProductGate } from "@/components/product-gate";
 import { ProductShell } from "@/components/product-shell";
-import { getProductContext, productHomeForRole } from "@/lib/product-auth";
+import { getProductContext, productHomeForAccount } from "@/lib/product-auth";
 
 export const metadata: Metadata = {
   robots: { index: false, follow: false, nocache: true },
@@ -18,7 +18,7 @@ export default async function PatientLayout({
   const context = await getProductContext();
   if (context.state !== "ready") return <ProductGate context={context} />;
   if (context.account.role !== "patient") {
-    redirect(productHomeForRole(context.account.role));
+    redirect(productHomeForAccount(context.account));
   }
   return (
     <ProductShell

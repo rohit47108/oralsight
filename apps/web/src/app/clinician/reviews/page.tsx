@@ -7,7 +7,7 @@ import { AuthorizedResourceView } from "@/components/authorized-resource-view";
 import { OutlineAdjustmentEditor } from "@/components/outline-adjustment-editor";
 import { parseOutlineAdjustment } from "@/components/outline-adjustment";
 import { WorkspaceState } from "@/components/workspace-state";
-import { getProductContext } from "@/lib/product-auth";
+import { getProductContext, productHomeForAccount } from "@/lib/product-auth";
 import {
   getClinicianReview,
   getClinicianReviewResource,
@@ -42,6 +42,8 @@ export default async function ClinicianReviewsPage({
   if (context.state !== "ready") return null;
   if (context.account.role === "clinician_pending")
     redirect("/clinician/pending");
+  if (!context.account.privilegedAccessReady)
+    redirect(productHomeForAccount(context.account));
   const query = await searchParams;
   const allowedStatus = new Set([
     "pending",

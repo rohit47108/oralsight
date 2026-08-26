@@ -285,6 +285,17 @@ class TimestampMixin:
     )
 
 
+class AdminBootstrapSeal(Base):
+    """Permanent marker that first-administrator bootstrap has been consumed."""
+
+    __tablename__ = "admin_bootstrap_seals"
+
+    seal_key: Mapped[str] = mapped_column(String(64), primary_key=True)
+    sealed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utc_now, nullable=False
+    )
+
+
 class User(TimestampMixin, Base):
     __tablename__ = "users"
 
@@ -309,13 +320,13 @@ class User(TimestampMixin, Base):
     )
 
     devices: Mapped[list[Device]] = relationship(
-        back_populates="user", cascade="all, delete-orphan"
+        back_populates="user", cascade="all, delete-orphan", lazy="selectin"
     )
     consents: Mapped[list[ConsentRecord]] = relationship(
-        back_populates="user", cascade="all, delete-orphan"
+        back_populates="user", cascade="all, delete-orphan", lazy="selectin"
     )
     scan_sessions: Mapped[list[ScanSession]] = relationship(
-        back_populates="user", cascade="all, delete-orphan"
+        back_populates="user", cascade="all, delete-orphan", lazy="selectin"
     )
 
 
@@ -443,6 +454,9 @@ class CaptureAsset(TimestampMixin, Base):
         DateTime(timezone=True)
     )
     upload_expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), index=True
+    )
+    upload_capability_expires_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), index=True
     )
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -954,6 +968,9 @@ class ClinicianVerification(Base):
     reviewer_evidence: Mapped[dict[str, Any] | None] = mapped_column(JSON)
     decision_reason: Mapped[str | None] = mapped_column(String(500))
     reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    oidc_role_observed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True)
+    )
     retention_expires_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False
     )
@@ -1362,6 +1379,24 @@ class AuditEvent(Base):
     )
 
 
+class DeletedSubjectTombstone(Base):
+    """Minimal non-expiring marker that prevents silent account recreation."""
+
+    __tablename__ = "deleted_subject_tombstones"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    subject_fingerprint: Mapped[str] = mapped_column(
+        String(64), unique=True, nullable=False
+    )
+    fingerprint_key_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    first_deleted_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    last_deleted_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+
+
 class DeletionRequest(Base):
     __tablename__ = "deletion_requests"
     __table_args__ = (Index("ix_deletion_user_requested", "user_id", "requested_at"),)
@@ -1385,6 +1420,9 @@ class DeletionRequest(Base):
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     error_code: Mapped[str | None] = mapped_column(String(100))
+    upload_quiescence_until: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), index=True
+    )
     retention_expires_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), index=True
     )

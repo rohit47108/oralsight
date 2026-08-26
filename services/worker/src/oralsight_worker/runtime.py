@@ -66,6 +66,7 @@ class Runtime:
             platform_api_url=settings.platform_api_url,
             inference_api_url=settings.inference_api_url,
             max_asset_bytes=settings.max_asset_bytes,
+            inference_response_verifier=settings.inference_response_verifier,
         )
         registry = ProcessorRegistry(
             {

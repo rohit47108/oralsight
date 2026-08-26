@@ -80,6 +80,7 @@ def _production_settings(**updates) -> Settings:
         "oidc_issuer_url": "https://identity.example/",
         "oidc_jwks_url": "https://identity.example/.well-known/jwks.json",
         "share_secret_derivation_key": "s" * 32,
+        "deletion_tombstone_current_key": "t" * 32,
         "worker_service_hmac_secret": "w" * 32,
         "object_storage_backend": ObjectStorageBackend.S3,
         "object_storage_bucket": "oralsight-private",
@@ -119,3 +120,5 @@ def test_production_requires_tls_managed_dependencies_and_accepts_safe_config() 
         _production_settings(object_storage_access_key_id="access-key-only")
     with pytest.raises(ValidationError, match="retention sweep enabled"):
         _production_settings(retention_sweep_interval_seconds=0)
+    with pytest.raises(ValidationError):
+        _production_settings(upload_completion_quiet_seconds=0)

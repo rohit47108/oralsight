@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 
 export default function CalibrationPage() {
   return (
-    <main id="main-content" className="calibration-page">
+    <div className="calibration-page">
       <section className="calibration-intro page-width">
         <p className="eyebrow">Physical scale reference</p>
         <h1>Print the OralSight calibration card.</h1>
@@ -134,6 +134,6 @@ export default function CalibrationPage() {
         </div>
         <code>{CALIBRATION_QR_PAYLOAD}</code>
       </section>
-    </main>
+    </div>
   );
 }

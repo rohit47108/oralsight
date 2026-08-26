@@ -278,11 +278,24 @@ export const uncertaintySchema = z
   })
   .strict();
 
+export const analysisCalibrationRequestSchema = z
+  .object({
+    cardVersion: z.literal("oralsight-calibration-v1"),
+    markerId: z.literal(17),
+    markerSideMm: z.literal(20),
+    planeConfirmed: z.boolean(),
+  })
+  .strict();
+export type AnalysisCalibrationRequest = z.infer<
+  typeof analysisCalibrationRequestSchema
+>;
+
 const analyzeMetadataCommon = {
   contractVersion: z.literal(CONTRACT_VERSION),
   captureId: z.string().min(1).max(128),
   selectedRegion: mouthRegionSchema,
   requestedHeads: z.array(modelHeadSchema).default(["segmentation", "anatomy"]),
+  calibration: analysisCalibrationRequestSchema.nullable().optional(),
 };
 
 export const analyzeMetadataSchema = z.discriminatedUnion("inputOrigin", [
@@ -540,6 +553,85 @@ export type CalibratedMeasurementChanges = z.infer<
   typeof calibratedMeasurementChangesSchema
 >;
 
+export const imagePixelSizeSchema = z
+  .object({
+    widthPx: z.number().int().min(1).max(2048),
+    heightPx: z.number().int().min(1).max(2048),
+  })
+  .strict();
+export type ImagePixelSize = z.infer<typeof imagePixelSizeSchema>;
+
+const homographyMatrixSchema = z
+  .tuple([
+    z.number().finite(),
+    z.number().finite(),
+    z.number().finite(),
+    z.number().finite(),
+    z.number().finite(),
+    z.number().finite(),
+    z.number().finite(),
+    z.number().finite(),
+    z.number().finite(),
+  ])
+  .superRefine((matrix, context) => {
+    if (Math.abs(matrix[8] - 1) > 1e-6) {
+      context.addIssue({
+        code: "custom",
+        message: "Registration alignment matrix must be normalized.",
+      });
+    }
+    const determinant =
+      matrix[0] * (matrix[4] * matrix[8] - matrix[5] * matrix[7]) -
+      matrix[1] * (matrix[3] * matrix[8] - matrix[5] * matrix[6]) +
+      matrix[2] * (matrix[3] * matrix[7] - matrix[4] * matrix[6]);
+    if (!Number.isFinite(determinant) || Math.abs(determinant) < 1e-10) {
+      context.addIssue({
+        code: "custom",
+        message: "Registration alignment matrix must be invertible.",
+      });
+    }
+    for (const x of [0, 0.5, 1]) {
+      for (const y of [0, 0.5, 1]) {
+        const denominator = matrix[6] * x + matrix[7] * y + matrix[8];
+        if (Math.abs(denominator) < 1e-6) {
+          context.addIssue({
+            code: "custom",
+            message: "Registration alignment has an unsafe projective horizon.",
+          });
+          continue;
+        }
+        const projectedX =
+          (matrix[0] * x + matrix[1] * y + matrix[2]) / denominator;
+        const projectedY =
+          (matrix[3] * x + matrix[4] * y + matrix[5]) / denominator;
+        if (
+          !Number.isFinite(projectedX) ||
+          !Number.isFinite(projectedY) ||
+          Math.max(Math.abs(projectedX), Math.abs(projectedY)) > 16
+        ) {
+          context.addIssue({
+            code: "custom",
+            message:
+              "Registration alignment projects outside the safe render range.",
+          });
+        }
+      }
+    }
+  });
+
+export const registrationAlignmentSchema = z
+  .object({
+    method: z.literal("orb_ransac_homography"),
+    coordinateSpace: z.literal("normalized_image_coordinates"),
+    mapsFrom: z.literal("current"),
+    mapsTo: z.literal("baseline"),
+    matrix: homographyMatrixSchema,
+    sourceImageSize: imagePixelSizeSchema,
+    targetImageSize: imagePixelSizeSchema,
+  })
+  .strict();
+export type RegistrationAlignment = z.infer<typeof registrationAlignmentSchema>;
+
 export const comparisonResultSchema = z
   .object({
     contractVersion: z.literal(CONTRACT_VERSION),
@@ -551,6 +643,9 @@ export const comparisonResultSchema = z
     registrationConfidence: z.number().min(0).max(1),
     inlierRatio: z.number().min(0).max(1),
     reprojectionErrorRatio: z.number().min(0),
+    repeatedCaptureAreaError: z.number().min(0).max(0.1).nullable(),
+    repeatabilityGatePassed: z.boolean(),
+    registrationAlignment: registrationAlignmentSchema.nullable(),
     normalizedChange: z.number().min(-1).nullable(),
     descriptorChanges: descriptorChangesSchema.nullable().optional(),
     calibratedMeasurementChanges: calibratedMeasurementChangesSchema
@@ -567,8 +662,44 @@ export const comparisonResultSchema = z
   .strict()
   .superRefine((value, context) => {
     if (
+      value.repeatabilityGatePassed !==
+      (value.repeatedCaptureAreaError !== null)
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["repeatabilityGatePassed"],
+        message:
+          "Repeatability gate status requires matching released evidence.",
+      });
+    }
+    if (
+      value.calibratedMeasurementChanges != null &&
+      value.repeatabilityGatePassed === false
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["calibratedMeasurementChanges"],
+        message:
+          "Calibrated physical change requires released repeatability evidence.",
+      });
+    }
+    if (
+      value.registrationAlignment != null &&
+      (value.inlierRatio < 0.6 ||
+        value.reprojectionErrorRatio > 0.03 ||
+        value.analysisOrigin !== "live_model")
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["registrationAlignment"],
+        message:
+          "Registration alignment requires a gated live-model homography.",
+      });
+    }
+    if (
       value.comparable &&
       (!value.userConfirmedMatch ||
+        !value.repeatabilityGatePassed ||
         value.normalizedChange === null ||
         value.inlierRatio < 0.6 ||
         value.reprojectionErrorRatio > 0.03 ||
@@ -641,11 +772,31 @@ export const modelCardSchema = z
     ),
     enabledHeads: z.array(modelHeadSchema),
     releaseGates: z.array(releaseGateSchema),
+    comparisonRepeatedCaptureAreaError: z
+      .number()
+      .min(0)
+      .max(0.1)
+      .nullable()
+      .optional(),
+    comparisonRepeatabilityGatePassed: z.boolean().optional(),
     limitations: z.array(z.string()),
     disclaimer: z.literal(DISCLAIMER),
   })
   .strict()
   .superRefine((value, context) => {
+    if (
+      value.comparisonRepeatabilityGatePassed !== undefined &&
+      value.comparisonRepeatabilityGatePassed !==
+        (value.comparisonRepeatedCaptureAreaError !== null &&
+          value.comparisonRepeatedCaptureAreaError !== undefined)
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["comparisonRepeatabilityGatePassed"],
+        message:
+          "Comparison repeatability status requires matching released evidence.",
+      });
+    }
     const gates = new Map(value.releaseGates.map((gate) => [gate.head, gate]));
     const artifactName: Record<ModelHead, string> = {
       segmentation: "segmentation_weights",

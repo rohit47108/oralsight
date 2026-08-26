@@ -89,6 +89,8 @@ export function assertComparisonResult(
   if (result.comparable) {
     if (
       !expected.userConfirmedMatch ||
+      !result.repeatabilityGatePassed ||
+      result.repeatedCaptureAreaError === null ||
       result.analysisOrigin === "unavailable" ||
       result.normalizedChange === null ||
       result.descriptorChanges == null ||

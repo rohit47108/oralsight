@@ -483,6 +483,48 @@ def audit_hashes_and_inventory(audit: Audit) -> None:
         )
 
 
+def audit_dependency_inventory(audit: Audit) -> None:
+    notice_path = ROOT / "docs/licenses-model-cards/THIRD_PARTY_NOTICES.md"
+    sbom_path = ROOT / "docs/licenses-model-cards/THIRD_PARTY_SBOM.cdx.json"
+    audit.require(notice_path.is_file(), "Third-party notice file is missing.")
+    audit.require(sbom_path.is_file(), "Third-party SBOM is missing.")
+    if not notice_path.is_file() or not sbom_path.is_file():
+        return
+
+    lock_hashes = {
+        "oralsight:pnpm-lock-sha256": _sha256(ROOT / "pnpm-lock.yaml"),
+        "oralsight:uv-lock-sha256": _sha256(ROOT / "uv.lock"),
+    }
+    try:
+        sbom = json.loads(sbom_path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        audit.errors.append(f"Third-party SBOM could not be read: {exc}")
+        return
+    properties = {
+        str(item.get("name", "")): str(item.get("value", ""))
+        for item in sbom.get("metadata", {}).get("properties", [])
+        if isinstance(item, dict)
+    }
+    notice = notice_path.read_text(encoding="utf-8")
+    for name, expected in lock_hashes.items():
+        audit.require(
+            properties.get(name) == expected,
+            f"Third-party SBOM is stale for {name}.",
+        )
+        audit.require(
+            expected in notice,
+            f"Third-party notices are stale for {name}.",
+        )
+    audit.require(
+        sbom.get("bomFormat") == "CycloneDX" and sbom.get("specVersion") == "1.5",
+        "Third-party SBOM must be CycloneDX 1.5.",
+    )
+    audit.require(
+        len(sbom.get("components", [])) > 0,
+        "Third-party SBOM contains no dependency components.",
+    )
+
+
 def main() -> int:
     audit = Audit()
     try:
@@ -491,6 +533,7 @@ def main() -> int:
         audit.errors.append(f"Could not enumerate repository files: {exc}")
     audit_regions_and_assets(audit)
     audit_hashes_and_inventory(audit)
+    audit_dependency_inventory(audit)
     if audit.errors:
         print("Repository audit failed:", file=sys.stderr)
         for error in audit.errors:

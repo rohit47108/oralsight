@@ -19,6 +19,7 @@ def test_initial_metadata_contains_every_required_product_table() -> None:
         "idempotency_records",
         "audit_events",
         "deletion_requests",
+        "deleted_subject_tombstones",
         "capture_sets",
         "capture_views",
         "analysis_runs",
@@ -45,6 +46,7 @@ def test_initial_metadata_contains_every_required_product_table() -> None:
         "service_request_nonces",
         "analytics_events",
         "data_export_artifacts",
+        "admin_bootstrap_seals",
     }
 
 

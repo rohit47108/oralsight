@@ -290,6 +290,13 @@ def test_model_card_keeps_all_research_release_gates_closed() -> None:
     assert all(gate["passed"] is False for gate in card["releaseGates"])
     assert all(gate["reviewerApproved"] is False for gate in card["releaseGates"])
     assert card["enabledHeads"] == []
+    assert card["comparisonRepeatabilityGatePassed"] is False
+    assert card["comparisonRepeatedCaptureAreaError"] is None
+    assert any(
+        "normalized change remains hidden" in limitation.lower()
+        and "10% or less" in limitation.lower()
+        for limitation in card["limitations"]
+    )
     assert (
         card["artifactHashes"]["processing_source"]
         == hashlib.sha256(Path(processing_module.__file__).read_bytes()).hexdigest()
@@ -640,6 +647,9 @@ def test_comparison_requires_confirmation_and_registration_gates() -> None:
         "lesion_reidentification_release_gate_unmet" in suggestion["suppressionReasons"]
     )
     assert "segmentation_release_gate_unmet" in suggestion["suppressionReasons"]
+    assert suggestion["repeatabilityGatePassed"] is False
+    assert suggestion["repeatedCaptureAreaError"] is None
+    assert suggestion["registrationAlignment"] is None
     assert "repeated_capture_area_error_gate_unmet" in suggestion["suppressionReasons"]
 
     confirmed = _post_compare(raw, _compare_metadata(userConfirmedMatch=True))
@@ -651,6 +661,8 @@ def test_comparison_requires_confirmation_and_registration_gates() -> None:
     assert comparison["comparable"] is False
     assert comparison["normalizedChange"] is None
     assert "user_confirmation_required" not in comparison["suppressionReasons"]
+    assert comparison["repeatabilityGatePassed"] is False
+    assert comparison["repeatedCaptureAreaError"] is None
     assert "repeated_capture_area_error_gate_unmet" in comparison["suppressionReasons"]
 
 
@@ -681,6 +693,8 @@ def test_comparison_validates_prior_analysis_reference_identity() -> None:
         "registered_baseline_candidate_area_unavailable" in result["suppressionReasons"]
     )
     assert "current_candidate_area_unavailable" in result["suppressionReasons"]
+    assert result["repeatabilityGatePassed"] is False
+    assert result["repeatedCaptureAreaError"] is None
     assert "repeated_capture_area_error_gate_unmet" in result["suppressionReasons"]
 
 
@@ -738,18 +752,15 @@ def test_manual_comparison_is_also_exact_hash_only(
     )
     assert exact.status_code == 200
     assert exact.json()["analysisOrigin"] == "manual_fixture"
-    assert exact.json()["comparable"] is True
-    assert exact.json()["descriptorChanges"] == {
-        "normalizedWidthChange": 0.0,
-        "normalizedHeightChange": 0.0,
-        "normalizedPerimeterChange": 0.0,
-        "borderIrregularityChange": 0.0,
-        "meanRednessChange": 0.0,
-        "meanBrightnessChange": 0.0,
-        "textureContrastChange": 0.0,
-        "ulcerationLikeContrastChange": 0.0,
-        "measurementLabel": "approximate image-normalized change",
-    }
+    assert exact.json()["comparable"] is False
+    assert exact.json()["normalizedChange"] is None
+    assert exact.json()["descriptorChanges"] is None
+    assert exact.json()["repeatabilityGatePassed"] is False
+    assert exact.json()["repeatedCaptureAreaError"] is None
+    assert "fixture_comparison_not_eligible" in exact.json()["suppressionReasons"]
+    assert (
+        "repeated_capture_area_error_gate_unmet" in exact.json()["suppressionReasons"]
+    )
 
     manual_metadata = json.loads(json.dumps(exact_metadata))
     for key in ("baselineAnalysis", "currentAnalysis"):
@@ -757,7 +768,7 @@ def test_manual_comparison_is_also_exact_hash_only(
     manual = _post_compare(fixture, manual_metadata)
     assert manual.status_code == 200
     assert manual.json()["analysisOrigin"] == "manual_fixture"
-    assert manual.json()["comparable"] is True
+    assert manual.json()["comparable"] is False
 
     blocked_metadata = json.loads(json.dumps(exact_metadata))
     blocked_metadata["currentAnalysis"]["status"] = "abstained"

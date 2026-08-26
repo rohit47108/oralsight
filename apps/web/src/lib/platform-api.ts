@@ -1,6 +1,8 @@
 import {
   PLATFORM_CONTRACT_VERSION,
   captureSetSchema as contractCaptureSetSchema,
+  platformApiClinicianVerificationQueueSchema as clinicianVerificationQueueSchema,
+  platformApiClinicianVerificationResponseSchema as clinicianVerificationSchema,
   reportArtifactSchema,
 } from "@oralsight/contracts";
 import type { CaptureSet, ReportArtifact } from "@oralsight/contracts";
@@ -63,6 +65,9 @@ const meSchema = z
     status: z.enum(["active", "deletion_pending", "suspended"]),
     createdAt: z.string().datetime(),
     deletionPending: z.boolean(),
+    requiredOidcRole: z.enum(["clinician", "admin"]).nullable(),
+    privilegedAccessReady: z.boolean(),
+    clinicianApplicationEligible: z.boolean(),
   })
   .strict();
 
@@ -266,40 +271,6 @@ const resourceRefSchema = z
   .object({
     resourceType: shareResourceTypeSchema,
     resourceId: z.string().min(1).max(64),
-  })
-  .strict();
-
-const clinicianVerificationSchema = z
-  .object({
-    verificationId: z.string().min(1),
-    applicantUserId: z.string().min(1),
-    status: z.enum(["pending", "verified", "rejected"]),
-    profession: z.string().min(1),
-    licenseJurisdiction: z.string().min(1),
-    licenseNumberSuffix: z.string().min(1),
-    organization: z.string().nullable(),
-    applicantEvidenceRef: z.string().min(1),
-    submittedAt: z.string().datetime(),
-    reviewerUserId: z.string().nullable(),
-    reviewerEvidence: z
-      .object({
-        source: z.string().min(1),
-        referenceId: z.string().min(1),
-        checkedAt: z.string().datetime(),
-        reviewerNotes: z.string().nullable(),
-      })
-      .strict()
-      .nullable(),
-    decisionReason: z.string().nullable(),
-    reviewedAt: z.string().datetime().nullable(),
-    retentionExpiresAt: z.string().datetime(),
-  })
-  .strict();
-
-const clinicianVerificationQueueSchema = z
-  .object({
-    items: z.array(clinicianVerificationSchema),
-    nextCursor: z.string().nullable(),
   })
   .strict();
 
@@ -834,6 +805,14 @@ export function getCurrentClinicianVerification(): Promise<ClinicianVerification
   return platformRequest(
     "/v2/clinician-verifications/current",
     clinicianVerificationSchema,
+  );
+}
+
+export function activateCurrentClinicianVerification(): Promise<ClinicianVerification> {
+  return platformRequest(
+    "/v2/clinician-verifications/current/activate",
+    clinicianVerificationSchema,
+    { method: "POST" },
   );
 }
 

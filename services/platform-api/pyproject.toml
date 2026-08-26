@@ -36,6 +36,9 @@ dev = [
 
 [project.scripts]
 oralsight-platform-api = "oralsight_platform.main:run"
+oralsight-bootstrap-admin = "oralsight_platform.admin_bootstrap:main"
+oralsight-add-admin = "oralsight_platform.admin_bootstrap:add_admin_main"
+oralsight-recover-admin = "oralsight_platform.admin_bootstrap:recover_admin_main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/oralsight_platform"]

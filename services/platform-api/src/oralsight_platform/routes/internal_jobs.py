@@ -6,11 +6,12 @@ import asyncio
 import hashlib
 import json
 from datetime import timedelta
+from math import ceil
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Header, Request
 from pydantic import ValidationError
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..collaboration_common import append_audit_event
@@ -79,7 +80,11 @@ from ..product_schemas import (
     CandidateObservationCreate,
 )
 from ..report_renderer import ReportRenderError, build_report_pdf
-from .internal_assets import _authenticate_worker
+from .internal_assets import (
+    _authenticate_worker,
+    _cleanup_failed_object,
+    _lock_writable_job,
+)
 
 router = APIRouter(tags=["internal worker lifecycle"])
 MAX_INTERNAL_JSON_BYTES = 2_000_000
@@ -668,9 +673,12 @@ async def render_report(
         ReportRenderRequest,
         _headers(service_id, timestamp, nonce, content_sha256, signature),
     )
-    job = await session.get(Job, body.job_id)
-    if job is None or job.job_type is not JobType.REPORT:
-        raise ServiceError(404, "job_not_found", "The report job was not found.")
+    job, user = await _lock_writable_job(
+        session,
+        job_id=body.job_id,
+        expected_job_type=JobType.REPORT,
+        not_found_message="The report job was not found.",
+    )
     expected = {
         key: value for key, value in job.request_payload.items() if key != "kind"
     }
@@ -707,9 +715,6 @@ async def render_report(
             "active_product_consent_required",
             "The report requires the active consent used for this scan.",
         )
-    user = await session.get(User, job.user_id)
-    if user is None:
-        raise ServiceError(404, "account_not_found", "The account was not found.")
     capture_sets = list(
         await session.scalars(
             select(CaptureSet).where(
@@ -840,6 +845,7 @@ async def render_report(
             object_key, pdf, media_type="application/pdf", sha256=digest
         )
     except StorageError as exc:
+        await _cleanup_failed_object(request, object_key)
         raise ServiceError(
             503, "object_storage_unavailable", "Storage is unavailable."
         ) from exc
@@ -878,12 +884,9 @@ async def render_report(
     )
     try:
         await session.commit()
-    except Exception:
+    except BaseException:
         await session.rollback()
-        try:
-            await request.app.state.object_storage.delete(object_key)
-        except StorageError:
-            pass
+        await _cleanup_failed_object(request, object_key)
         raise
     return ReportRenderResponse(
         artifact_id=value.id,
@@ -974,6 +977,59 @@ async def _delete_user_rows(
     )
 
 
+async def _user_object_keys(session: AsyncSession, user_id: str) -> list[str]:
+    keys = list(
+        await session.scalars(
+            select(CaptureAsset.object_key).where(CaptureAsset.user_id == user_id)
+        )
+    )
+    keys.extend(
+        await session.scalars(
+            select(GeneratedArtifact.object_key).where(
+                GeneratedArtifact.user_id == user_id
+            )
+        )
+    )
+    keys.extend(
+        await session.scalars(
+            select(DataExportArtifact.object_key).where(
+                DataExportArtifact.user_id == user_id
+            )
+        )
+    )
+    keys.extend(
+        value
+        for value in await session.scalars(
+            select(ReportArtifact.object_key).where(ReportArtifact.user_id == user_id)
+        )
+        if value
+    )
+    return sorted(set(keys))
+
+
+async def _defer_deletion(
+    session: AsyncSession,
+    *,
+    deletion: DeletionRequest,
+    job: Job,
+    code: str,
+    message: str,
+    retry_after_seconds: int,
+) -> None:
+    deletion.status = DeletionStatus.IN_PROGRESS
+    deletion.error_code = code
+    job.status = JobStatus.RUNNING
+    job.error_code = None
+    job.error_message = None
+    await session.commit()
+    raise ServiceError(
+        503,
+        code,
+        message,
+        headers={"Retry-After": str(max(1, retry_after_seconds))},
+    )
+
+
 @router.post(
     "/internal/v2/deletion-requests/{deletion_request_id}/execute",
     response_model=DeletionExecuteResponse,
@@ -1005,62 +1061,135 @@ async def execute_deletion(
         raise ServiceError(
             404, "deletion_request_not_found", "The deletion request was not found."
         )
+    user = await session.scalar(
+        select(User).where(User.id == deletion.user_id).with_for_update()
+    )
+    deletion = await session.scalar(
+        select(DeletionRequest)
+        .where(DeletionRequest.id == deletion_request_id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    )
+    if deletion is None:
+        raise ServiceError(
+            404, "deletion_request_not_found", "The deletion request was not found."
+        )
     if deletion.status is DeletionStatus.COMPLETED:
         return DeletionExecuteResponse(
             deletion_request_id=deletion.id,
             status="complete",
             rotate_installation_key=True,
         )
-    job = await session.get(Job, deletion.job_id)
-    user = await session.get(User, deletion.user_id)
+    job = await session.scalar(
+        select(Job)
+        .where(Job.id == deletion.job_id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    )
     if job is None or user is None or job.job_type is not JobType.DELETE_ALL:
         raise ServiceError(
             409, "invalid_deletion_state", "The deletion request is incomplete."
         )
+    now = utc_now()
     deletion.status = DeletionStatus.IN_PROGRESS
-    deletion.started_at = deletion.started_at or utc_now()
-    job.started_at = job.started_at or utc_now()
+    deletion.started_at = deletion.started_at or now
+    job.started_at = job.started_at or now
     job.status = JobStatus.RUNNING
-    await session.commit()
-    object_keys = list(
-        await session.scalars(
-            select(CaptureAsset.object_key).where(CaptureAsset.user_id == user.id)
+    latest_capability_expiry = await session.scalar(
+        select(func.max(CaptureAsset.upload_capability_expires_at)).where(
+            CaptureAsset.user_id == user.id
         )
     )
-    object_keys.extend(
-        await session.scalars(
-            select(GeneratedArtifact.object_key).where(
-                GeneratedArtifact.user_id == user.id
+    if latest_capability_expiry is not None:
+        if latest_capability_expiry.tzinfo is None:
+            latest_capability_expiry = latest_capability_expiry.replace(
+                tzinfo=now.tzinfo
             )
+        # Legacy direct S3 PUTs could finish after URL expiry. The platform-held
+        # upload lock is primary for new capabilities; retain this wait before
+        # final delete/rescan/verification as migration defense in depth.
+        candidate = latest_capability_expiry + timedelta(
+            seconds=request.app.state.settings.upload_completion_quiet_seconds
         )
-    )
-    object_keys.extend(
-        await session.scalars(
-            select(DataExportArtifact.object_key).where(
-                DataExportArtifact.user_id == user.id
-            )
-        )
-    )
-    object_keys.extend(
-        value
-        for value in await session.scalars(
-            select(ReportArtifact.object_key).where(ReportArtifact.user_id == user.id)
-        )
-        if value
-    )
+        current = deletion.upload_quiescence_until
+        if current is not None and current.tzinfo is None:
+            current = current.replace(tzinfo=now.tzinfo)
+        if current is None or candidate > current:
+            deletion.upload_quiescence_until = candidate
+
+    object_keys = await _user_object_keys(session, user.id)
     try:
-        for object_key in sorted(set(object_keys)):
+        for object_key in object_keys:
             await request.app.state.object_storage.delete(object_key)
     except StorageError as exc:
-        deletion.status = DeletionStatus.FAILED
-        deletion.error_code = "object_delete_failed"
-        job.status = JobStatus.FAILED
-        job.error_code = "object_delete_failed"
-        job.error_message = "Stored files could not be deleted."
-        await session.commit()
-        raise ServiceError(
-            503, "object_storage_unavailable", "Storage is unavailable."
-        ) from exc
+        await _defer_deletion(
+            session,
+            deletion=deletion,
+            job=job,
+            code="object_cleanup_retry_pending",
+            message="Stored files are still being removed.",
+            retry_after_seconds=5,
+        )
+        raise AssertionError("unreachable") from exc
+
+    quiescence_until = deletion.upload_quiescence_until
+    if quiescence_until is not None and quiescence_until.tzinfo is None:
+        quiescence_until = quiescence_until.replace(tzinfo=now.tzinfo)
+    if quiescence_until is not None and now < quiescence_until:
+        job.progress_percent = max(job.progress_percent, 20)
+        await _defer_deletion(
+            session,
+            deletion=deletion,
+            job=job,
+            code="upload_capability_quiescing",
+            message="Issued upload links are expiring before final deletion.",
+            retry_after_seconds=ceil((quiescence_until - now).total_seconds()),
+        )
+
+    # All issued write capabilities are now expired. Rescan the still-retained
+    # rows, delete every known key again, and verify strongly consistent absence
+    # before removing the rows that identify those keys.
+    user_prefix = f"users/{user.id}/"
+    object_keys = sorted(
+        set(await _user_object_keys(session, user.id))
+        | set(await request.app.state.object_storage.list_prefix(user_prefix))
+    )
+    try:
+        for object_key in object_keys:
+            await request.app.state.object_storage.delete(object_key)
+        for object_key in object_keys:
+            try:
+                await request.app.state.object_storage.stat(object_key)
+            except StorageNotFound:
+                continue
+            await _defer_deletion(
+                session,
+                deletion=deletion,
+                job=job,
+                code="object_cleanup_verification_pending",
+                message="Stored-file deletion is still being verified.",
+                retry_after_seconds=5,
+            )
+        remaining = await request.app.state.object_storage.list_prefix(user_prefix)
+        if remaining:
+            await _defer_deletion(
+                session,
+                deletion=deletion,
+                job=job,
+                code="object_cleanup_verification_pending",
+                message="Stored-file deletion is still being verified.",
+                retry_after_seconds=5,
+            )
+    except StorageError as exc:
+        await _defer_deletion(
+            session,
+            deletion=deletion,
+            job=job,
+            code="object_cleanup_verification_pending",
+            message="Stored-file deletion is still being verified.",
+            retry_after_seconds=5,
+        )
+        raise AssertionError("unreachable") from exc
     await _delete_user_rows(
         session,
         user_id=user.id,
@@ -1077,6 +1206,7 @@ async def execute_deletion(
     deletion.status = DeletionStatus.COMPLETED
     deletion.completed_at = now
     deletion.error_code = None
+    deletion.upload_quiescence_until = None
     # Keep only a keyed polling receipt for seven days, then scrub its link to the
     # deleted identity in the normal retention sweep.
     deletion.retention_expires_at = now + timedelta(days=7)

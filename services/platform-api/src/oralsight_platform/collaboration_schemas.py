@@ -102,6 +102,20 @@ class ClinicianVerificationDecision(ApiModel):
         return self
 
 
+class ClinicianIdentityRoleResponse(ApiModel):
+    required_claim: ShortText
+    required_value: Literal["clinician"] = "clinician"
+    observation_status: Literal[
+        "not_applicable",
+        "awaiting_token_observation",
+        "observed",
+    ]
+    oidc_role_observed_at: UtcDateTime | None = Field(
+        description="Timestamp of the first validated clinician role observation."
+    )
+    privileged_access_ready: bool
+
+
 class ClinicianVerificationResponse(ApiModel):
     verification_id: str
     applicant_user_id: str
@@ -117,6 +131,7 @@ class ClinicianVerificationResponse(ApiModel):
     decision_reason: str | None
     reviewed_at: UtcDateTime | None
     retention_expires_at: UtcDateTime
+    identity_role: ClinicianIdentityRoleResponse
 
 
 class ClinicianVerificationQueue(ApiModel):

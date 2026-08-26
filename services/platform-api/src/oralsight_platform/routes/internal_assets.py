@@ -31,8 +31,11 @@ from ..models import (
     CaptureAsset,
     CaptureStatus,
     Job,
+    JobStatus,
     JobType,
     ServiceRequestNonce,
+    User,
+    UserStatus,
     new_id,
     utc_now,
 )
@@ -44,6 +47,7 @@ SAFE_NONCE = re.compile(r"^[a-f0-9]{32,128}$")
 SAFE_DIGEST = re.compile(r"^[a-f0-9]{64}$")
 SIGNATURE_WINDOW_SECONDS = 300
 METADATA_MAX_BYTES = 64_000
+WRITABLE_JOB_STATUSES = frozenset({JobStatus.QUEUED, JobStatus.RUNNING})
 
 
 def _artifact_response(value: GeneratedArtifact) -> GeneratedArtifactResponse:
@@ -144,6 +148,65 @@ async def _authenticate_worker(
         raise ServiceError(
             409, "service_replay_rejected", "This service request was already used."
         ) from exc
+
+
+async def _lock_writable_job(
+    session: AsyncSession,
+    *,
+    job_id: str,
+    expected_job_type: JobType,
+    not_found_message: str,
+) -> tuple[Job, User]:
+    """Serialize an internal publisher with account deletion and job completion."""
+
+    owner_id = await session.scalar(
+        select(Job.user_id).where(
+            Job.id == job_id,
+            Job.job_type == expected_job_type,
+        )
+    )
+    if owner_id is None:
+        raise ServiceError(404, "job_not_found", not_found_message)
+    user = await session.scalar(
+        select(User).where(User.id == owner_id).with_for_update()
+    )
+    if user is None:
+        raise ServiceError(404, "account_not_found", "The account was not found.")
+    if user.status is UserStatus.DELETION_PENDING:
+        raise ServiceError(
+            409,
+            "account_deletion_pending",
+            "The account is pending deletion.",
+        )
+    if user.status is not UserStatus.ACTIVE:
+        raise ServiceError(409, "account_not_active", "The account is not active.")
+    job = await session.scalar(
+        select(Job)
+        .where(Job.id == job_id, Job.user_id == user.id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    )
+    if job is None or job.job_type is not expected_job_type:
+        raise ServiceError(404, "job_not_found", not_found_message)
+    if (
+        job.status not in WRITABLE_JOB_STATUSES
+        or job.cancellation_requested_at is not None
+        or job.result_outcome is not None
+        or job.completed_at is not None
+    ):
+        raise ServiceError(
+            409,
+            "job_not_writable",
+            "The job no longer accepts generated output.",
+        )
+    return job, user
+
+
+async def _cleanup_failed_object(request: Request, object_key: str) -> None:
+    try:
+        await request.app.state.object_storage.delete(object_key)
+    except StorageError:
+        pass
 
 
 def _media_signature_is_valid(media_type: str, data: bytes) -> bool:
@@ -279,14 +342,16 @@ async def upload_generated_artifact(
         signature=signature,
     )
     metadata, data = await _parse_upload(request, body)
-    job = await session.get(Job, metadata.job_id)
     expected_job_type = {
         GeneratedArtifactPurpose.RECONSTRUCTION: JobType.RECONSTRUCTION,
         GeneratedArtifactPurpose.SUMMARY_VIDEO: JobType.SUMMARY_VIDEO,
     }[metadata.purpose]
-    if job is None or job.job_type is not expected_job_type:
-        data = b""
-        raise ServiceError(404, "job_not_found", "The artifact job was not found.")
+    job, _user = await _lock_writable_job(
+        session,
+        job_id=metadata.job_id,
+        expected_job_type=expected_job_type,
+        not_found_message="The artifact job was not found.",
+    )
     existing = await session.scalar(
         select(GeneratedArtifact).where(
             GeneratedArtifact.job_id == job.id,
@@ -314,48 +379,50 @@ async def upload_generated_artifact(
             media_type=metadata.media_type,
             sha256=metadata.sha256,
         )
+        data = b""
+        value = GeneratedArtifact(
+            id=artifact_id,
+            user_id=job.user_id,
+            job_id=job.id,
+            purpose=metadata.purpose,
+            filename=metadata.filename,
+            media_type=metadata.media_type,
+            content_sha256=metadata.sha256,
+            size_bytes=metadata.size_bytes,
+            object_key=object_key,
+            manifest=metadata.manifest,
+            created_at=now,
+            retention_expires_at=now
+            + timedelta(days=request.app.state.settings.generated_asset_retention_days),
+        )
+        session.add(value)
+        job.output_refs = [*job.output_refs, value.id]
+        job.resource_id = value.id
+        append_audit_event(
+            session,
+            patient_user_id=job.user_id,
+            actor_user_id=None,
+            event_type="generated_artifact.published",
+            resource_type="generated_artifact",
+            resource_id=value.id,
+            request_id=request.state.request_id,
+            details={
+                "purpose": metadata.purpose.value,
+                "sizeBytes": metadata.size_bytes,
+            },
+        )
+        await session.commit()
     except StorageError as exc:
         data = b""
+        await session.rollback()
+        await _cleanup_failed_object(request, object_key)
         raise ServiceError(
             503, "object_storage_unavailable", "Storage is unavailable."
         ) from exc
-    data = b""
-    value = GeneratedArtifact(
-        id=artifact_id,
-        user_id=job.user_id,
-        job_id=job.id,
-        purpose=metadata.purpose,
-        filename=metadata.filename,
-        media_type=metadata.media_type,
-        content_sha256=metadata.sha256,
-        size_bytes=metadata.size_bytes,
-        object_key=object_key,
-        manifest=metadata.manifest,
-        created_at=now,
-        retention_expires_at=now
-        + timedelta(days=request.app.state.settings.generated_asset_retention_days),
-    )
-    session.add(value)
-    job.output_refs = [*job.output_refs, value.id]
-    job.resource_id = value.id
-    append_audit_event(
-        session,
-        patient_user_id=job.user_id,
-        actor_user_id=None,
-        event_type="generated_artifact.published",
-        resource_type="generated_artifact",
-        resource_id=value.id,
-        request_id=request.state.request_id,
-        details={"purpose": metadata.purpose.value, "sizeBytes": metadata.size_bytes},
-    )
-    try:
-        await session.commit()
     except IntegrityError as exc:
+        data = b""
         await session.rollback()
-        try:
-            await request.app.state.object_storage.delete(object_key)
-        except StorageError:
-            pass
+        await _cleanup_failed_object(request, object_key)
         existing = await session.scalar(
             select(GeneratedArtifact).where(
                 GeneratedArtifact.job_id == job.id,
@@ -367,6 +434,11 @@ async def upload_generated_artifact(
         raise ServiceError(
             409, "artifact_publish_conflict", "The artifact could not be published."
         ) from exc
+    except BaseException:
+        data = b""
+        await session.rollback()
+        await _cleanup_failed_object(request, object_key)
+        raise
     return _artifact_response(value)
 
 

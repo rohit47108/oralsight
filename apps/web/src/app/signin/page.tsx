@@ -3,14 +3,14 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { BrandMark } from "@/components/brand-mark";
-import { getProductContext, productHomeForRole } from "@/lib/product-auth";
+import { getProductContext, productHomeForAccount } from "@/lib/product-auth";
 
 export const metadata: Metadata = { title: "Sign in" };
 
 export default async function SignInPage() {
   const context = await getProductContext();
   if (context.state === "ready")
-    redirect(productHomeForRole(context.account.role));
+    redirect(productHomeForAccount(context.account));
   if (context.state === "service_unavailable") redirect("/app");
 
   return (

@@ -46,6 +46,108 @@ describe("persisted state validation", () => {
     expect(migrated.settings.animationSpeed).toBe("standard");
   });
 
+  it("adds fail-closed repeatability evidence to saved version 4 comparisons", () => {
+    const migrated = parsePersistedAppState({
+      ...validState,
+      comparisons: [
+        {
+          contractVersion: "1.1.0",
+          baselineCaptureId: "baseline",
+          currentCaptureId: "current",
+          region: "left_buccal_mucosa",
+          candidateMatchScore: null,
+          userConfirmedMatch: true,
+          registrationConfidence: 0.9,
+          inlierRatio: 0.8,
+          reprojectionErrorRatio: 0.02,
+          normalizedChange: null,
+          descriptorChanges: null,
+          calibratedMeasurementChanges: null,
+          calibrationSuppressionReasons: [],
+          comparable: false,
+          suppressionReasons: ["repeated_capture_area_error_gate_unmet"],
+          modelVersions: { registration: "registration-test-v1" },
+          inputOrigin: "live_capture",
+          analysisOrigin: "live_model",
+          disclaimer: "This result is not a diagnosis.",
+        },
+      ],
+    });
+
+    expect(migrated.comparisons[0]).toMatchObject({
+      repeatedCaptureAreaError: null,
+      repeatabilityGatePassed: false,
+      registrationAlignment: null,
+      comparable: false,
+    });
+  });
+
+  it("suppresses legacy comparable measurements that lack repeatability evidence", () => {
+    const migrated = parsePersistedAppState({
+      ...validState,
+      comparisons: [
+        {
+          contractVersion: "1.1.0",
+          baselineCaptureId: "baseline",
+          currentCaptureId: "current",
+          region: "left_buccal_mucosa",
+          candidateMatchScore: 0.96,
+          userConfirmedMatch: true,
+          registrationConfidence: 0.9,
+          inlierRatio: 0.8,
+          reprojectionErrorRatio: 0.02,
+          normalizedChange: 0.25,
+          descriptorChanges: {
+            normalizedWidthChange: 0.1,
+            normalizedHeightChange: 0.2,
+            normalizedPerimeterChange: 0.3,
+            borderIrregularityChange: 0.04,
+            meanRednessChange: 0.05,
+            meanBrightnessChange: -0.05,
+            textureContrastChange: 0.03,
+            ulcerationLikeContrastChange: null,
+            measurementLabel: "approximate image-normalized change",
+          },
+          calibratedMeasurementChanges: {
+            cardVersion: "oralsight-calibration-v1",
+            markerId: 17,
+            markerSideMm: 20,
+            baselineWidthMm: 8,
+            currentWidthMm: 9,
+            widthChangeMm: 1,
+            baselineHeightMm: 5,
+            currentHeightMm: 6,
+            heightChangeMm: 1,
+            baselineAreaMm2: 40,
+            currentAreaMm2: 54,
+            areaChangeMm2: 14,
+            baselineConfidence: 0.9,
+            currentConfidence: 0.9,
+            measurementLabel: "calibrated estimate",
+          },
+          calibrationSuppressionReasons: [],
+          comparable: true,
+          suppressionReasons: [],
+          modelVersions: { registration: "registration-test-v1" },
+          inputOrigin: "live_capture",
+          analysisOrigin: "live_model",
+          disclaimer: "This result is not a diagnosis.",
+        },
+      ],
+    });
+
+    expect(migrated.comparisons[0]).toMatchObject({
+      repeatedCaptureAreaError: null,
+      repeatabilityGatePassed: false,
+      normalizedChange: null,
+      descriptorChanges: null,
+      calibratedMeasurementChanges: null,
+      calibrationSuppressionReasons: ["repeated_capture_area_error_gate_unmet"],
+      comparable: false,
+      suppressionReasons: ["repeated_capture_area_error_gate_unmet"],
+    });
+  });
+
   it("rejects unknown schema versions and partial settings", () => {
     expect(() =>
       parsePersistedAppState({ ...validState, schemaVersion: 5 }),

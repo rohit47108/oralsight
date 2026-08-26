@@ -3,6 +3,7 @@ import { z, type ZodType } from "zod";
 
 import {
   accessHistoryResponseSchema,
+  accountRecreationResponseSchema,
   ANALYTICS_POLICY_VERSION,
   analyticsAcceptedSchema,
   analyticsConsentSchema,
@@ -31,6 +32,7 @@ import {
   syncPullResponseSchema,
   syncPushResponseSchema,
   type AccessHistoryResponse,
+  type AccountRecreationResponse,
   type AnalyticsConsent,
   type AnalyticsEvent,
   type AnalysisRun,
@@ -540,6 +542,17 @@ export class PlatformClient {
     return this.request(
       `/v2/me/deletion-requests/${encodeURIComponent(requestId)}`,
       deletionResponseSchema,
+    );
+  }
+
+  recreateAccount(): Promise<AccountRecreationResponse> {
+    return this.request(
+      "/v2/account-recreations",
+      accountRecreationResponseSchema,
+      {
+        method: "POST",
+        body: { confirmation: "RECREATE_AND_ALLOW_LOCAL_RESYNC" },
+      },
     );
   }
 

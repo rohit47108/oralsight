@@ -349,6 +349,12 @@ def _model_card() -> ModelCard:
         artifact_hashes=artifact_hashes,
         enabled_heads=list(RELEASE_RUNTIME.enabled_heads),
         release_gates=release_gates,
+        comparison_repeated_capture_area_error=(
+            RELEASE_RUNTIME.repeated_capture_area_error
+        ),
+        comparison_repeatability_gate_passed=(
+            RELEASE_RUNTIME.repeated_capture_area_error is not None
+        ),
         limitations=limitations,
     )
 

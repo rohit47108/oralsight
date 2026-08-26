@@ -25,7 +25,7 @@ def request_body_limit(path: str, settings: Settings) -> int:
         return MAX_EXPORT_JSON_BYTES
     if path.startswith("/internal/v2/"):
         return MAX_INTERNAL_JSON_BYTES
-    if path.startswith("/storage/uploads/"):
+    if path.startswith("/v2/storage/uploads/"):
         return settings.capture_asset_max_bytes
     return MAX_PUBLIC_JSON_BYTES
 

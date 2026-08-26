@@ -57,7 +57,13 @@ export async function decideVerificationAction(
       operationKey,
     );
     revalidatePath("/clinician/admin");
-    return { status: "saved", message: "Verification decision recorded." };
+    return {
+      status: "saved",
+      message:
+        status === "verified"
+          ? "Credentials approved. Assign the clinician role in the sign-in provider; access opens only after a fresh signed role is observed."
+          : "Verification decision recorded.",
+    };
   } catch (error) {
     return {
       status: "error",

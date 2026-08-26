@@ -13,11 +13,18 @@ services.
 - A private S3 bucket with all four Block Public Access controls enabled, Bucket owner
   enforced Object Ownership (ACLs disabled), a TLS-only bucket policy, and server-side
   encryption. Prefer workload identity over static access keys.
-- An OIDC application with HTTPS issuer/JWKS URLs and asymmetric signing keys.
+- An OIDC application with HTTPS issuer/JWKS URLs, asymmetric signing keys, and
+  the exact API access-token role claim configured in
+  `ORALSIGHT_PLATFORM_OIDC_ROLE_CLAIM`. The platform does not accept a generic
+  `roles` claim as a fallback.
 - HTTPS routes for the platform and inference services. The proxy must attach to the
   external Docker network named by `ORALSIGHT_INGRESS_NETWORK`.
 - Immutable, digest-pinned platform, inference, and worker images. The inference
   image must contain the locked release manifest and every hash-matched artifact.
+- One Ed25519 response-signing key pair per environment. Store the private key
+  only on inference. Pin the matching raw public key on the worker and mobile
+  builds. The worker derives the key ID from that public key instead of trusting
+  a separate configured ID.
 
 Copy `production.env.example` to a secret-managed location outside Git. Replace every
 placeholder, create the ingress network, validate the file, and deploy:
@@ -35,19 +42,95 @@ compose file does not start or expose them. The service settings fail startup if
 production uses local authentication, SQLite, non-TLS Redis, local object storage,
 HTTP public URLs, default secrets, unsigned inference, or automatic schema creation.
 
+New capture upload intents always target the platform's short-lived
+`/v2/storage/uploads/` capability endpoint. That endpoint holds the account row lock
+through the object-store write, so this serialization is the primary delete-all
+guarantee for newly issued uploads.
+
+Before upgrading any deployment that issued direct S3 PUT URLs, stop the old API
+instances, revoke or rotate the object-store credentials that signed those URLs,
+confirm the retired credentials can no longer authorize PUT, and drain for the
+largest historical URL lifetime plus the maximum request-completion duration allowed
+by the ingress and object store. Only then allow delete-all workers from the upgraded
+release to complete. This is required because a PUT authorized before expiry or
+credential revocation may already be in progress.
+
+Keep `ORALSIGHT_PLATFORM_UPLOAD_COMPLETION_QUIET_SECONDS` at least as long as that
+maximum request-completion duration. Delete-all continues to wait through recorded
+capability expiry, delete, rescan, and verify object keys as defense in depth.
+Migration `20260813_0010` conservatively drains pre-migration capabilities; do not
+bypass or shorten that migration drain. Neither the migration nor the quiet interval
+replaces the credential-rotation/drain step for legacy direct S3 URLs.
+
 ## Release check
 
 Before routing traffic:
 
 1. Confirm `platform-migrate` exited successfully.
-2. Confirm `platform-api`, `inference`, and `worker` are healthy.
-3. Check `GET https://api.example.org/readyz` reports database, queue, and storage as
+2. Have the designated first administrator sign in once, run
+   `oralsight-bootstrap-admin` with the exact subject and confirmation phrase as
+   `ORALSIGHT_PLATFORM_BOOTSTRAP_ADMIN_SUBJECT` and
+   `ORALSIGHT_PLATFORM_BOOTSTRAP_CONFIRMATION`. Require the exact phrase
+   `BOOTSTRAP ORALSIGHT FIRST ADMIN`, then remove both variables. The command
+   must create or confirm the durable bootstrap seal, remain idempotent only for
+   the same sole administrator, and refuse every different second account. The
+   seal must remain closed even if administrator or audit rows are later removed.
+3. Assign the administrator value in the configured OIDC access-token role
+   claim and require a fresh sign-in. Verify that removing the token role locks
+   the administrator routes on refresh and no later than the configured
+   privileged-token maximum age plus clock leeway.
+4. Confirm `platform-api`, `inference`, and `worker` are healthy.
+5. Check `GET https://api.example.org/readyz` reports database, queue, and storage as
    ready.
-4. Check inference `GET /healthz` reports `productionReady: true`, signing configured,
+6. Check inference `GET /healthz` reports `productionReady: true`, signing configured,
    no demo fixtures, and the expected release ID and enabled heads.
-5. Run one synthetic or expressly licensed end-to-end scan, report, encrypted export,
+7. Send a synthetic analyze and compare request through a worker. Confirm the
+   inference response echoes the worker's UUID request ID, includes
+   `Cache-Control: no-store`, and reports the same signing key ID produced by
+   `SHA-256(raw_public_key)[:16]`. A missing signature, altered body, wrong
+   request ID, or wrong key ID must end as a permanent job failure.
+8. Run one synthetic or expressly licensed end-to-end scan, report, encrypted export,
    share/revoke, and delete-all test. Never use restricted medical images for a smoke
    test.
+
+To admit a clinician applicant, the identity administrator first assigns
+`clinician_pending` in the configured access-token role claim and supplies a
+searchable invitation reference. After a fresh sign-in, the applicant opens
+`/professional-apply` and submits credentials. Approval alone must leave the
+workspace locked. After approval, replace `clinician_pending` with `clinician`,
+require another fresh sign-in, and have the clinician select **Check secure
+access**. The first-observed timestamp records when the role first appeared in a
+validated, signed access token; it is audit history, not a substitute for
+checking the current token.
+
+Before launch, use `oralsight-add-admin` to create a distinct recovery
+administrator. This is a trusted infrastructure-operator command, not proof that
+another administrator personally approved the change. Supply target and active
+administrator reference subjects only through temporary
+`ORALSIGHT_PLATFORM_ADMIN_TARGET_SUBJECT` and
+`ORALSIGHT_PLATFORM_ADMIN_REFERENCE_SUBJECT` values. Supply the confirmation
+through `ORALSIGHT_PLATFORM_ADMIN_CONFIRMATION`, require the exact `ADD ORALSIGHT
+ADMIN` phrase, verify the audit event, then clear all three values. The command
+must reject a non-admin reference and a target that matches the reference. The
+reference proves that this is an additional-admin operation rather than
+zero-admin recovery. Assign `admin` in the exact configured token claim and
+require a fresh sign-in; the database promotion alone does not open
+administrator routes.
+
+If a durably sealed installation reaches zero saved administrators, run
+`oralsight-recover-admin` with only temporary
+`ORALSIGHT_PLATFORM_RECOVERY_ADMIN_SUBJECT` and
+`ORALSIGHT_PLATFORM_RECOVERY_CONFIRMATION` values. Require the exact phrase
+`RECOVER ORALSIGHT SEALED INSTALLATION WITH ZERO ADMINS`, then clear both values.
+The command must refuse an unsealed installation and any database in which an
+administrator still exists. Assign `admin` in the exact token claim and require
+a fresh sign-in after recovery. Exercise this break-glass path in staging and
+retain the operator evidence outside application logs.
+
+The default `ORALSIGHT_PLATFORM_PRIVILEGED_TOKEN_MAX_AGE_SECONDS=900` bounds how
+long an already-issued token can retain a removed administrator,
+`clinician_pending`, or clinician role. Configure the provider to refresh access
+tokens within that bound. This is bounded lockout, not instant token revocation.
 
 ## Backup and restore
 
@@ -94,3 +177,25 @@ published backup window and must never be replayed after deletion.
 Record each monthly restore drill, retention sweep alert, key rotation, and deletion
 verification without storing image content, tokens, filenames, or request bodies in
 logs.
+
+## Response-signing key rotation
+
+Generate a fresh set with
+`uv run --project services/inference python services/inference/scripts/generate_signing_key.py`.
+Never copy the private value to a worker, mobile build, log, ticket, or source
+file. Because clients pin one public key, rotate as a controlled cutover:
+
+1. Stop publishing new analysis/comparison jobs and let active jobs finish.
+2. Build the next worker and mobile release with the new public key. Do not route
+   them to an inference instance that still uses the old private key.
+3. Deploy an isolated inference/worker pair with the new private/public values
+   and derived key ID, then run the tamper, request-ID, and canary checks.
+4. Route the matching worker pair and new mobile release to the matching
+   inference deployment. Keep old mobile clients on the old signed deployment
+   during a planned overlap when the routing platform supports versioned origins.
+5. If versioned overlap is unavailable, announce a maintenance cutover. Old
+   clients must fail unavailable rather than accept a response under the wrong
+   key. Remove the old private key only after the supported-client window ends.
+
+An emergency key compromise uses the same fail-closed cutover but starts by
+isolating the compromised signer. Never temporarily disable worker verification.

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { WorkspaceState } from "@/components/workspace-state";
-import { getProductContext, productHomeForRole } from "@/lib/product-auth";
+import { getProductContext, productHomeForAccount } from "@/lib/product-auth";
 import { getAdminAnalyticsSummary } from "@/lib/platform-api";
 import { readableDate, readableLabel } from "@/lib/presentation";
 
@@ -11,8 +11,11 @@ export const metadata: Metadata = { title: "Product use" };
 export default async function AdminAnalyticsPage() {
   const context = await getProductContext();
   if (context.state !== "ready") return null;
-  if (context.account.role !== "admin") {
-    redirect(productHomeForRole(context.account.role));
+  if (
+    context.account.role !== "admin" ||
+    !context.account.privilegedAccessReady
+  ) {
+    redirect(productHomeForAccount(context.account));
   }
   const summary = await getAdminAnalyticsSummary(30).then(
     (value) => ({ ok: true as const, value }),

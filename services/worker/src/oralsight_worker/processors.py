@@ -97,6 +97,11 @@ class AnalysisProcessor:
                 "inputOrigin": payload.input_origin,
                 "requestedHeads": [head.value for head in payload.requested_heads],
             }
+            if payload.calibration is not None:
+                metadata["calibration"] = payload.calibration.model_dump(
+                    by_alias=True,
+                    mode="json",
+                )
             result = await self.http.post_multipart(
                 "/v1/analyze",
                 data={"metadata": json.dumps(metadata, separators=(",", ":"))},

@@ -43,6 +43,9 @@ class MeResponse(ApiModel):
     status: UserStatus
     created_at: datetime
     deletion_pending: bool
+    required_oidc_role: UserRole | None
+    privileged_access_ready: bool
+    clinician_application_eligible: bool
 
     @field_validator("created_at", mode="after")
     @classmethod
@@ -52,6 +55,15 @@ class MeResponse(ApiModel):
 
 class DeletionRequestCreate(ApiModel):
     confirmation: Literal["DELETE"]
+
+
+class AccountRecreationRequest(ApiModel):
+    confirmation: Literal["RECREATE_AND_ALLOW_LOCAL_RESYNC"]
+
+
+class AccountRecreationResponse(ApiModel):
+    account: MeResponse
+    recreated_after_deletion: bool = True
 
 
 class DeletionRequestResponse(ApiModel):

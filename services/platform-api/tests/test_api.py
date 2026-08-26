@@ -13,6 +13,7 @@ from oralsight_platform.models import (
     JobStatus,
     JobType,
     User,
+    UserRole,
     UserStatus,
 )
 from oralsight_platform.security import issue_local_test_token
@@ -129,6 +130,9 @@ async def test_get_me_provisions_one_patient_without_exposing_subject(
     assert first.json()["role"] == "patient"
     assert first.json()["status"] == "active"
     assert first.json()["deletionPending"] is False
+    assert first.json()["requiredOidcRole"] is None
+    assert first.json()["privilegedAccessReady"] is True
+    assert first.json()["clinicianApplicationEligible"] is False
     assert "subject" not in first.text.lower()
     assert "auth0|patient-1" not in first.text
 
@@ -147,6 +151,54 @@ async def test_identity_token_roles_cannot_self_promote_database_role(
     response = await client.get("/v2/me", headers={"Authorization": f"Bearer {token}"})
     assert response.status_code == 200
     assert response.json()["role"] == "patient"
+    assert response.json()["requiredOidcRole"] is None
+    assert response.json()["privilegedAccessReady"] is True
+    assert response.json()["clinicianApplicationEligible"] is False
+
+
+async def test_clinician_pending_claim_allows_application_without_self_promotion(
+    client, app, auth_headers
+) -> None:
+    subject = "auth0|eligible-clinician-applicant"
+    response = await client.get(
+        "/v2/me",
+        headers=auth_headers(subject, roles=("clinician_pending",)),
+    )
+    assert response.status_code == 200
+    assert response.json()["role"] == "patient"
+    assert response.json()["clinicianApplicationEligible"] is True
+
+    async with app.state.database.sessions() as session:
+        user = await session.get(User, response.json()["id"])
+        assert user is not None
+        assert user.role is UserRole.PATIENT
+
+
+async def test_get_me_exposes_fail_closed_privileged_role_activation(
+    client, app, auth_headers
+) -> None:
+    subject = "auth0|clinician-role-handoff"
+    provisioned = await client.get("/v2/me", headers=auth_headers(subject))
+    assert provisioned.status_code == 200
+    async with app.state.database.sessions() as session:
+        user = await session.get(User, provisioned.json()["id"])
+        assert user is not None
+        user.role = UserRole.CLINICIAN
+        await session.commit()
+
+    missing_claim = await client.get("/v2/me", headers=auth_headers(subject))
+    assert missing_claim.status_code == 200
+    assert missing_claim.json()["role"] == "clinician"
+    assert missing_claim.json()["requiredOidcRole"] == "clinician"
+    assert missing_claim.json()["privilegedAccessReady"] is False
+
+    active_claim = await client.get(
+        "/v2/me",
+        headers=auth_headers(subject, roles=("clinician",)),
+    )
+    assert active_claim.status_code == 200
+    assert active_claim.json()["requiredOidcRole"] == "clinician"
+    assert active_claim.json()["privilegedAccessReady"] is True
 
 
 async def test_delete_all_is_durable_audited_and_idempotent(

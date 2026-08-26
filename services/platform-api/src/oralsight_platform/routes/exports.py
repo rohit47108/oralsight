@@ -60,7 +60,11 @@ from ..models import (
 )
 from ..object_storage import StorageError, StorageNotFound
 from ..portable_export import ExportFile, build_portable_zip, encrypt_portable_zip
-from .internal_assets import _authenticate_worker
+from .internal_assets import (
+    _authenticate_worker,
+    _cleanup_failed_object,
+    _lock_writable_job,
+)
 
 router = APIRouter(tags=["portable exports"])
 MAX_EXPORT_REQUEST_BYTES = 32_768
@@ -631,6 +635,7 @@ async def _portable_records(session: AsyncSession, user: User) -> dict[str, Any]
                     "reviewer_evidence",
                     "decision_reason",
                     "reviewed_at",
+                    "oidc_role_observed_at",
                 ),
             )
             for value in clinician_verifications
@@ -766,9 +771,12 @@ async def render_export(
         raise ServiceError(
             422, "invalid_worker_payload", "The worker payload is invalid."
         ) from exc
-    job = await session.get(Job, body.job_id)
-    if job is None or job.job_type is not JobType.DATA_EXPORT:
-        raise ServiceError(404, "job_not_found", "The export job was not found.")
+    job, user = await _lock_writable_job(
+        session,
+        job_id=body.job_id,
+        expected_job_type=JobType.DATA_EXPORT,
+        not_found_message="The export job was not found.",
+    )
     expected = {
         key: value for key, value in job.request_payload.items() if key != "kind"
     }
@@ -791,9 +799,6 @@ async def render_export(
             byte_size=response.byte_size,
             encryption=response.encryption,
         )
-    user = await session.get(User, job.user_id)
-    if user is None:
-        raise ServiceError(404, "account_not_found", "The account was not found.")
     records = await _portable_records(session, user)
     files: list[ExportFile] = []
     skipped: list[dict[str, str]] = []
@@ -828,6 +833,7 @@ async def render_export(
             sha256=encrypted.sha256,
         )
     except StorageError as exc:
+        await _cleanup_failed_object(request, object_key)
         raise ServiceError(
             503, "object_storage_unavailable", "Storage is unavailable."
         ) from exc
@@ -851,12 +857,9 @@ async def render_export(
     job.output_refs = [*job.output_refs, value.id]
     try:
         await session.commit()
-    except Exception:
+    except BaseException:
         await session.rollback()
-        try:
-            await request.app.state.object_storage.delete(object_key)
-        except StorageError:
-            pass
+        await _cleanup_failed_object(request, object_key)
         raise
     return ExportRenderResponse(
         export_request_id=value.export_request_id,
