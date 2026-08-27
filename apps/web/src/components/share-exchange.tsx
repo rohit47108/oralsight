@@ -60,7 +60,7 @@ export function ShareExchange({ shareId }: { shareId: string }) {
       {state.status === "opening" ? (
         <>
           <span className="workspace-spinner" aria-hidden="true" />
-          <h2>Opening the shared record…</h2>
+          <h1>Opening the shared record…</h1>
           <p>The link is being checked before any record is shown.</p>
         </>
       ) : (
@@ -68,7 +68,7 @@ export function ShareExchange({ shareId }: { shareId: string }) {
           <span className="workspace-state__icon" aria-hidden="true">
             !
           </span>
-          <h2>Shared record unavailable</h2>
+          <h1>Shared record unavailable</h1>
           <p>{state.message}</p>
           <button
             className="button"

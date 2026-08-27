@@ -34,6 +34,7 @@ export default async function SharedRecordPage({
         <WorkspaceState
           title="No shared record was opened."
           body="Use the complete link or QR code supplied by the record owner."
+          headingLevel="h1"
         />
       </div>
     );
@@ -48,6 +49,7 @@ export default async function SharedRecordPage({
         <WorkspaceState
           title="This shared record is no longer available."
           body="The link may have expired, been revoked, or reached its access limit."
+          headingLevel="h1"
         />
       </div>
     );
