@@ -3,8 +3,9 @@ import { dirname, join, resolve } from "node:path";
 import { Worker } from "node:worker_threads";
 
 const pnpmStore = resolve("node_modules/.pnpm");
-const patchedPackage = readdirSync(pnpmStore).find((entry) =>
-  entry.startsWith("image-size@1.2.1_patch_hash_"),
+const patchedPackage = readdirSync(pnpmStore).find(
+  (entry) =>
+    entry.startsWith("image-size@1.2.1") && entry.includes("patch_hash"),
 );
 if (!patchedPackage) {
   throw new Error(

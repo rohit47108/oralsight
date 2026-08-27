@@ -32,9 +32,9 @@ def upgrade() -> None:
             """
             INSERT INTO deleted_subject_tombstones
                 (id, subject_fingerprint, fingerprint_key_version, first_deleted_at, last_deleted_at)
-            SELECT md5(subject_fingerprint || ':legacy-share-v1'),
+            SELECT md5(subject_fingerprint || :legacy_suffix),
                    subject_fingerprint,
-                   'legacy-share-v1',
+                   :legacy_key_version,
                    min(requested_at),
                    max(coalesce(completed_at, requested_at))
             FROM deletion_requests
@@ -42,6 +42,9 @@ def upgrade() -> None:
             GROUP BY subject_fingerprint
             ON CONFLICT (subject_fingerprint) DO NOTHING
             """
+        ).bindparams(
+            legacy_suffix=":legacy-share-v1",
+            legacy_key_version="legacy-share-v1",
         )
     )
 

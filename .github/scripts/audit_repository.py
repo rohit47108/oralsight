@@ -41,7 +41,7 @@ AUDITED_FILE_SHA256 = {
         "5267d20ba11091590d89186ad065b85fd703241cbdab89bd79a684f95aecb99b"
     ),
     "apps/web/src/app/icon.svg": (
-        "ac57f5275bcc09a3dff1561554800753d7651cd86b98dc390f2242448994c10b"
+        "73c118539f03fa5e54047ecd9f19408d781b1a847be89fe94d18709301d98d90"
     ),
     "apps/mobile/src/components/OralObservationMap.tsx": (
         "b653a1c864c7c22cdf908fc10f4d2602d0e9b26ebf96ab8c84d47e435f1a4d95"
@@ -82,6 +82,13 @@ AUDITED_FILE_SHA256 = {
     "services/inference/src/oralsight_api/assets/face_detection_yunet_2023mar.onnx": (
         "8f2383e4dd3cfbb4553ea8718107fc0423210dc964f9f4280604804ed2552fa4"
     ),
+}
+
+AUDITED_TEXT_FILES = {
+    "apps/web/src/app/icon.svg",
+    "apps/mobile/src/components/OralObservationMap.tsx",
+    "assets/mouth/manifest.json",
+    "packages/contracts/fixtures/bundled-demo.json",
 }
 
 AUDITED_FILE_LICENSE = {
@@ -176,7 +183,9 @@ def _read(path: str) -> str:
     return (ROOT / path).read_text(encoding="utf-8")
 
 
-def _sha256(path: Path) -> str:
+def _sha256(path: Path, *, normalize_line_endings: bool = False) -> str:
+    if normalize_line_endings:
+        return hashlib.sha256(path.read_bytes().replace(b"\r\n", b"\n")).hexdigest()
     digest = hashlib.sha256()
     with path.open("rb") as handle:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
@@ -468,7 +477,8 @@ def audit_hashes_and_inventory(audit: Audit) -> None:
         audit.require(path.is_file(), f"Audited file is missing: {relative}")
         if path.is_file():
             audit.require(
-                _sha256(path) == expected,
+                _sha256(path, normalize_line_endings=relative in AUDITED_TEXT_FILES)
+                == expected,
                 f"Audited file checksum changed; update the audit deliberately: {relative}",
             )
 

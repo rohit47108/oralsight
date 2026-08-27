@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import importlib.util
 from datetime import timedelta
 from pathlib import Path
 
@@ -213,3 +214,29 @@ def test_migration_backfills_all_legacy_fingerprints_without_receipt_expiry_filt
     assert "subject_fingerprint IS NOT NULL" in source
     assert "retention_expires_at" not in source
     assert "legacy-share-v1" in source
+
+
+def test_tombstone_migration_sql_binds_legacy_values(monkeypatch) -> None:
+    path = (
+        Path(__file__).parents[1]
+        / "alembic"
+        / "versions"
+        / "20260814_0011_durable_deleted_subject_tombstones.py"
+    )
+    spec = importlib.util.spec_from_file_location("durable_tombstone_migration", path)
+    assert spec is not None and spec.loader is not None
+    migration = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(migration)
+
+    statements = []
+    monkeypatch.setattr(migration.op, "create_table", lambda *args, **kwargs: None)
+    monkeypatch.setattr(migration.op, "create_index", lambda *args, **kwargs: None)
+    monkeypatch.setattr(migration.op, "execute", statements.append)
+
+    migration.upgrade()
+
+    assert len(statements) == 1
+    assert statements[0].compile().params == {
+        "legacy_suffix": ":legacy-share-v1",
+        "legacy_key_version": "legacy-share-v1",
+    }
