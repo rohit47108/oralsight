@@ -1,0 +1,173 @@
+import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
+import { test } from "node:test";
+import { fileURLToPath } from "node:url";
+
+import {
+  corepackEntrypointFromShim,
+  createGradleBuildSteps,
+  createGradleInvocation,
+  createWindowsAndroidPlan,
+  formatWindowsBatchCommand,
+  nodeEnvironmentForWindowsAndroidMode,
+  parseWindowsAndroidArguments,
+  parseSubstMappings,
+} from "./windows-android-paths.mjs";
+
+test("uses production mode for embedded release bundles", () => {
+  assert.equal(
+    nodeEnvironmentForWindowsAndroidMode("install-release", "development"),
+    "production",
+  );
+  assert.equal(nodeEnvironmentForWindowsAndroidMode("install", "test"), "test");
+});
+
+test("parses the drive aliases produced by Windows subst", () => {
+  assert.deepEqual(
+    parseSubstMappings(
+      "O:\\: => C:\\Users\\student\\Projects\\oralsight\r\nP:\\: => C:\\other\r\n",
+    ),
+    new Map([
+      ["O:", "C:\\Users\\student\\Projects\\oralsight"],
+      ["P:", "C:\\other"],
+    ]),
+  );
+});
+
+test("reuses an existing short alias for the same repository", () => {
+  const plan = createWindowsAndroidPlan({
+    repositoryRoot: "C:\\Users\\student\\Projects\\oralsight",
+    userProfile: "C:\\Users\\student",
+    substOutput: "O:\\: => C:\\Users\\student\\Projects\\oralsight\r\n",
+    driveExists: () => true,
+  });
+
+  assert.deepEqual(plan, {
+    aliasRoot: "O:\\",
+    drive: "O:",
+    gradleDirectory: "O:\\apps\\mobile\\android",
+    needsSubst: false,
+    repositoryRoot: "C:\\Users\\student\\Projects\\oralsight",
+    virtualStoreDirectory: "C:\\Users\\student\\.osp",
+  });
+});
+
+test("does not take a drive that already belongs to another path", () => {
+  const plan = createWindowsAndroidPlan({
+    repositoryRoot: "C:\\Users\\student\\Projects\\oralsight",
+    userProfile: "C:\\Users\\student",
+    substOutput: "O:\\: => C:\\other\r\n",
+    driveExists: (path) => path === "O:\\",
+  });
+
+  assert.equal(plan.drive, "P:");
+  assert.equal(plan.needsSubst, true);
+  assert.equal(plan.gradleDirectory, "P:\\apps\\mobile\\android");
+});
+
+test("builds the install command for a supported Android architecture", () => {
+  assert.deepEqual(createGradleInvocation("install", "x86_64"), {
+    arguments: [
+      "app:installDebug",
+      "-PreactNativeArchitectures=x86_64",
+      "-Pkotlin.incremental=false",
+      "--stacktrace",
+    ],
+    executable: "gradlew.bat",
+  });
+});
+
+test("builds an installable release with the JavaScript bundle embedded", () => {
+  assert.deepEqual(createGradleInvocation("install-release", "arm64-v8a"), {
+    arguments: [
+      "app:installRelease",
+      "-PreactNativeArchitectures=arm64-v8a",
+      "-Pkotlin.incremental=false",
+      "-Poralsight.disableHermesSourceMaps=true",
+      "--stacktrace",
+    ],
+    executable: "gradlew.bat",
+  });
+});
+
+test("runs release bundling and native compilation in one short-path build", () => {
+  assert.deepEqual(
+    createGradleBuildSteps({
+      architecture: "x86_64",
+      mode: "install-release",
+      plan: {
+        gradleDirectory: "O:\\apps\\mobile\\android",
+        repositoryRoot: "C:\\Users\\student\\Projects\\oralsight",
+      },
+    }),
+    [
+      {
+        arguments: [
+          "app:installRelease",
+          "-PreactNativeArchitectures=x86_64",
+          "-Pkotlin.incremental=false",
+          "-Poralsight.disableHermesSourceMaps=true",
+          "--stacktrace",
+        ],
+        directory: "O:\\apps\\mobile\\android",
+        executable: "O:\\apps\\mobile\\android\\gradlew.bat",
+      },
+    ],
+  );
+});
+
+test("rejects an Android architecture that could inject Gradle arguments", () => {
+  assert.throws(
+    () => createGradleInvocation("build", "x86_64 --offline"),
+    /Unsupported Android architecture/,
+  );
+});
+
+test("the Windows Android helper exposes its runnable commands", () => {
+  const scriptPath = fileURLToPath(
+    new URL("./windows-android.mjs", import.meta.url),
+  );
+  const result = spawnSync(process.execPath, [scriptPath, "--help"], {
+    encoding: "utf8",
+  });
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(
+    result.stdout,
+    /setup\s+Install dependencies in the short store/,
+  );
+  assert.match(result.stdout, /install\s+Build and install the debug app/);
+  assert.match(
+    result.stdout,
+    /install-release\s+Build and install the release app/,
+  );
+});
+
+test("accepts pnpm's forwarded argument separator", () => {
+  assert.deepEqual(
+    parseWindowsAndroidArguments(
+      ["install", "--", "--arch", "arm64-v8a"],
+      "x86_64",
+    ),
+    { architecture: "arm64-v8a", command: "install" },
+  );
+});
+
+test("resolves Corepack's JavaScript entrypoint without spawning a cmd shim", () => {
+  assert.equal(
+    corepackEntrypointFromShim("C:\\Program Files\\nodejs\\corepack.cmd"),
+    "C:\\Program Files\\nodejs\\node_modules\\corepack\\dist\\corepack.js",
+  );
+});
+
+test("formats the safe drive-alias Gradle command for cmd.exe", () => {
+  assert.equal(
+    formatWindowsBatchCommand("O:\\apps\\mobile\\android\\gradlew.bat", [
+      "app:installDebug",
+      "-PreactNativeArchitectures=x86_64",
+      "-Pkotlin.incremental=false",
+      "--stacktrace",
+    ]),
+    "O:\\apps\\mobile\\android\\gradlew.bat app:installDebug -PreactNativeArchitectures=x86_64 -Pkotlin.incremental=false --stacktrace",
+  );
+});

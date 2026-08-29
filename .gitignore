@@ -1,5 +1,6 @@
 # JavaScript / Expo
 node_modules/
+.pnpm/
 .expo/
 .expo-shared/
 /apps/mobile/android/

@@ -2,6 +2,9 @@ packages:
   - apps/*
   - packages/*
 
+virtualStoreDir: ../../.osp
+virtualStoreDirMaxLength: 20
+
 allowBuilds:
   "@shopify/react-native-skia": true
   esbuild: true

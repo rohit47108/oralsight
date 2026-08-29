@@ -84,7 +84,9 @@
             "image": "./assets/oralsight-adaptive-foreground.png"
           }
         }
-      ]
+      ],
+      "expo-video",
+      "./plugins/with-local-expo-cli"
     ],
     "experiments": {
       "typedRoutes": true

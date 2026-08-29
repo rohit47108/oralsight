@@ -1,23 +1,13 @@
-import { readdirSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { join, resolve } from "node:path";
 import { Worker } from "node:worker_threads";
 
-const pnpmStore = resolve("node_modules/.pnpm");
-const patchedPackage = readdirSync(pnpmStore).find(
-  (entry) =>
-    entry.startsWith("image-size@1.2.1") && entry.includes("patch_hash"),
-);
-if (!patchedPackage) {
-  throw new Error(
-    "Patched image-size@1.2.1 is not installed; run pnpm install --frozen-lockfile",
-  );
-}
-const imageSizePackage = join(
-  pnpmStore,
-  patchedPackage,
-  "node_modules/image-size/package.json",
-);
-const packageRoot = dirname(imageSizePackage);
+import {
+  findInstalledPackageRoot,
+  findPnpmVirtualStore,
+} from "./pnpm-store-path.mjs";
+
+const pnpmStore = findPnpmVirtualStore(resolve("."));
+const packageRoot = findInstalledPackageRoot(pnpmStore, "image-size", "1.2.1");
 
 const workerSource = String.raw`
   const { parentPort, workerData } = require("node:worker_threads");
