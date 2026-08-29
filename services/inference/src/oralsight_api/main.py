@@ -134,9 +134,9 @@ def _safe_client_request_id(value: str) -> str | None:
 
 
 def _request_body_limit(path: str) -> int:
-    if path == "/v1/analyze":
+    if path in {"/v1/analyze", "/api/v1/analyze"}:
         return MAX_ANALYZE_REQUEST_BYTES
-    if path == "/v1/compare":
+    if path in {"/v1/compare", "/api/v1/compare"}:
         return MAX_COMPARE_REQUEST_BYTES
     return MAX_OTHER_REQUEST_BYTES
 

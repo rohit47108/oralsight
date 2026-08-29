@@ -1,7 +1,9 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "fastapi",
   "functions": {
-    "**/*.py": {
+    "vercel_entrypoint.py": {
+      "includeFiles": "{private-release/**,release/**}",
       "maxDuration": 60
     }
   }

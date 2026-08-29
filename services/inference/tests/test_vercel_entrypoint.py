@@ -1,4 +1,8 @@
 import importlib.util
+import json
+import os
+import subprocess
+import sys
 import tomllib
 from pathlib import Path
 from types import ModuleType
@@ -38,12 +42,90 @@ def test_vercel_runtime_uses_uvicorn_without_websocket_extras() -> None:
     )
 
 
+def test_deployment_helper_import_does_not_initialize_the_application() -> None:
+    service_root = Path(__file__).resolve().parents[1]
+    environment = os.environ.copy()
+    environment["PYTHONPATH"] = str(service_root / "src")
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            (
+                "import sys; import oralsight_api.deployment; "
+                "print('oralsight_api.main' in sys.modules)"
+            ),
+        ],
+        cwd=service_root,
+        env=environment,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.stdout.strip() == "False"
+
+
+def test_vercel_function_configuration_targets_the_fastapi_entrypoint() -> None:
+    service_root = Path(__file__).resolve().parents[1]
+    project = tomllib.loads(
+        (service_root / "pyproject.toml").read_text(encoding="utf-8")
+    )
+    config = json.loads((service_root / "vercel.json").read_text(encoding="utf-8"))
+
+    assert project["tool"]["vercel"]["entrypoint"] == "vercel_entrypoint:app"
+    assert config["framework"] == "fastapi"
+    assert config["functions"] == {
+        "vercel_entrypoint.py": {
+            "includeFiles": "{private-release/**,release/**}",
+            "maxDuration": 60,
+        }
+    }
+
+
+def test_vercel_upload_excludes_development_only_files() -> None:
+    service_root = Path(__file__).resolve().parents[1]
+    patterns = {
+        line.strip()
+        for line in (service_root / ".vercelignore")
+        .read_text(encoding="utf-8")
+        .splitlines()
+        if line.strip() and not line.startswith("#")
+    }
+
+    assert {".pytest_cache/", ".vercel/", "**/__pycache__/", "tests/"} <= patterns
+    assert "private-release/" not in patterns
+    assert "release/" not in patterns
+
+
 def test_vercel_entrypoint_accepts_public_api_prefix() -> None:
     service_root = Path(__file__).resolve().parents[1]
     client = TestClient(load_vercel_entrypoint(service_root).app)
 
     assert client.get("/api/healthz").status_code == 200
     assert client.get("/api/v1/model-card").status_code == 200
+
+
+def test_vercel_entrypoint_applies_analyze_body_budget_after_mount() -> None:
+    service_root = Path(__file__).resolve().parents[1]
+    client = TestClient(load_vercel_entrypoint(service_root).app)
+    response = client.post(
+        "/api/v1/analyze",
+        files={"image": ("capture.jpg", b"not-an-image" * 10_000, "image/jpeg")},
+        data={
+            "metadata": json.dumps(
+                {
+                    "contractVersion": "1.1.0",
+                    "captureId": "mounted-request",
+                    "selectedRegion": "dorsal_tongue",
+                    "inputOrigin": "live_capture",
+                    "requestedHeads": ["segmentation", "anatomy"],
+                }
+            )
+        },
+    )
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "invalid_image"
 
 
 def test_vercel_entrypoint_prefers_private_release_bundle(tmp_path: Path) -> None:
@@ -65,3 +147,18 @@ def test_vercel_entrypoint_falls_back_to_public_release_manifest(
     public_manifest.write_text("{}", encoding="utf-8")
 
     assert packaged_release_manifest(tmp_path) == public_manifest
+
+
+def test_vercel_entrypoint_finds_release_in_function_working_directory(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    service_root = tmp_path / "handler"
+    working_root = tmp_path / "function"
+    service_root.mkdir()
+    manifest = working_root / "release" / "release-manifest.json"
+    manifest.parent.mkdir(parents=True)
+    manifest.write_text("{}", encoding="utf-8")
+    monkeypatch.chdir(working_root)
+
+    assert packaged_release_manifest(service_root) == manifest
