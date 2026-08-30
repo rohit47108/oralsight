@@ -1,6 +1,6 @@
 import type { NextConfig } from "next";
-import { resolve } from "node:path";
 
+import { resolveWebBuildRoot } from "./src/lib/build-root";
 import { validateProductionWebEnvironment } from "./src/lib/production-env";
 
 validateProductionWebEnvironment();
@@ -31,11 +31,14 @@ const privateHeaders = [
   { key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" },
 ];
 
+const buildRoot = resolveWebBuildRoot(process.cwd());
+
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
+  outputFileTracingRoot: buildRoot,
   turbopack: {
-    root: resolve(process.cwd(), "../../../.."),
+    root: buildRoot,
   },
   async headers() {
     return [
