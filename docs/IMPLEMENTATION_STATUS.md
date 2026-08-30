@@ -1,6 +1,6 @@
 # OralSight implementation status
 
-Last updated: 2026-08-25
+Last updated: 2026-08-30
 
 > **This result is not a diagnosis.** Passing software and model engineering
 > tests does not establish clinical accuracy, safety, effectiveness, regulatory
@@ -14,11 +14,12 @@ and authenticated web product, the account/cloud/clinician platform, the private
 artifact worker, and the stateless image-analysis service. Normal installed-app
 use never substitutes bundled results for a live capture.
 
-The current source-level verification is green. The remaining release items are
-external deployment, physical-device evidence, clinician approval,
-repeat-capture comparison evidence, closed learned-model gates, and the model
-license boundary described below. Docker container builds and the PostgreSQL
-migration smoke still require an elevated or hosted Docker environment.
+The current source, mobile build, web build, and local full-stack verification
+are green. The public website and production inference service are live. The
+account, cloud, clinician, sharing, and worker stack has also been exercised
+locally with PostgreSQL, Redis, object storage, and real queued jobs. Hosting
+that full stack still needs the managed services and identity setup listed at
+the end of this document.
 
 ## Implemented software paths
 
@@ -128,21 +129,23 @@ in the public repository.
 
 ## Current verification
 
-| Check                                       | Current result                                                                                                          |
-| ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| TypeScript tests                            | `pnpm test` passed: contracts 33, mobile 155, web 56                                                                    |
-| Type checking and web lint                  | TypeScript checks passed; hosted CI lint remains external                                                               |
-| Python tests                                | Platform suite passed; inference/worker 151 passed                                                                      |
-| Ruff and Prettier                           | Ruff and Prettier checks passed                                                                                         |
-| Web production build                        | Next production build passed with the explicit CI-only dummy-env path                                                   |
-| Mobile bundle exports                       | Final Android and iOS export rerun pending                                                                              |
-| Contract/OpenAPI generation                 | Checked schemas and OpenAPI regenerated; snapshot passed                                                                |
-| Repository safety audit                     | Local source and archive safety checks passed                                                                           |
-| JavaScript and Python dependency audits     | Local audit checks passed; hosted workflow remains external                                                             |
-| Standalone inference/platform/worker locks  | Frozen lock checks passed                                                                                               |
-| Vercel and Compose configuration            | Configuration validation and Compose parsing passed                                                                     |
-| GitHub workflow hardening                   | Workflow definitions are present; hosted Actions results remain external                                                |
-| Docker image and PostgreSQL migration smoke | Not run locally: Docker Desktop Linux engine is unavailable and its Windows service cannot be started from this session |
+| Check                                      | Current result                                                                                                          |
+| ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------- |
+| TypeScript tests                           | `pnpm test` passed: repository 22, contracts 33, mobile 158, web 64                                                     |
+| Type checking and web lint                 | TypeScript checks and the full web ESLint run passed                                                                    |
+| Python tests                               | 337 passed, 1 intentionally skipped PostgreSQL-only bootstrap test                                                      |
+| Ruff and Prettier                          | Ruff and Prettier checks passed                                                                                         |
+| Web production build                       | Next 16 Turbopack production build passed from the short linked dependency store                                        |
+| Mobile builds                              | Android and iOS bundle exports passed; the Android release APK build passed                                             |
+| Contract/OpenAPI generation                | Checked schemas and OpenAPI regenerated; snapshot passed                                                                |
+| Repository safety audit                    | Forbidden files, fixtures, hashes, provenance, inventory, and taxonomy checks passed; notices and SBOM are current      |
+| JavaScript and Python dependency audits    | JavaScript high-severity audit passed; all three Python production locks reported no known vulnerabilities              |
+| Standalone inference/platform/worker locks | Frozen lock checks passed                                                                                               |
+| Vercel and Compose configuration           | Configuration validation and Compose parsing passed                                                                     |
+| GitHub workflow hardening                  | Workflow definitions are present; local equivalents passed before push                                                  |
+| Local full-stack runtime                   | All six long-running services became healthy; migration and storage-init jobs exited 0; platform and worker were ready  |
+| Product integration flow                   | Account, consent, scan, encrypted sync, QR share/revoke, clinician review, analytics, export job, and delete-all passed |
+| Production inference                       | Live health reports production-ready with signed responses and anatomy plus candidate segmentation enabled              |
 
 The exact commands and boundaries are recorded in
 [`FINAL_VERIFICATION.md`](FINAL_VERIFICATION.md).
@@ -156,10 +159,11 @@ These cannot be manufactured inside the source tree:
   Autooral-assisted competition weight.
 - Owner-registered iOS and Android identifiers, Expo/EAS project and signing
   accounts, Apple and Google credentials, and store records.
-- Real OIDC tenant/roles, PostgreSQL, TLS Redis, private S3, secrets/KMS, worker
-  host, DNS, TLS, ingress/WAF limits, backups, alerts, and retention policies.
-- Green hosted CI, production container builds, migration apply/check, and a
-  deployed full-stack acceptance run with consenting test accounts.
+- Real OIDC tenant/roles, managed PostgreSQL, TLS Redis, private S3,
+  secrets/KMS, a worker host, ingress limits, backups, alerts, and retention
+  policies for the optional hosted account/clinician product.
+- Green hosted CI for the final release commit and a deployed full-platform
+  acceptance run once those managed services exist.
 - Three complete scans on each of two physical iPhones and two physical Android
   phones, the planned false-accept/false-reject calculation, printed-card
   sizing/color-descriptor repeatability, VoiceOver/TalkBack, low-storage,

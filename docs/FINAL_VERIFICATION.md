@@ -1,33 +1,33 @@
 # OralSight verification record
 
-Snapshot date: 2026-08-25
+Snapshot date: 2026-08-30
 
 > **This result is not a diagnosis.** This record contains engineering evidence,
 > not clinical validation, regulatory clearance, or a production-host sign-off.
 
-This record covers the current verified source tree. External deployment,
-device, and clinical checks remain explicitly separate from source verification.
+This record covers the current source tree, local runtime, Android release
+build, public website, and production inference service. Physical-device and
+full hosted-platform checks remain separate.
 
 ## Source checks
 
-The previous release pass covered the checks below. Rows marked pending changed
-with the privileged-access work and need current evidence before sign-off.
+The checks below were rerun after the final implementation and build fixes.
 
 | Surface                        | Evidence                                                                                            |
 | ------------------------------ | --------------------------------------------------------------------------------------------------- |
 | Locked install                 | `pnpm install --frozen-lockfile` passed                                                             |
-| TypeScript tests               | `pnpm test` passed: contracts 33, mobile 155, web 56                                                |
+| TypeScript tests               | `pnpm test` passed: repository 22, contracts 33, mobile 158, web 64                                 |
 | TypeScript checking            | `pnpm typecheck` passed                                                                             |
-| Web lint                       | Web Vitest and TypeScript checks passed; hosted CI lint remains an external gate                    |
-| Python tests                   | Platform suite passed; inference/worker 151 passed                                                  |
+| Web lint                       | Full ESLint run passed                                                                              |
+| Python tests                   | 337 passed; 1 PostgreSQL-only bootstrap test skipped in the default run                             |
 | Python lint/format             | Ruff check and format passed                                                                        |
 | Repository formatting          | `pnpm format:check` passed                                                                          |
 | Contract generation            | Regenerated checked schemas successfully                                                            |
 | Platform API contract          | OpenAPI regenerated and snapshot test passed                                                        |
-| Web build                      | Production Next build passed with explicit CI-only dummy env bypass                                 |
+| Web build                      | Next 16 Turbopack production build passed with the linked dependency-store root                     |
 | Missing web secrets            | Production config still fails closed when required values are missing                               |
-| Android/iOS JavaScript bundles | Both Expo exports passed                                                                            |
-| JavaScript dependency audit    | Patched `image-size` regression harness and high-severity audit passed                              |
+| Android/iOS JavaScript bundles | Both Expo exports passed; the Android release APK also built successfully                           |
+| JavaScript dependency audit    | Optional patched-package harness and high-severity audit passed                                     |
 | Python dependency audits       | Inference, platform, and worker production locks reported no known vulnerabilities                  |
 | Standalone service locks       | Inference, platform, and worker `uv lock --check` passed in isolated directories                    |
 | Deployment configuration       | Official Vercel schema/build-surface validator and both Compose parses passed                       |
@@ -57,70 +57,55 @@ The SMART-OM-only replacement evidence is in
 It was evaluated once and not promoted. No threshold or gate was lowered after
 the result.
 
-## Checks that need an external environment
+## Local full-stack evidence
 
-Docker Desktop's Linux engine is unavailable on this machine. The Windows service
-is stopped and this session lacks permission to start it. Consequently these
-operator checks must run in hosted CI or an elevated Docker environment:
+The Compose stack ran with healthy inference, platform API, worker, PostgreSQL,
+and Redis services. The storage-initialization and Alembic migration jobs exited
+successfully. Platform readiness reported database, queue, and object storage as
+ready; worker readiness also passed.
 
-- build and health-smoke the inference container;
-- build the platform and worker containers;
-- start PostgreSQL and Redis, apply the Alembic chain to head, and run
-  `alembic check` against the real PostgreSQL dialect; and
-- exercise the production Compose services together.
+The live local platform flow provisioned an account, recorded consent, created a
+scan, pushed and pulled encrypted sync data, created and revoked a QR share,
+recorded access history, completed clinician application and review, accepted an
+opt-in analytics event, generated and downloaded an encrypted export through the
+worker, verified its hash, and completed delete-all. The deleted account could
+not continue normal work, clinician review data was gone, and object storage was
+empty.
 
-The source still has strong coverage for those paths: Compose parses, standalone
-locks pass, all platform/worker tests pass, every table compiles for PostgreSQL,
-and migrations are checked into the repository. That is not a substitute for the
-real container/migration run.
+## Checks that still need outside resources
 
 The following also require owner accounts or physical resources:
 
-- hosted GitHub workflows and full-history secret scan;
+- hosted GitHub workflows for the final release commit;
 - Auth0/OIDC, managed PostgreSQL, TLS Redis, private S3, secret manager/KMS,
   container host, DNS/TLS, ingress limits, backup/restore, and alerts;
-- current-tree preview and production deployment;
+- production deployment of the optional account/clinician platform stack;
 - EAS, Apple, and Google signing plus permanent bundle identifiers;
 - two physical iPhones and two physical Android phones for the required scan,
   accessibility, camera-quality, calibration, and deletion matrix; and
 - clinician review of wording, demo cases, and any urgency-rule file.
 
-## Packaging acceptance
+## Source handoff
 
-The verified source archive is:
-
-`OralSight-source.zip` — 572 files, 89,035,851 bytes, SHA-256
-`92859da7a5554f6fd885811359949efb0fbe01732887d8be0b496c4aef85e497`.
-
-It was created from the clean release tree at commit `bca1f6e`. The archive was
-inspected after creation; the only environment-looking files are `.env.example`
-templates. No secrets, databases, Git metadata, dependencies, or builds are
-included.
-
-To recreate it after a later source change:
-
-```powershell
-$releaseArchive = Read-Host "Absolute path for the final OralSight source archive"
-.\scripts\package-source.ps1 `
-  -OutputPath $releaseArchive `
-  -Force
-```
-
-The packager uses Git's tracked plus non-ignored source list and excludes ignored
-dependencies, build outputs, secrets, local databases, datasets, captures, and
-training runs. After extraction, rerun the repository audit and confirm the
-required application/service/model files before publishing the archive hash.
+The authoritative source is the public `main` branch at
+`https://github.com/rohit47108/oralsight`. A ZIP is not required for normal
+handoff. Generated dependencies, local builds, secrets, databases, captures,
+datasets, and training runs remain excluded from Git.
 
 ## Current deployment status
 
-No production or preview deployment is claimed. The Vercel project has no
-verified production environment values, and the separate platform API,
-PostgreSQL, Redis, object storage, worker, OIDC, signing, DNS, and mobile
-signing setup still require owner-provided infrastructure and credentials.
+- Public web: `https://oralsight-sigma.vercel.app`
+- Production inference: `https://oralsight-inference.vercel.app/api`
+
+The inference health route reports production-ready, signed responses, no data
+retention, fixtures disabled, and the anatomy plus candidate-segmentation heads
+enabled. The optional hosted account/clinician platform still needs its managed
+identity, database, Redis, private storage, worker, and secrets before those web
+routes can be used with real accounts.
 
 ## Sign-off boundary
 
-The source can be handed off as a complete academic competition/research build.
-It must not be represented as a fully deployed, clinically validated, or
-commercially licensed public medical product until the external checks and model
-rights above are complete.
+The repository, public site, live analysis service, Android release build, and
+local full-product stack are ready for the competition demonstration. Store
+distribution, the hosted account/clinician stack, the physical-device matrix,
+and the closed research gates remain separate release work.
