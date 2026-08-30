@@ -4,7 +4,10 @@ import { test } from "node:test";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { findPnpmVirtualStore } from "./pnpm-store-path.mjs";
+import {
+  findInstalledPackageRootOrNull,
+  findPnpmVirtualStore,
+} from "./pnpm-store-path.mjs";
 
 test("prefers the short workspace-root virtual store", () => {
   const workspaceRoot = join("C:", "workspace");
@@ -48,6 +51,16 @@ test("finds a package when pnpm hashes the virtual-store directory name", async 
   assert.equal(
     findInstalledPackageRoot(virtualStore, "image-size", "1.2.1"),
     packageRoot,
+  );
+});
+
+test("returns null when an optional patched package is not installed", (t) => {
+  const virtualStore = mkdtempSync(join(tmpdir(), "oralsight-pnpm-store-"));
+  t.after(() => rmSync(virtualStore, { force: true, recursive: true }));
+
+  assert.equal(
+    findInstalledPackageRootOrNull(virtualStore, "image-size", "1.2.1"),
+    null,
   );
 });
 

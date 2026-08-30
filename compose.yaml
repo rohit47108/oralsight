@@ -99,11 +99,27 @@ services:
         condition: service_healthy
     restart: "no"
 
+  platform-storage-init:
+    image: oralsight-platform-api:local
+    user: "0:0"
+    command: ["chown", "-R", "oralsight:oralsight", "/var/lib/oralsight-assets"]
+    volumes:
+      - oralsight-assets:/var/lib/oralsight-assets
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+    restart: "no"
+
   platform-api:
     image: oralsight-platform-api:local
     environment: *platform-environment
     depends_on:
       platform-migrate:
+        condition: service_completed_successfully
+      platform-storage-init:
         condition: service_completed_successfully
       redis:
         condition: service_healthy

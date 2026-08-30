@@ -21,6 +21,7 @@ import {
   nodeEnvironmentForWindowsAndroidMode,
   parseWindowsAndroidArguments,
   parseSubstMappings,
+  resolveWindowsAndroidToolchain,
 } from "./windows-android-paths.mjs";
 
 const HELP = `Usage: node scripts/windows-android.mjs <command> [--arch <architecture>]
@@ -285,6 +286,16 @@ function main() {
     ]);
     return;
   }
+
+  Object.assign(
+    process.env,
+    resolveWindowsAndroidToolchain({
+      environment: process.env,
+      localAppData: process.env.LOCALAPPDATA,
+      programFiles: process.env.ProgramFiles,
+      userProfile: homedir(),
+    }),
+  );
 
   ensureNativeProject();
   ensureDriveAlias(plan);

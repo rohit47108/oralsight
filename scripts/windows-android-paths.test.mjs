@@ -12,6 +12,7 @@ import {
   nodeEnvironmentForWindowsAndroidMode,
   parseWindowsAndroidArguments,
   parseSubstMappings,
+  resolveWindowsAndroidToolchain,
 } from "./windows-android-paths.mjs";
 
 test("uses production mode for embedded release bundles", () => {
@@ -20,6 +21,38 @@ test("uses production mode for embedded release bundles", () => {
     "production",
   );
   assert.equal(nodeEnvironmentForWindowsAndroidMode("install", "test"), "test");
+});
+
+test("discovers the installed Android SDK and a working Gradle JDK", () => {
+  const existing = new Set(
+    [
+      "C:\\Users\\student\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb.exe",
+      "C:\\Users\\student\\AppData\\Local\\Android\\Sdk\\platforms",
+      "C:\\Program Files\\Android\\Android Studio\\jbr\\bin\\java.exe",
+      "C:\\Users\\student\\.gradle\\jdks\\temurin-17\\bin\\java.exe",
+      "C:\\Users\\student\\.gradle\\jdks\\temurin-17\\lib\\jvm.cfg",
+    ].map((value) => value.toLowerCase()),
+  );
+
+  assert.deepEqual(
+    resolveWindowsAndroidToolchain({
+      environment: {},
+      listDirectoryNames: (directory) =>
+        directory.toLowerCase() ===
+        "c:\\users\\student\\.gradle\\jdks".toLowerCase()
+          ? ["temurin-17"]
+          : [],
+      localAppData: "C:\\Users\\student\\AppData\\Local",
+      pathExists: (path) => existing.has(path.toLowerCase()),
+      programFiles: "C:\\Program Files",
+      userProfile: "C:\\Users\\student",
+    }),
+    {
+      ANDROID_HOME: "C:\\Users\\student\\AppData\\Local\\Android\\Sdk",
+      ANDROID_SDK_ROOT: "C:\\Users\\student\\AppData\\Local\\Android\\Sdk",
+      JAVA_HOME: "C:\\Users\\student\\.gradle\\jdks\\temurin-17",
+    },
+  );
 });
 
 test("parses the drive aliases produced by Windows subst", () => {

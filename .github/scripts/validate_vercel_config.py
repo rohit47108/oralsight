@@ -132,13 +132,6 @@ def validate_repository_contract(root_config: dict[str, Any]) -> None:
 
 
 def validate_standalone_inference(value: dict[str, Any]) -> None:
-    functions = value.get("functions")
-    settings = functions.get("**/*.py", {}) if isinstance(functions, dict) else {}
-    if settings.get("maxDuration", 0) < 18:
-        raise ValueError(
-            "standalone inference vercel.json must cover the 18-second mobile deadline"
-        )
-
     inference_root = REPOSITORY_ROOT / "services" / "inference"
     project = tomllib.loads(
         (inference_root / "pyproject.toml").read_text(encoding="utf-8")
@@ -154,6 +147,20 @@ def validate_standalone_inference(value: dict[str, Any]) -> None:
         f"{module_name.replace('.', '/')}.py",
         "standalone inference entrypoint module",
     )
+
+    functions = value.get("functions")
+    settings: dict[str, Any] = {}
+    if isinstance(functions, dict):
+        explicit_settings = functions.get(f"{module_name.replace('.', '/')}.py")
+        wildcard_settings = functions.get("**/*.py")
+        if isinstance(explicit_settings, dict):
+            settings = explicit_settings
+        elif isinstance(wildcard_settings, dict):
+            settings = wildcard_settings
+    if settings.get("maxDuration", 0) < 18:
+        raise ValueError(
+            "standalone inference vercel.json must cover the 18-second mobile deadline"
+        )
 
 
 def main() -> int:

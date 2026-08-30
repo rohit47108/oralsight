@@ -31,14 +31,13 @@ export interface TrajectorySeries {
 const clamp = (value: number) => Math.min(1, Math.max(0, value));
 
 export function captureQualityScore(quality: QualityResult): number {
-  return clamp(
-    Math.min(
-      quality.blurScore,
-      quality.exposureScore,
-      1 - quality.glareScore,
-      1 - quality.obstructionScore,
-    ),
-  );
+  const factors = [
+    quality.blurScore,
+    quality.exposureScore,
+    1 - quality.glareScore,
+    1 - quality.obstructionScore,
+  ];
+  return clamp(factors.reduce((total, factor) => total + factor, 0) / 4);
 }
 
 export function buildTrajectorySeries(

@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { resolve } from "node:path";
 
 import { validateProductionWebEnvironment } from "./src/lib/production-env";
 
@@ -33,6 +34,9 @@ const privateHeaders = [
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
+  turbopack: {
+    root: resolve(process.cwd(), "../../../.."),
+  },
   async headers() {
     return [
       {

@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { existsSync, readdirSync } from "node:fs";
 import { win32 } from "node:path";
 
 const BUILD_DRIVES = "OPQRSTUVWXYZ".split("").map((letter) => `${letter}:`);
@@ -14,6 +14,69 @@ function normalizeComparablePath(value) {
     .normalize(value)
     .replace(/[\\/]+$/, "")
     .toLowerCase();
+}
+
+function defaultListDirectoryNames(directory) {
+  try {
+    return readdirSync(directory, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => entry.name);
+  } catch {
+    return [];
+  }
+}
+
+export function resolveWindowsAndroidToolchain({
+  environment = process.env,
+  listDirectoryNames = defaultListDirectoryNames,
+  localAppData = environment.LOCALAPPDATA,
+  pathExists = existsSync,
+  programFiles = environment.ProgramFiles || "C:\\Program Files",
+  userProfile,
+}) {
+  const sdkCandidates = [
+    environment.ANDROID_HOME,
+    environment.ANDROID_SDK_ROOT,
+    localAppData && win32.join(localAppData, "Android", "Sdk"),
+  ].filter(Boolean);
+  const androidSdkRoot = sdkCandidates.find(
+    (candidate) =>
+      pathExists(win32.join(candidate, "platform-tools", "adb.exe")) &&
+      pathExists(win32.join(candidate, "platforms")),
+  );
+  if (!androidSdkRoot) {
+    throw new Error(
+      "Android SDK not found. Install it with Android Studio or set ANDROID_HOME.",
+    );
+  }
+
+  const directoryCandidates = (directory) =>
+    listDirectoryNames(directory).map((name) => win32.join(directory, name));
+  const javaCandidates = [
+    environment.JAVA_HOME,
+    win32.join(programFiles, "Android", "Android Studio", "jbr"),
+    ...(userProfile
+      ? directoryCandidates(win32.join(userProfile, ".gradle", "jdks"))
+      : []),
+    ...directoryCandidates(win32.join(programFiles, "Eclipse Adoptium")),
+    ...directoryCandidates(win32.join(programFiles, "Microsoft")),
+  ].filter(Boolean);
+  const javaHome = javaCandidates.find(
+    (candidate) =>
+      pathExists(win32.join(candidate, "bin", "java.exe")) &&
+      pathExists(win32.join(candidate, "lib", "jvm.cfg")),
+  );
+  if (!javaHome) {
+    throw new Error(
+      "Working Java 17 runtime not found. Install Android Studio or set JAVA_HOME.",
+    );
+  }
+
+  return {
+    ANDROID_HOME: win32.normalize(androidSdkRoot),
+    ANDROID_SDK_ROOT: win32.normalize(androidSdkRoot),
+    JAVA_HOME: win32.normalize(javaHome),
+  };
 }
 
 export function corepackEntrypointFromShim(shimPath) {

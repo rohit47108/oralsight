@@ -67,8 +67,20 @@ function analysis(captureId: string, area: number): AnalysisResult {
 }
 
 describe("visual trajectory policy", () => {
-  it("uses the weakest image-quality factor", () => {
-    expect(captureQualityScore(quality)).toBe(0.8);
+  it("summarizes the full accepted image-quality profile", () => {
+    expect(captureQualityScore(quality)).toBeCloseTo(0.8875);
+  });
+
+  it("does not present one accepted glare subscore as the whole quality score", () => {
+    expect(
+      captureQualityScore({
+        ...quality,
+        blurScore: 1,
+        exposureScore: 0.7,
+        glareScore: 0.85,
+        obstructionScore: 0,
+      }),
+    ).toBeCloseTo(0.7125);
   });
 
   it("orders real observations and connects only a passed exact comparison", () => {

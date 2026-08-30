@@ -2,12 +2,23 @@ import { join, resolve } from "node:path";
 import { Worker } from "node:worker_threads";
 
 import {
-  findInstalledPackageRoot,
+  findInstalledPackageRootOrNull,
   findPnpmVirtualStore,
 } from "./pnpm-store-path.mjs";
 
 const pnpmStore = findPnpmVirtualStore(resolve("."));
-const packageRoot = findInstalledPackageRoot(pnpmStore, "image-size", "1.2.1");
+const packageRoot = findInstalledPackageRootOrNull(
+  pnpmStore,
+  "image-size",
+  "1.2.1",
+);
+
+if (packageRoot === null) {
+  process.stdout.write(
+    "image-size is not installed; its dormant patch needs no runtime check.\n",
+  );
+  process.exit(0);
+}
 
 const workerSource = String.raw`
   const { parentPort, workerData } = require("node:worker_threads");

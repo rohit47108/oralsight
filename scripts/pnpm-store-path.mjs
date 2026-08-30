@@ -36,7 +36,7 @@ export function findPnpmVirtualStore(workspaceRoot, pathExists = existsSync) {
   return virtualStore;
 }
 
-export function findInstalledPackageRoot(
+export function findInstalledPackageRootOrNull(
   virtualStore,
   packageName,
   packageVersion,
@@ -58,6 +58,21 @@ export function findInstalledPackageRoot(
       return packageRoot;
     }
   }
+
+  return null;
+}
+
+export function findInstalledPackageRoot(
+  virtualStore,
+  packageName,
+  packageVersion,
+) {
+  const packageRoot = findInstalledPackageRootOrNull(
+    virtualStore,
+    packageName,
+    packageVersion,
+  );
+  if (packageRoot) return packageRoot;
 
   throw new Error(
     `${packageName}@${packageVersion} is not installed in the pnpm virtual store`,

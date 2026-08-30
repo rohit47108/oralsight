@@ -1,5 +1,6 @@
 # JavaScript / Expo
 node_modules/
+.osp/
 .pnpm/
 .expo/
 .expo-shared/
