@@ -4,7 +4,7 @@
     "web": {
       "root": "apps/web",
       "framework": "nextjs",
-      "installCommand": "pnpm install --frozen-lockfile --virtual-store-dir ../../.pnpm"
+      "installCommand": "pnpm install --frozen-lockfile --virtual-store-dir .pnpm"
     }
   },
   "rewrites": [

@@ -67,6 +67,12 @@ def validate_repository_contract(root_config: dict[str, Any]) -> None:
     web = services["web"]
     if web.get("framework") != "nextjs":
         raise ValueError("the Vercel web service framework must remain nextjs")
+    if web.get("installCommand") != (
+        "pnpm install --frozen-lockfile --virtual-store-dir .pnpm"
+    ):
+        raise ValueError(
+            "the Vercel web dependency store must remain inside the repository"
+        )
 
     web_root = REPOSITORY_ROOT / str(web.get("root", ""))
     require_file(web_root, "package.json", "web build manifest")
