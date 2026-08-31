@@ -48,9 +48,13 @@ Detailed evidence lives in [FINAL_VERIFICATION.md](FINAL_VERIFICATION.md) and
 - [x] JavaScript and Python dependency audits report no new known high-severity issues.
 - [x] Vercel and Compose configuration validate; the local service stack reaches healthy/ready state.
 - [x] Public website and production inference health are reachable before the final release push.
-- [ ] Commit and push the final verified tree to public `main`.
-- [ ] Verify hosted GitHub Actions for the final commit.
-- [ ] Deploy and browser-check the exact final commit on Vercel.
+- [x] Commit and push the final verified tree to public `main`.
+- [x] Verify hosted GitHub Actions for the final public `main` release.
+- [x] Deploy and browser-check the final application commit on Vercel at desktop and mobile widths.
+
+The public web project is connected to GitHub for automatic builds. The
+inference project deliberately uses a controlled deployment from this checkout
+because its hash-verified competition model is private and excluded from Git.
 
 ## Separate owner/resource follow-up
 
@@ -58,3 +62,7 @@ Detailed evidence lives in [FINAL_VERIFICATION.md](FINAL_VERIFICATION.md) and
 - [ ] Supply Apple/Google/Expo signing accounts for store-distributed iOS and Android builds.
 - [ ] Run the planned two-iPhone/two-Android physical-device and assistive-technology matrix.
 - [ ] Complete the evidence required before enabling closed research or quantitative-change gates.
+
+These owner/resource items are follow-up for store distribution, the optional
+hosted account platform, or later clinical research. They do not block the
+current Congressional App Challenge build.

@@ -91,16 +91,16 @@ The later fixed safety and data contracts still control conflicting details:
 
 ## Non-numbered blueprint requirements
 
-| Area                       | Current evidence                                                                                                                                                                                                                     | Verdict                                                                                                                                 |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------- |
-| Accessibility              | VoiceOver/TalkBack semantics, native map alternative, large text, high contrast, non-color status, haptics, spoken instructions, reduced motion/transparency, and motion-speed preference                                            | **Implemented locally**; physical VoiceOver/TalkBack and device-matrix checks remain external                                           |
-| Data strategy              | No restricted medical images in Git; source/license/checksum inventory; patient-disjoint manifests; DVC templates; model/data version hashes                                                                                         | **Implemented locally**; new licensed datasets are external                                                                             |
-| Training/evaluation        | Reproducible anatomy/segmentation training/evaluation, calibration, gates, model cards, failed disease evaluation, and fail-closed release manifest                                                                                  | **Implemented locally**; absent evidence cannot be manufactured                                                                         |
-| Mobile architecture        | Expo/React Native development build, Expo Router, Zustand, camera/sensors/Skia/Reanimated/Three, SQLCipher, SecureStore, encrypted files, local PDF                                                                                  | **Implemented locally**                                                                                                                 |
-| Inference architecture     | Four-route stateless FastAPI service, PyTorch/ONNX/OpenCV boundary, no accounts/jobs, no-store, no body logging, cleanup in `finally`, response signing                                                                              | **Implemented and live**; production health reports signed responses with anatomy and candidate segmentation ready                      |
-| Full-product platform      | OIDC accounts, PostgreSQL, S3, Redis outbox/stream, worker, analytics consent, retained jobs, sync, durably sealed admin bootstrap/recovery, reachable clinician application and two-step activation, reports, exports, and deletion | **Implemented; external setup**                                                                                                         |
-| Security/privacy           | EXIF removal, local encryption, private storage controls, mobile and worker Ed25519 response verification, HMAC worker calls, safe logging, deletion, retention, backup/restore contract                                             | **Implemented locally**; actual host/backup/ingress verification remains external                                                       |
-| Competition/source handoff | CI definitions, disclosures, model/license documents, demo script, release roadmap, and public repository handoff                                                                                                                    | **Implemented in source**; public `main` is authoritative; final hosted CI, owner review, and submission assets follow the release push |
+| Area                       | Current evidence                                                                                                                                                                                                                     | Verdict                                                                                                            |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ |
+| Accessibility              | VoiceOver/TalkBack semantics, native map alternative, large text, high contrast, non-color status, haptics, spoken instructions, reduced motion/transparency, and motion-speed preference                                            | **Implemented locally**; physical VoiceOver/TalkBack and device-matrix checks remain external                      |
+| Data strategy              | No restricted medical images in Git; source/license/checksum inventory; patient-disjoint manifests; DVC templates; model/data version hashes                                                                                         | **Implemented locally**; new licensed datasets are external                                                        |
+| Training/evaluation        | Reproducible anatomy/segmentation training/evaluation, calibration, gates, model cards, failed disease evaluation, and fail-closed release manifest                                                                                  | **Implemented locally**; absent evidence cannot be manufactured                                                    |
+| Mobile architecture        | Expo/React Native development build, Expo Router, Zustand, camera/sensors/Skia/Reanimated/Three, SQLCipher, SecureStore, encrypted files, local PDF                                                                                  | **Implemented locally**                                                                                            |
+| Inference architecture     | Four-route stateless FastAPI service, PyTorch/ONNX/OpenCV boundary, no accounts/jobs, no-store, no body logging, cleanup in `finally`, response signing                                                                              | **Implemented and live**; production health reports signed responses with anatomy and candidate segmentation ready |
+| Full-product platform      | OIDC accounts, PostgreSQL, S3, Redis outbox/stream, worker, analytics consent, retained jobs, sync, durably sealed admin bootstrap/recovery, reachable clinician application and two-step activation, reports, exports, and deletion | **Implemented; external setup**                                                                                    |
+| Security/privacy           | EXIF removal, local encryption, private storage controls, mobile and worker Ed25519 response verification, HMAC worker calls, safe logging, deletion, retention, backup/restore contract                                             | **Implemented locally**; actual host/backup/ingress verification remains external                                  |
+| Competition/source handoff | CI definitions, disclosures, model/license documents, demo script, release roadmap, public repository handoff, hosted CI, and live web/inference verification                                                                        | **Complete for the source release**; public `main` is authoritative and the owner review/submission assets remain  |
 
 ## Additional full-product features beyond the numbered blueprint
 
@@ -170,8 +170,8 @@ called production-complete:
 - the required two-iPhone/two-Android scan and accessibility matrix;
 - printed-card sizing/color-descriptor and repeated-capture measurement validation;
 - a clinician-approved urgency-rule file, if urgency is to be enabled;
-- hosted GitHub CI, container/Vercel builds, app signing, store artifacts, and
-  domain deployment;
+- app signing, store artifacts, and deployment of the optional full account,
+  clinician, storage, and worker stack;
 - deployed retention and backup settings that match the web privacy notice's published
   35-day maximum backup window;
 - deployment verification that the private Autooral-derived segmentation bundle
@@ -185,8 +185,8 @@ local records, optional account/cloud, clinician, artifact, sharing, and deletio
 paths are implemented. It is also not accurate to call every blueprint item
 complete. Personalized geometry remains a generic image-colored surface;
 quantitative longitudinal change and several learned heads are release-gated;
-preview quality has the documented device boundary; and deployment, device,
-clinical-review, and comparison-repeatability evidence remains
+preview quality has the documented device boundary; and full-platform hosting,
+device, clinical-review, and comparison-repeatability evidence remains
 outside the repository. The current source is an academic competition/research
 build, not a fully deployed, physically or clinically validated, commercially
 licensed medical product.

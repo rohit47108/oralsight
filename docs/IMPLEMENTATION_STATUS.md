@@ -131,9 +131,9 @@ in the public repository.
 
 | Check                                      | Current result                                                                                                          |
 | ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------- |
-| TypeScript tests                           | `pnpm test` passed: repository 22, contracts 33, mobile 158, web 64                                                     |
+| TypeScript tests                           | `pnpm test` passed: repository 22, contracts 33, mobile 158, web 66                                                     |
 | Type checking and web lint                 | TypeScript checks and the full web ESLint run passed                                                                    |
-| Python tests                               | 337 passed, 1 intentionally skipped PostgreSQL-only bootstrap test                                                      |
+| Python tests                               | 339 passed, 1 intentionally skipped PostgreSQL-only bootstrap test                                                      |
 | Ruff and Prettier                          | Ruff and Prettier checks passed                                                                                         |
 | Web production build                       | Next 16 Turbopack production build passed from the short linked dependency store                                        |
 | Mobile builds                              | Android and iOS bundle exports passed; the Android release APK build passed                                             |
@@ -141,10 +141,11 @@ in the public repository.
 | Repository safety audit                    | Forbidden files, fixtures, hashes, provenance, inventory, and taxonomy checks passed; notices and SBOM are current      |
 | JavaScript and Python dependency audits    | JavaScript high-severity audit passed; all three Python production locks reported no known vulnerabilities              |
 | Standalone inference/platform/worker locks | Frozen lock checks passed                                                                                               |
-| Vercel and Compose configuration           | Configuration validation and Compose parsing passed                                                                     |
-| GitHub workflow hardening                  | Workflow definitions are present; local equivalents passed before push                                                  |
+| Vercel and Compose configuration           | Official schema validation, hosted web/inference builds, public proxy checks, and Compose parsing passed                |
+| GitHub workflow hardening                  | Hosted TypeScript, Python, and repository-safety workflows passed on public `main`                                      |
 | Local full-stack runtime                   | All six long-running services became healthy; migration and storage-init jobs exited 0; platform and worker were ready  |
 | Product integration flow                   | Account, consent, scan, encrypted sync, QR share/revoke, clinician review, analytics, export job, and delete-all passed |
+| Production web                             | Desktop and 390 px browser checks passed across key routes with no console warnings or horizontal overflow              |
 | Production inference                       | Live health reports production-ready with signed responses and anatomy plus candidate segmentation enabled              |
 
 The exact commands and boundaries are recorded in
@@ -162,8 +163,8 @@ These cannot be manufactured inside the source tree:
 - Real OIDC tenant/roles, managed PostgreSQL, TLS Redis, private S3,
   secrets/KMS, a worker host, ingress limits, backups, alerts, and retention
   policies for the optional hosted account/clinician product.
-- Green hosted CI for the final release commit and a deployed full-platform
-  acceptance run once those managed services exist.
+- A deployed full-platform acceptance run once the managed account services
+  listed above exist.
 - Three complete scans on each of two physical iPhones and two physical Android
   phones, the planned false-accept/false-reject calculation, printed-card
   sizing/color-descriptor repeatability, VoiceOver/TalkBack, low-storage,

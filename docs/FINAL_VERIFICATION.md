@@ -16,10 +16,10 @@ The checks below were rerun after the final implementation and build fixes.
 | Surface                        | Evidence                                                                                            |
 | ------------------------------ | --------------------------------------------------------------------------------------------------- |
 | Locked install                 | `pnpm install --frozen-lockfile` passed                                                             |
-| TypeScript tests               | `pnpm test` passed: repository 22, contracts 33, mobile 158, web 64                                 |
+| TypeScript tests               | `pnpm test` passed: repository 22, contracts 33, mobile 158, web 66                                 |
 | TypeScript checking            | `pnpm typecheck` passed                                                                             |
 | Web lint                       | Full ESLint run passed                                                                              |
-| Python tests                   | 337 passed; 1 PostgreSQL-only bootstrap test skipped in the default run                             |
+| Python tests                   | 339 passed; 1 PostgreSQL-only bootstrap test skipped in the default run                             |
 | Python lint/format             | Ruff check and format passed                                                                        |
 | Repository formatting          | `pnpm format:check` passed                                                                          |
 | Contract generation            | Regenerated checked schemas successfully                                                            |
@@ -30,7 +30,7 @@ The checks below were rerun after the final implementation and build fixes.
 | JavaScript dependency audit    | Optional patched-package harness and high-severity audit passed                                     |
 | Python dependency audits       | Inference, platform, and worker production locks reported no known vulnerabilities                  |
 | Standalone service locks       | Inference, platform, and worker `uv lock --check` passed in isolated directories                    |
-| Deployment configuration       | Official Vercel schema/build-surface validator and both Compose parses passed                       |
+| Deployment configuration       | Official Vercel schema/build-surface validator, hosted builds, and both Compose parses passed       |
 | Vercel entry point             | Imported and exposed the expected inference application                                             |
 | Workflow security              | Zizmor reported no findings; actions are immutable-SHA pinned and checkout credentials are disabled |
 | Repository safety              | Forbidden-artifact, fixture, inventory, model hash, asset hash, and taxonomy audit passed           |
@@ -76,7 +76,6 @@ empty.
 
 The following also require owner accounts or physical resources:
 
-- hosted GitHub workflows for the final release commit;
 - Auth0/OIDC, managed PostgreSQL, TLS Redis, private S3, secret manager/KMS,
   container host, DNS/TLS, ingress limits, backup/restore, and alerts;
 - production deployment of the optional account/clinician platform stack;
@@ -97,11 +96,24 @@ datasets, and training runs remain excluded from Git.
 - Public web: `https://oralsight-sigma.vercel.app`
 - Production inference: `https://oralsight-inference.vercel.app/api`
 
+The final application source is on public `main`. Hosted TypeScript, Python,
+and repository-safety workflows passed. The public site was browser-checked at
+desktop and 390 px mobile widths across the home, how-it-works, research,
+professional, privacy, accessibility, security, application, and workspace
+routes. The mobile menu worked, the page had no horizontal overflow, and the
+browser recorded no warnings or errors. The public web `/api/healthz` rewrite
+also returned the production inference health response.
+
 The inference health route reports production-ready, signed responses, no data
 retention, fixtures disabled, and the anatomy plus candidate-segmentation heads
-enabled. The optional hosted account/clinician platform still needs its managed
-identity, database, Redis, private storage, worker, and secrets before those web
-routes can be used with real accounts.
+enabled. A fresh synthetic QA image sent to the isolated release returned a
+complete `live_model` result for the selected region before that build was
+promoted. The website has automatic Git deployment; inference remains a
+controlled deployment from this checkout so its private competition weight is
+never replaced by the source-only public bundle. The optional hosted
+account/clinician platform still needs its managed identity, database, Redis,
+private storage, worker, and secrets before those web routes can be used with
+real accounts.
 
 ## Sign-off boundary
 
