@@ -7,14 +7,14 @@ import { resolveWebBuildRoot } from "@/lib/build-root";
 describe("web build root", () => {
   const appDirectory = resolve("workspace", "apps", "web");
 
-  it("keeps Linux deployment tracing inside the repository", () => {
-    expect(resolveWebBuildRoot(appDirectory, "linux")).toBe(
+  it("keeps Vercel deployment tracing inside the repository", () => {
+    expect(resolveWebBuildRoot(appDirectory, { VERCEL: "1" })).toBe(
       resolve(appDirectory, "../.."),
     );
   });
 
-  it("includes the short external pnpm store for Windows builds", () => {
-    expect(resolveWebBuildRoot(appDirectory, "win32")).toBe(
+  it("includes the short external pnpm store for other builds", () => {
+    expect(resolveWebBuildRoot(appDirectory, {})).toBe(
       resolve(appDirectory, "../../../.."),
     );
   });

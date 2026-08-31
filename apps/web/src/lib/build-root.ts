@@ -2,7 +2,7 @@ import { resolve } from "node:path";
 
 export function resolveWebBuildRoot(
   cwd: string,
-  platform: NodeJS.Platform = process.platform,
+  environment: Readonly<Record<string, string | undefined>> = process.env,
 ): string {
-  return resolve(cwd, platform === "win32" ? "../../../.." : "../..");
+  return resolve(cwd, environment.VERCEL === "1" ? "../.." : "../../../..");
 }
