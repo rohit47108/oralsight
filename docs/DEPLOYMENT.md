@@ -55,9 +55,9 @@ Before a complete public deployment, the owner must provide:
    in its local checkout at `C:\Users\rohit\Projects\oralsight`. The private
    Autooral-assisted segmentation weight is excluded from the public source;
    deployment supplies it through the ignored, hash-verified release bundle.
-2. Production-ready Vercel projects and environment values. The workspace is
-   linked to the `oralsight` project, but no deployment of the current tree has
-   been verified.
+2. The current public web and signed inference releases are verified on the
+   `oralsight` and `oralsight-inference` Vercel projects. A future hosted account
+   platform still needs its own production environment values and stateful host.
 3. An OIDC provider such as Auth0 with a public native client, a regular web
    client, an API audience, asymmetric signing, and the required patient,
    `clinician_pending`, clinician, and administrator role claims. The platform

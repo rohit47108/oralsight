@@ -95,6 +95,9 @@ datasets, and training runs remain excluded from Git.
 
 - Public web: `https://oralsight-sigma.vercel.app`
 - Production inference: `https://oralsight-inference.vercel.app/api`
+- Verified application commit: `931fb23719c2bbf59f7b503284b387e590999222`
+- Verified web deployment: `dpl_53bhPWjFsWRxYQqkP4iEkTU7GJmU`
+- Verified inference deployment: `dpl_DJLQ78T9x9zWaJgVGbj7KwQZ5L8S`
 
 The final application source is on public `main`. Hosted TypeScript, Python,
 and repository-safety workflows passed. The public site was browser-checked at
@@ -103,6 +106,11 @@ professional, privacy, accessibility, security, application, and workspace
 routes. The mobile menu worked, the page had no horizontal overflow, and the
 browser recorded no warnings or errors. The public web `/api/healthz` rewrite
 also returned the production inference health response.
+
+The exact application commit passed GitHub's hosted TypeScript workflow
+(`33353541429`) and repository-safety workflow (`33353541426`). Vercel built
+that same commit through Git integration, promoted it to the public aliases,
+and reported no web or inference runtime errors in the final one-hour audit.
 
 The inference health route reports production-ready, signed responses, no data
 retention, fixtures disabled, and the anatomy plus candidate-segmentation heads
