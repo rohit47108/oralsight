@@ -14,9 +14,7 @@ VALIDATOR_PATH = REPOSITORY_ROOT / ".github" / "scripts" / "validate_vercel_conf
 JSONSCHEMA_STUB = ModuleType("jsonschema")
 JSONSCHEMA_STUB.Draft7Validator = object  # type: ignore[attr-defined]
 sys.modules.setdefault("jsonschema", JSONSCHEMA_STUB)
-SPEC = importlib.util.spec_from_file_location(
-    "stoma3d_validate_vercel", VALIDATOR_PATH
-)
+SPEC = importlib.util.spec_from_file_location("stoma3d_validate_vercel", VALIDATOR_PATH)
 assert SPEC is not None and SPEC.loader is not None
 VALIDATOR = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(VALIDATOR)

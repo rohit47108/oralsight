@@ -826,15 +826,10 @@ def test_signed_json_response_verifies_exact_bytes_and_detects_tampering(
     assert response.status_code == 200
     assert response.headers["cache-control"] == "no-store"
     assert response.headers["x-stoma3d-key-id"] == signer.key_id
-    signature = base64.b64decode(
-        response.headers["x-stoma3d-signature"], validate=True
-    )
+    signature = base64.b64decode(response.headers["x-stoma3d-signature"], validate=True)
     message = ResponseSigner.message(request_id, response.content)
     assert message == (
-        b"stoma3d-response-v1\n"
-        + request_id.encode("ascii")
-        + b"\n"
-        + response.content
+        b"stoma3d-response-v1\n" + request_id.encode("ascii") + b"\n" + response.content
     )
     public_key = Ed25519PublicKey.from_public_bytes(signer.public_key_bytes)
     public_key.verify(signature, message)
