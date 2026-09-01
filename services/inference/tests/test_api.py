@@ -28,30 +28,30 @@ from fastapi.testclient import TestClient
 from PIL import Image, ImageDraw
 from starlette.requests import Request
 
-from oralsight_api import processing as processing_module
-from oralsight_api import signing as signing_module
-from oralsight_api.contracts import ModelHead, ReleaseGate
-from oralsight_api.fixtures import CANONICAL_DEMO_SHA256
-from oralsight_api.main import (
+from stoma3d_api import processing as processing_module
+from stoma3d_api import signing as signing_module
+from stoma3d_api.contracts import ModelHead, ReleaseGate
+from stoma3d_api.fixtures import CANONICAL_DEMO_SHA256
+from stoma3d_api.main import (
     MAX_COMPARE_REQUEST_BYTES,
     MAX_METADATA_BYTES,
     VERCEL_REQUEST_BODY_LIMIT_BYTES,
     app,
 )
-from oralsight_api.rate_limit import (
+from stoma3d_api.rate_limit import (
     EphemeralRequestRateLimiter,
     RateLimitConfiguration,
     load_rate_limit_configuration,
 )
-from oralsight_api.processing import MAX_IMAGE_BYTES, sanitize_image
-from oralsight_api.runtime import (
+from stoma3d_api.processing import MAX_IMAGE_BYTES, sanitize_image
+from stoma3d_api.runtime import (
     DEFAULT_MAX_CONCURRENT_INFERENCE,
     InferenceCapacityError,
     MAX_CONCURRENT_INFERENCE_ENV,
     BoundedInferenceExecutor,
     load_max_concurrent_inference,
 )
-from oralsight_api.signing import (
+from stoma3d_api.signing import (
     KEY_ID_ENV,
     PRIVATE_KEY_ENV,
     REQUIRE_SIGNING_ENV,
@@ -202,12 +202,12 @@ def test_rate_limit_configuration_is_strict() -> None:
     with pytest.raises(RuntimeError):
         load_rate_limit_configuration(
             production=True,
-            environment={"ORALSIGHT_RATE_LIMIT_PER_CLIENT": "0"},
+            environment={"STOMA3D_RATE_LIMIT_PER_CLIENT": "0"},
         )
 
 
 def test_analysis_rate_limit_rejects_before_multipart_parsing(monkeypatch) -> None:
-    from oralsight_api import main as main_module
+    from stoma3d_api import main as main_module
 
     monkeypatch.setattr(
         main_module,
@@ -381,7 +381,7 @@ def test_request_logging_omits_body_filename_and_capture_identifier(
 ) -> None:
     secret_capture_id = "must-not-appear-in-request-logs"
     caplog.clear()
-    with caplog.at_level(logging.INFO, logger="oralsight_api"):
+    with caplog.at_level(logging.INFO, logger="stoma3d_api"):
         response = _post_analyze(
             _synthetic_capture(),
             _analyze_metadata(captureId=secret_capture_id),
@@ -394,7 +394,7 @@ def test_request_logging_omits_body_filename_and_capture_identifier(
     assert "fixtureSha256" not in rendered_logs
 
     caplog.clear()
-    with caplog.at_level(logging.INFO, logger="oralsight_api"):
+    with caplog.at_level(logging.INFO, logger="stoma3d_api"):
         request_id_response = client.get(
             "/healthz", headers={"X-Request-ID": secret_capture_id}
         )
@@ -407,7 +407,7 @@ def test_request_logging_omits_body_filename_and_capture_identifier(
 def test_runtime_exception_details_never_enter_logs(
     monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
-    api_main = importlib.import_module("oralsight_api.main")
+    api_main = importlib.import_module("stoma3d_api.main")
     marker = "SENSITIVE_RUNTIME_MARKER"
 
     def fail_analysis(*_args, **_kwargs):
@@ -419,7 +419,7 @@ def test_runtime_exception_details_never_enter_logs(
     monkeypatch.setattr(api_main, "analyze_sanitized_image", fail_analysis)
     monkeypatch.setattr(api_main, "compare_sanitized_images", fail_comparison)
     caplog.clear()
-    with caplog.at_level(logging.WARNING, logger="oralsight_api"):
+    with caplog.at_level(logging.WARNING, logger="stoma3d_api"):
         analysis = _post_analyze(_synthetic_capture(), _analyze_metadata())
         comparison = _post_compare(
             _synthetic_capture(), _compare_metadata(userConfirmedMatch=True)
@@ -447,7 +447,7 @@ def test_runtime_exception_details_never_enter_logs(
             "state": {},
         }
     )
-    with caplog.at_level(logging.ERROR, logger="oralsight_api"):
+    with caplog.at_level(logging.ERROR, logger="stoma3d_api"):
         response = asyncio.run(
             api_main.unhandled_error_handler(request, RuntimeError(marker))
         )
@@ -527,7 +527,7 @@ def test_compare_multipart_budget_stays_below_vercel_request_limit() -> None:
 def test_streamed_request_body_is_bounded_without_content_length(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    api_main = importlib.import_module("oralsight_api.main")
+    api_main = importlib.import_module("stoma3d_api.main")
     monkeypatch.setattr(api_main, "MAX_ANALYZE_REQUEST_BYTES", 1024)
 
     def chunks():
@@ -547,7 +547,7 @@ def test_streamed_request_body_is_bounded_without_content_length(
 def test_spooled_multipart_file_is_closed_after_request(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    api_main = importlib.import_module("oralsight_api.main")
+    api_main = importlib.import_module("stoma3d_api.main")
     observed_files: list[object] = []
     observed_rollover: list[bool] = []
     original_read_upload = api_main._read_upload
@@ -591,7 +591,7 @@ def test_sanitization_strips_exif_and_normalizes_to_single_frame_jpeg() -> None:
 def test_manual_analysis_requires_exact_bytes_origin_region_and_declared_hash(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    api_main = importlib.import_module("oralsight_api.main")
+    api_main = importlib.import_module("stoma3d_api.main")
 
     def fail_runtime(*_args, **_kwargs):
         raise RuntimeError("simulated model failure")
@@ -721,7 +721,7 @@ def test_live_comparison_recomputes_areas_instead_of_trusting_prior_metadata(
 def test_manual_comparison_is_also_exact_hash_only(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    api_main = importlib.import_module("oralsight_api.main")
+    api_main = importlib.import_module("stoma3d_api.main")
 
     def fail_runtime(*_args, **_kwargs):
         raise RuntimeError("simulated registration failure")
@@ -809,7 +809,7 @@ def test_signer_configuration_is_optional_but_required_mode_fails_closed() -> No
 def test_signed_json_response_verifies_exact_bytes_and_detects_tampering(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    api_main = importlib.import_module("oralsight_api.main")
+    api_main = importlib.import_module("stoma3d_api.main")
     # Build the signer through the same raw-key environment path used in production.
     private_key = Ed25519PrivateKey.generate()
     raw_private_key = private_key.private_bytes(
@@ -825,13 +825,13 @@ def test_signed_json_response_verifies_exact_bytes_and_detects_tampering(
     response = client.get("/healthz", headers={"X-Request-ID": request_id})
     assert response.status_code == 200
     assert response.headers["cache-control"] == "no-store"
-    assert response.headers["x-oralsight-key-id"] == signer.key_id
+    assert response.headers["x-stoma3d-key-id"] == signer.key_id
     signature = base64.b64decode(
-        response.headers["x-oralsight-signature"], validate=True
+        response.headers["x-stoma3d-signature"], validate=True
     )
     message = ResponseSigner.message(request_id, response.content)
     assert message == (
-        b"oralsight-response-v1\n"
+        b"stoma3d-response-v1\n"
         + request_id.encode("ascii")
         + b"\n"
         + response.content

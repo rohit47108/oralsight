@@ -20,7 +20,7 @@ export function buildContentSecurityPolicy(
     throw new Error("A valid request nonce is required.");
   }
   const connectOrigins = [
-    origin(values.ORALSIGHT_PLATFORM_API_URL),
+    origin(values.STOMA3D_PLATFORM_API_URL),
     auth0Origin(values.AUTH0_DOMAIN),
   ].filter((value): value is string => Boolean(value));
   const isDevelopment = values.NODE_ENV === "development";

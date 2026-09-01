@@ -38,7 +38,7 @@ CC BY 4.0 model. The failed model weights are not bundled. The existing competit
 weight stays outside public Git history and is used only through the private
 deployment bundle.
 
-The OralSight source repository uses the MIT License. The CC0 declarations for the
+The Stoma3D source repository uses the MIT License. The CC0 declarations for the
 procedural map and synthetic fixture and the licenses of third-party dependencies and
 model assets still apply to those items separately.
 

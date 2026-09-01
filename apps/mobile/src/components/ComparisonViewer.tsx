@@ -12,7 +12,7 @@ import {
   type StyleProp,
 } from "react-native";
 import Svg, { Polygon } from "react-native-svg";
-import type { CandidateMask } from "@oralsight/contracts";
+import type { CandidateMask } from "@stoma3d/contracts";
 
 import {
   clampComparisonBlend,
@@ -29,9 +29,9 @@ import {
   type NormalizedPoint,
 } from "@/lib/comparisonPresentation";
 import { animationDurationMs } from "@/lib/motionPreferences";
-import { useOralSightStore } from "@/store/useOralSightStore";
+import { useStoma3DStore } from "@/store/useStoma3DStore";
 import { useAppTheme, useShouldReduceMotion } from "@/theme";
-import type { RegistrationAlignment } from "@oralsight/contracts";
+import type { RegistrationAlignment } from "@stoma3d/contracts";
 
 interface ComparisonViewerProps {
   baselineUri: string;
@@ -84,7 +84,7 @@ export function ComparisonViewer({
 }: ComparisonViewerProps) {
   const theme = useAppTheme();
   const reduceMotion = useShouldReduceMotion();
-  const animationSpeed = useOralSightStore(
+  const animationSpeed = useStoma3DStore(
     (state) => state.settings.animationSpeed,
   );
   const [mode, setMode] = useState<PresentationMode>("reveal");

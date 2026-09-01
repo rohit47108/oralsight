@@ -4,12 +4,12 @@ import asyncio
 from dataclasses import dataclass, field
 from datetime import timedelta
 
-from oralsight_worker.engine import WorkerEngine, WorkerRunner
-from oralsight_worker.http_client import PermanentJobError, RetryableJobError
-from oralsight_worker.models import JobOutcome, JobType, ProcessorResult
-from oralsight_worker.processors import ProcessorRegistry
-from oralsight_worker.queue import IdempotencyClaim, QueueMessage
-from oralsight_worker.retry import RetryPolicy
+from stoma3d_worker.engine import WorkerEngine, WorkerRunner
+from stoma3d_worker.http_client import PermanentJobError, RetryableJobError
+from stoma3d_worker.models import JobOutcome, JobType, ProcessorResult
+from stoma3d_worker.processors import ProcessorRegistry
+from stoma3d_worker.queue import IdempotencyClaim, QueueMessage
+from stoma3d_worker.retry import RetryPolicy
 
 from .conftest import NOW
 

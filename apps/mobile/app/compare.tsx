@@ -12,7 +12,7 @@ import {
   type ComparisonCalibrationRequest,
   type ComparisonResult,
   type MouthRegion,
-} from "@oralsight/contracts";
+} from "@stoma3d/contracts";
 
 import { ComparisonViewer } from "@/components/ComparisonViewer";
 import { CaptureGuidanceMetrics } from "@/components/CaptureGuidanceMetrics";
@@ -36,7 +36,7 @@ import {
 } from "@/lib/longitudinalPolicy";
 import { humanizeResultReason } from "@/lib/resultCopy";
 import { decryptToTemporaryFile, removeTemporaryFile } from "@/lib/secureFiles";
-import { useOralSightStore } from "@/store/useOralSightStore";
+import { useStoma3DStore } from "@/store/useStoma3DStore";
 import { useAppTheme } from "@/theme";
 import type { CaptureRecord } from "@/types";
 
@@ -53,9 +53,9 @@ interface PreparedComparison {
 
 export default function CompareRoute() {
   const theme = useAppTheme();
-  const captures = useOralSightStore((state) => state.captures);
-  const analyses = useOralSightStore((state) => state.analyses);
-  const addComparison = useOralSightStore((state) => state.addComparison);
+  const captures = useStoma3DStore((state) => state.captures);
+  const analyses = useStoma3DStore((state) => state.analyses);
+  const addComparison = useStoma3DStore((state) => state.addComparison);
   const [selectedRegion, setSelectedRegion] = useState<MouthRegion | null>(
     null,
   );
@@ -328,7 +328,7 @@ export default function CompareRoute() {
         <EmptyState
           icon="git-compare-outline"
           title="Two real observations are needed"
-          body="Capture the same mouth region in two separate observations. OralSight will not create sample images or substitute demo results."
+          body="Capture the same mouth region in two separate observations. Stoma3D will not create sample images or substitute demo results."
           action={
             <Button
               label="Return to scan"
@@ -794,12 +794,12 @@ function calibrationRequest(
   if (
     capture.calibrationRequested !== true ||
     capture.calibrationPlaneConfirmed !== true ||
-    capture.calibrationCardVersion !== "oralsight-calibration-v1"
+    capture.calibrationCardVersion !== "stoma3d-calibration-v1"
   ) {
     return null;
   }
   return {
-    cardVersion: "oralsight-calibration-v1",
+    cardVersion: "stoma3d-calibration-v1",
     markerId: 17,
     markerSideMm: 20,
     planeConfirmed: true,

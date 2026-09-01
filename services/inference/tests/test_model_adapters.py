@@ -5,8 +5,8 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from oralsight_api.contracts import ModelHead
-from oralsight_api.model_adapters import (
+from stoma3d_api.contracts import ModelHead
+from stoma3d_api.model_adapters import (
     ClassificationPrediction,
     EmbeddingPrediction,
     ModelAdapterError,
@@ -146,7 +146,7 @@ def test_onnx_loader_runs_startup_forward_and_fails_closed(
 ) -> None:
     invalid_network = _FakeNetwork(np.zeros((1, 2, 4, 4), dtype=np.float32))
     monkeypatch.setattr(
-        "oralsight_api.model_adapters.cv2.dnn.readNetFromONNX",
+        "stoma3d_api.model_adapters.cv2.dnn.readNetFromONNX",
         lambda _path: invalid_network,
     )
     with pytest.raises(ModelAdapterLoadError, match="startup validation"):
@@ -155,7 +155,7 @@ def test_onnx_loader_runs_startup_forward_and_fails_closed(
 
     valid_network = _FakeNetwork(np.zeros((1, 1, 4, 4), dtype=np.float32))
     monkeypatch.setattr(
-        "oralsight_api.model_adapters.cv2.dnn.readNetFromONNX",
+        "stoma3d_api.model_adapters.cv2.dnn.readNetFromONNX",
         lambda _path: valid_network,
     )
     adapter = load_onnx_adapter(_spec(ModelHead.SEGMENTATION, "binary_mask_logits"))

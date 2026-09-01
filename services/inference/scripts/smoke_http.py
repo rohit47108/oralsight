@@ -51,7 +51,7 @@ def _post_multipart_json(
     fields: dict[str, str],
     files: dict[str, tuple[str, bytes, str]],
 ) -> tuple[dict[str, object], str]:
-    boundary = f"oralsight-smoke-{uuid.uuid4().hex}"
+    boundary = f"stoma3d-smoke-{uuid.uuid4().hex}"
     body = bytearray()
     for name, value in fields.items():
         body.extend(f"--{boundary}\r\n".encode())
@@ -94,15 +94,15 @@ def main() -> int:
     environment = os.environ.copy()
     environment.update(
         {
-            "ORALSIGHT_DEPLOYMENT_MODE": "development",
-            "ORALSIGHT_REQUIRE_RESPONSE_SIGNING": "false",
-            "ORALSIGHT_ENABLE_DEMO_FIXTURES": "false",
-            "ORALSIGHT_RELEASE_MANIFEST_PATH": str(
+            "STOMA3D_DEPLOYMENT_MODE": "development",
+            "STOMA3D_REQUIRE_RESPONSE_SIGNING": "false",
+            "STOMA3D_ENABLE_DEMO_FIXTURES": "false",
+            "STOMA3D_RELEASE_MANIFEST_PATH": str(
                 (service_directory / "release" / "release-manifest.json").resolve()
             ),
         }
     )
-    environment.pop("ORALSIGHT_RESPONSE_SIGNING_PRIVATE_KEY_B64", None)
+    environment.pop("STOMA3D_RESPONSE_SIGNING_PRIVATE_KEY_B64", None)
 
     process = subprocess.Popen(
         [

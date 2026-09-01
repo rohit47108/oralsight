@@ -15,7 +15,7 @@ import {
 } from "react-native";
 import { Canvas, useFrame, useThree } from "@react-three/fiber/native";
 import { Ionicons } from "@expo/vector-icons";
-import { MOUTH_REGION_DETAILS, type MouthRegion } from "@oralsight/contracts";
+import { MOUTH_REGION_DETAILS, type MouthRegion } from "@stoma3d/contracts";
 import type { Group } from "three";
 
 import { ORAL_MAP_ASSET_VERSION } from "@/constants";

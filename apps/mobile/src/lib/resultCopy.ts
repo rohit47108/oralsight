@@ -1,4 +1,4 @@
-import type { AnalysisStatus } from "@oralsight/contracts";
+import type { AnalysisStatus } from "@stoma3d/contracts";
 
 const RESULT_REASON_COPY: Readonly<Record<string, string>> = {
   image_too_small: "The image is too small to evaluate reliably.",

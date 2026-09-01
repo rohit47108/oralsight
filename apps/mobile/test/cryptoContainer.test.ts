@@ -7,7 +7,7 @@ describe("AES-256-GCM protected file container", () => {
   const nonce = Uint8Array.from({ length: 12 }, (_, index) => index + 10);
 
   it("round-trips protected bytes", () => {
-    const plaintext = new TextEncoder().encode("OralSight protected fixture");
+    const plaintext = new TextEncoder().encode("Stoma3D protected fixture");
     expect(openAesGcm(key, sealAesGcm(key, nonce, plaintext))).toEqual(
       plaintext,
     );

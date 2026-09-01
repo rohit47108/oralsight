@@ -5,7 +5,7 @@ import { Image as NativeImage } from "react-native";
 
 import { TRANSPORT_IMAGE_BYTE_LIMIT } from "@/constants";
 import { evaluateImageTelemetry, type ImageTelemetry } from "@/lib/quality";
-import { createOralSightTempUri, removeFileIfPresent } from "@/lib/tempFiles";
+import { createStoma3DTempUri, removeFileIfPresent } from "@/lib/tempFiles";
 
 export interface SanitizedCapture {
   uri: string;
@@ -202,7 +202,7 @@ async function sanitizeImageCapture(
         "The image could not be reduced to the protected upload-size limit. Choose a more tightly framed photo.",
       );
     }
-    protectedTempUri = await createOralSightTempUri("capture", "jpg");
+    protectedTempUri = await createStoma3DTempUri("capture", "jpg");
     await FileSystem.writeAsStringAsync(protectedTempUri, output.base64, {
       encoding: FileSystem.EncodingType.Base64,
     });

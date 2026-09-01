@@ -14,14 +14,14 @@ RUN apt-get update \
 COPY pyproject.toml uv.lock ./
 RUN pip install --no-cache-dir uv==0.11.32 \
     && uv sync --frozen --no-dev --no-install-project \
-    && adduser --disabled-password --gecos "" --uid 10001 oralsight
+    && adduser --disabled-password --gecos "" --uid 10001 stoma3d
 
 COPY src ./src
 
-USER oralsight
+USER stoma3d
 EXPOSE 8010
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
-  CMD ["/app/.venv/bin/python", "-m", "oralsight_worker.main", "health", "--url", "http://127.0.0.1:8010/readyz"]
+  CMD ["/app/.venv/bin/python", "-m", "stoma3d_worker.main", "health", "--url", "http://127.0.0.1:8010/readyz"]
 
-CMD ["/app/.venv/bin/python", "-m", "uvicorn", "oralsight_worker.main:app", "--host", "0.0.0.0", "--port", "8010", "--no-access-log", "--no-server-header"]
+CMD ["/app/.venv/bin/python", "-m", "uvicorn", "stoma3d_worker.main:app", "--host", "0.0.0.0", "--port", "8010", "--no-access-log", "--no-server-header"]

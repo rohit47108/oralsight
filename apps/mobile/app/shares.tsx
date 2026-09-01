@@ -9,7 +9,7 @@ import { shareSecretStaysInFragment } from "@/cloud/shareUrl";
 import { useCloudStore } from "@/cloud/useCloudStore";
 import { Screen } from "@/components/Screen";
 import { Button, Card, ChoiceChip, SectionTitle } from "@/components/Ui";
-import { useOralSightStore } from "@/store/useOralSightStore";
+import { useStoma3DStore } from "@/store/useStoma3DStore";
 import { useAppTheme } from "@/theme";
 
 const expiryChoices = [
@@ -21,7 +21,7 @@ const expiryChoices = [
 export default function SharesRoute() {
   const theme = useAppTheme();
   const cloud = useCloudStore();
-  const sessions = useOralSightStore((state) => state.sessions);
+  const sessions = useStoma3DStore((state) => state.sessions);
   const [resources, setResources] = useState<
     Awaited<ReturnType<typeof shareableCloudResources>>
   >([]);
@@ -161,7 +161,7 @@ export default function SharesRoute() {
           />
           <View
             accessible
-            accessibilityLabel="Secure OralSight sharing QR code"
+            accessibilityLabel="Secure Stoma3D sharing QR code"
             style={styles.qr}
           >
             <QRCode
@@ -178,7 +178,7 @@ export default function SharesRoute() {
             icon="share-outline"
             onPress={() =>
               void Share.share({
-                title: "OralSight observation link",
+                title: "Stoma3D observation link",
                 message: activeUrl,
               })
             }

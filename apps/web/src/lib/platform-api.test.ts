@@ -220,7 +220,7 @@ describe("platform response boundaries", () => {
       reviewedAt: CREATED_AT,
       retentionExpiresAt: "2033-08-04T12:00:00Z",
       identityRole: {
-        requiredClaim: "https://oralsight.app/roles",
+        requiredClaim: "https://stoma3d.app/roles",
         requiredValue: "clinician",
         observationStatus: "awaiting_token_observation",
         oidcRoleObservedAt: null,

@@ -100,7 +100,7 @@ export default async function AdminVerificationPage() {
           <p>
             Locate the reviewed account using its identity-provider invitation
             reference, assign the required role, and ask the clinician to sign
-            out and back in. OralSight records only when that role is later
+            out and back in. Stoma3D records only when that role is later
             observed in a validated token.
           </p>
         </div>

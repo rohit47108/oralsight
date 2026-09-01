@@ -32,7 +32,7 @@ def test_generated_card_contains_machine_readable_version_and_marker() -> None:
         "marker_id": MARKER_ID,
         "marker_side_mm": 20.0,
         "reference_bar_mm": 50.0,
-        "schema": "oralsight_calibration_card",
+        "schema": "stoma3d_calibration_card",
         "version": CARD_VERSION,
     }
 

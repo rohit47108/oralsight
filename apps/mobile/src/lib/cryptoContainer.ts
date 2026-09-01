@@ -9,10 +9,9 @@ export function sealAesGcm(
   plaintext: Uint8Array,
   associatedData?: Uint8Array,
 ): Uint8Array {
-  if (key.length !== 32)
-    throw new Error("OralSight file keys must be 256 bits.");
+  if (key.length !== 32) throw new Error("Stoma3D file keys must be 256 bits.");
   if (nonce.length !== AES_GCM_NONCE_LENGTH)
-    throw new Error("OralSight AES-GCM nonces must be 96 bits.");
+    throw new Error("Stoma3D AES-GCM nonces must be 96 bits.");
   const ciphertext = gcm(key, nonce, associatedData).encrypt(plaintext);
   const packed = new Uint8Array(1 + nonce.length + ciphertext.length);
   packed[0] = CONTAINER_VERSION;
@@ -26,8 +25,7 @@ export function openAesGcm(
   packed: Uint8Array,
   associatedData?: Uint8Array,
 ): Uint8Array {
-  if (key.length !== 32)
-    throw new Error("OralSight file keys must be 256 bits.");
+  if (key.length !== 32) throw new Error("Stoma3D file keys must be 256 bits.");
   if (
     packed[0] !== CONTAINER_VERSION ||
     packed.length <= AES_GCM_NONCE_LENGTH + 1

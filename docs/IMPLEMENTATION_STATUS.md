@@ -1,4 +1,4 @@
-# OralSight implementation status
+# Stoma3D implementation status
 
 Last updated: 2026-08-30
 
@@ -8,7 +8,7 @@ Last updated: 2026-08-30
 
 ## Plain-language result
 
-OralSight is a real, local-first mouth-observation product, not a fixture-driven
+Stoma3D is a real, local-first mouth-observation product, not a fixture-driven
 photo demo. The repository contains an eight-region mobile workflow, the public
 and authenticated web product, the account/cloud/clinician platform, the private
 artifact worker, and the stateless image-analysis service. Normal installed-app
@@ -174,4 +174,4 @@ These cannot be manufactured inside the source tree:
 - A clinician-approved guidance rule if urgency is to be enabled. Without it,
   urgency stays disabled and only neutral seek-care information is shown.
 
-It is not part of this OralSight source-release verdict.
+It is not part of this Stoma3D source-release verdict.

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { router } from "expo-router";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
-import type { ModelCard } from "@oralsight/contracts";
+import type { ModelCard } from "@stoma3d/contracts";
 
 import { Screen } from "@/components/Screen";
 import { Button, Card, SectionTitle } from "@/components/Ui";

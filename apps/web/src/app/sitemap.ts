@@ -12,7 +12,7 @@ const routes = [
 ] as const;
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://oralsight.org";
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://stoma3d.org";
 
   return routes.map((route) => ({
     url: `${siteUrl}${route}`,

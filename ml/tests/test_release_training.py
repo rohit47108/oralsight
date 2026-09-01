@@ -3,8 +3,8 @@ from __future__ import annotations
 import csv
 from pathlib import Path
 
-from oralsight_ml.constants import APPEARANCE_CLASSES, DISEASE_CLASSES
-from oralsight_ml.release_training import (
+from stoma3d_ml.constants import APPEARANCE_CLASSES, DISEASE_CLASSES
+from stoma3d_ml.release_training import (
     SUPPLEMENTAL_SEGMENTATION_COLUMNS,
     _build_parser,
     _classification_artifact_name,

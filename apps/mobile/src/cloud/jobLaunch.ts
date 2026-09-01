@@ -1,5 +1,5 @@
 import type { PersistedAppState } from "../types";
-import { useOralSightStore } from "../store/useOralSightStore";
+import { useStoma3DStore } from "../store/useStoma3DStore";
 
 import { PlatformClient } from "./client";
 import type { AnalysisRun, JobResponse } from "./contracts";
@@ -121,7 +121,7 @@ export async function prepareCloudJob(
     return { payload: request.payload, inputRefs: [] };
   }
 
-  const state = useOralSightStore.getState() as PersistedAppState;
+  const state = useStoma3DStore.getState() as PersistedAppState;
   const session = requireSession(state, localSessionId);
   const mappings = await readCloudResourceMappings();
   const indexed = mappingIndex(mappings);
@@ -438,7 +438,7 @@ export async function prepareCloudJob(
       kind: "summary_video",
       scanSessionId: remoteSession.remoteId,
       reportId,
-      templateVersion: "oralsight-summary-v1",
+      templateVersion: "stoma3d-summary-v1",
       selectedObservations: selected,
       guidance: {
         code: "neutral_seek_care_information",

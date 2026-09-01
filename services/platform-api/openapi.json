@@ -2782,8 +2782,8 @@
             "type": "string"
           },
           "mediaType": {
-            "const": "application/vnd.oralsight.export",
-            "default": "application/vnd.oralsight.export",
+            "const": "application/vnd.stoma3d.export",
+            "default": "application/vnd.stoma3d.export",
             "title": "Mediatype",
             "type": "string"
           },
@@ -3099,7 +3099,7 @@
             "type": "string"
           },
           "mediaType": {
-            "const": "application/vnd.oralsight.export",
+            "const": "application/vnd.stoma3d.export",
             "title": "Mediatype",
             "type": "string"
           },
@@ -5580,7 +5580,7 @@
     }
   },
   "info": {
-    "title": "OralSight Platform API",
+    "title": "Stoma3D Platform API",
     "version": "0.1.0"
   },
   "openapi": "3.1.0",
@@ -5612,7 +5612,7 @@
         "parameters": [
           {
             "in": "header",
-            "name": "X-OralSight-Service",
+            "name": "X-Stoma3D-Service",
             "required": false,
             "schema": {
               "anyOf": [
@@ -5623,12 +5623,12 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Oralsight-Service"
+              "title": "X-Stoma3D-Service"
             }
           },
           {
             "in": "header",
-            "name": "X-OralSight-Timestamp",
+            "name": "X-Stoma3D-Timestamp",
             "required": false,
             "schema": {
               "anyOf": [
@@ -5639,12 +5639,12 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Oralsight-Timestamp"
+              "title": "X-Stoma3D-Timestamp"
             }
           },
           {
             "in": "header",
-            "name": "X-OralSight-Nonce",
+            "name": "X-Stoma3D-Nonce",
             "required": false,
             "schema": {
               "anyOf": [
@@ -5655,12 +5655,12 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Oralsight-Nonce"
+              "title": "X-Stoma3D-Nonce"
             }
           },
           {
             "in": "header",
-            "name": "X-OralSight-Content-SHA256",
+            "name": "X-Stoma3D-Content-SHA256",
             "required": false,
             "schema": {
               "anyOf": [
@@ -5671,12 +5671,12 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Oralsight-Content-Sha256"
+              "title": "X-Stoma3D-Content-Sha256"
             }
           },
           {
             "in": "header",
-            "name": "X-OralSight-Signature",
+            "name": "X-Stoma3D-Signature",
             "required": false,
             "schema": {
               "anyOf": [
@@ -5687,7 +5687,7 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Oralsight-Signature"
+              "title": "X-Stoma3D-Signature"
             }
           }
         ],
@@ -5758,7 +5758,7 @@
           },
           {
             "in": "header",
-            "name": "X-OralSight-Service",
+            "name": "X-Stoma3D-Service",
             "required": false,
             "schema": {
               "anyOf": [
@@ -5769,12 +5769,12 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Oralsight-Service"
+              "title": "X-Stoma3D-Service"
             }
           },
           {
             "in": "header",
-            "name": "X-OralSight-Timestamp",
+            "name": "X-Stoma3D-Timestamp",
             "required": false,
             "schema": {
               "anyOf": [
@@ -5785,12 +5785,12 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Oralsight-Timestamp"
+              "title": "X-Stoma3D-Timestamp"
             }
           },
           {
             "in": "header",
-            "name": "X-OralSight-Nonce",
+            "name": "X-Stoma3D-Nonce",
             "required": false,
             "schema": {
               "anyOf": [
@@ -5801,12 +5801,12 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Oralsight-Nonce"
+              "title": "X-Stoma3D-Nonce"
             }
           },
           {
             "in": "header",
-            "name": "X-OralSight-Content-SHA256",
+            "name": "X-Stoma3D-Content-SHA256",
             "required": false,
             "schema": {
               "anyOf": [
@@ -5817,12 +5817,12 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Oralsight-Content-Sha256"
+              "title": "X-Stoma3D-Content-Sha256"
             }
           },
           {
             "in": "header",
-            "name": "X-OralSight-Signature",
+            "name": "X-Stoma3D-Signature",
             "required": false,
             "schema": {
               "anyOf": [
@@ -5833,7 +5833,7 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Oralsight-Signature"
+              "title": "X-Stoma3D-Signature"
             }
           }
         ],
@@ -5878,7 +5878,7 @@
           },
           {
             "in": "header",
-            "name": "X-OralSight-Service",
+            "name": "X-Stoma3D-Service",
             "required": false,
             "schema": {
               "anyOf": [
@@ -5889,12 +5889,12 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Oralsight-Service"
+              "title": "X-Stoma3D-Service"
             }
           },
           {
             "in": "header",
-            "name": "X-OralSight-Timestamp",
+            "name": "X-Stoma3D-Timestamp",
             "required": false,
             "schema": {
               "anyOf": [
@@ -5905,12 +5905,12 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Oralsight-Timestamp"
+              "title": "X-Stoma3D-Timestamp"
             }
           },
           {
             "in": "header",
-            "name": "X-OralSight-Nonce",
+            "name": "X-Stoma3D-Nonce",
             "required": false,
             "schema": {
               "anyOf": [
@@ -5921,12 +5921,12 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Oralsight-Nonce"
+              "title": "X-Stoma3D-Nonce"
             }
           },
           {
             "in": "header",
-            "name": "X-OralSight-Content-SHA256",
+            "name": "X-Stoma3D-Content-SHA256",
             "required": false,
             "schema": {
               "anyOf": [
@@ -5937,12 +5937,12 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Oralsight-Content-Sha256"
+              "title": "X-Stoma3D-Content-Sha256"
             }
           },
           {
             "in": "header",
-            "name": "X-OralSight-Signature",
+            "name": "X-Stoma3D-Signature",
             "required": false,
             "schema": {
               "anyOf": [
@@ -5953,7 +5953,7 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Oralsight-Signature"
+              "title": "X-Stoma3D-Signature"
             }
           }
         ],
@@ -5991,7 +5991,7 @@
         "parameters": [
           {
             "in": "header",
-            "name": "X-OralSight-Service",
+            "name": "X-Stoma3D-Service",
             "required": false,
             "schema": {
               "anyOf": [
@@ -6002,12 +6002,12 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Oralsight-Service"
+              "title": "X-Stoma3D-Service"
             }
           },
           {
             "in": "header",
-            "name": "X-OralSight-Timestamp",
+            "name": "X-Stoma3D-Timestamp",
             "required": false,
             "schema": {
               "anyOf": [
@@ -6018,12 +6018,12 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Oralsight-Timestamp"
+              "title": "X-Stoma3D-Timestamp"
             }
           },
           {
             "in": "header",
-            "name": "X-OralSight-Nonce",
+            "name": "X-Stoma3D-Nonce",
             "required": false,
             "schema": {
               "anyOf": [
@@ -6034,12 +6034,12 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Oralsight-Nonce"
+              "title": "X-Stoma3D-Nonce"
             }
           },
           {
             "in": "header",
-            "name": "X-OralSight-Content-SHA256",
+            "name": "X-Stoma3D-Content-SHA256",
             "required": false,
             "schema": {
               "anyOf": [
@@ -6050,12 +6050,12 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Oralsight-Content-Sha256"
+              "title": "X-Stoma3D-Content-Sha256"
             }
           },
           {
             "in": "header",
-            "name": "X-OralSight-Signature",
+            "name": "X-Stoma3D-Signature",
             "required": false,
             "schema": {
               "anyOf": [
@@ -6066,7 +6066,7 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Oralsight-Signature"
+              "title": "X-Stoma3D-Signature"
             }
           }
         ],
@@ -6113,7 +6113,7 @@
           },
           {
             "in": "header",
-            "name": "X-OralSight-Service",
+            "name": "X-Stoma3D-Service",
             "required": false,
             "schema": {
               "anyOf": [
@@ -6124,12 +6124,12 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Oralsight-Service"
+              "title": "X-Stoma3D-Service"
             }
           },
           {
             "in": "header",
-            "name": "X-OralSight-Timestamp",
+            "name": "X-Stoma3D-Timestamp",
             "required": false,
             "schema": {
               "anyOf": [
@@ -6140,12 +6140,12 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Oralsight-Timestamp"
+              "title": "X-Stoma3D-Timestamp"
             }
           },
           {
             "in": "header",
-            "name": "X-OralSight-Nonce",
+            "name": "X-Stoma3D-Nonce",
             "required": false,
             "schema": {
               "anyOf": [
@@ -6156,12 +6156,12 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Oralsight-Nonce"
+              "title": "X-Stoma3D-Nonce"
             }
           },
           {
             "in": "header",
-            "name": "X-OralSight-Content-SHA256",
+            "name": "X-Stoma3D-Content-SHA256",
             "required": false,
             "schema": {
               "anyOf": [
@@ -6172,12 +6172,12 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Oralsight-Content-Sha256"
+              "title": "X-Stoma3D-Content-Sha256"
             }
           },
           {
             "in": "header",
-            "name": "X-OralSight-Signature",
+            "name": "X-Stoma3D-Signature",
             "required": false,
             "schema": {
               "anyOf": [
@@ -6188,7 +6188,7 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Oralsight-Signature"
+              "title": "X-Stoma3D-Signature"
             }
           }
         ],
@@ -6233,7 +6233,7 @@
           },
           {
             "in": "header",
-            "name": "X-OralSight-Service",
+            "name": "X-Stoma3D-Service",
             "required": false,
             "schema": {
               "anyOf": [
@@ -6244,12 +6244,12 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Oralsight-Service"
+              "title": "X-Stoma3D-Service"
             }
           },
           {
             "in": "header",
-            "name": "X-OralSight-Timestamp",
+            "name": "X-Stoma3D-Timestamp",
             "required": false,
             "schema": {
               "anyOf": [
@@ -6260,12 +6260,12 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Oralsight-Timestamp"
+              "title": "X-Stoma3D-Timestamp"
             }
           },
           {
             "in": "header",
-            "name": "X-OralSight-Nonce",
+            "name": "X-Stoma3D-Nonce",
             "required": false,
             "schema": {
               "anyOf": [
@@ -6276,12 +6276,12 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Oralsight-Nonce"
+              "title": "X-Stoma3D-Nonce"
             }
           },
           {
             "in": "header",
-            "name": "X-OralSight-Content-SHA256",
+            "name": "X-Stoma3D-Content-SHA256",
             "required": false,
             "schema": {
               "anyOf": [
@@ -6292,12 +6292,12 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Oralsight-Content-Sha256"
+              "title": "X-Stoma3D-Content-Sha256"
             }
           },
           {
             "in": "header",
-            "name": "X-OralSight-Signature",
+            "name": "X-Stoma3D-Signature",
             "required": false,
             "schema": {
               "anyOf": [
@@ -6308,7 +6308,7 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Oralsight-Signature"
+              "title": "X-Stoma3D-Signature"
             }
           }
         ],
@@ -6344,7 +6344,7 @@
         "parameters": [
           {
             "in": "header",
-            "name": "X-OralSight-Service",
+            "name": "X-Stoma3D-Service",
             "required": false,
             "schema": {
               "anyOf": [
@@ -6355,12 +6355,12 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Oralsight-Service"
+              "title": "X-Stoma3D-Service"
             }
           },
           {
             "in": "header",
-            "name": "X-OralSight-Timestamp",
+            "name": "X-Stoma3D-Timestamp",
             "required": false,
             "schema": {
               "anyOf": [
@@ -6371,12 +6371,12 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Oralsight-Timestamp"
+              "title": "X-Stoma3D-Timestamp"
             }
           },
           {
             "in": "header",
-            "name": "X-OralSight-Nonce",
+            "name": "X-Stoma3D-Nonce",
             "required": false,
             "schema": {
               "anyOf": [
@@ -6387,12 +6387,12 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Oralsight-Nonce"
+              "title": "X-Stoma3D-Nonce"
             }
           },
           {
             "in": "header",
-            "name": "X-OralSight-Content-SHA256",
+            "name": "X-Stoma3D-Content-SHA256",
             "required": false,
             "schema": {
               "anyOf": [
@@ -6403,12 +6403,12 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Oralsight-Content-Sha256"
+              "title": "X-Stoma3D-Content-Sha256"
             }
           },
           {
             "in": "header",
-            "name": "X-OralSight-Signature",
+            "name": "X-Stoma3D-Signature",
             "required": false,
             "schema": {
               "anyOf": [
@@ -6419,7 +6419,7 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Oralsight-Signature"
+              "title": "X-Stoma3D-Signature"
             }
           }
         ],

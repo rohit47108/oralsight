@@ -58,7 +58,7 @@ function captureView(
   };
 }
 
-describe("OralSight platform contract v2", () => {
+describe("Stoma3D platform contract v2", () => {
   it("is additive and leaves the canonical v1 region contract unchanged", () => {
     expect(CONTRACT_VERSION).toBe("1.1.0");
     expect(PLATFORM_CONTRACT_VERSION).toBe("2.0.0");
@@ -283,7 +283,7 @@ describe("OralSight platform contract v2", () => {
       envelopeId: "envelope-1",
       resultType: "analysis" as const,
       subjectId: "analysis-run-1",
-      schemaId: "https://oralsight.example/schemas/analysis-run-v2.json",
+      schemaId: "https://stoma3d.example/schemas/analysis-run-v2.json",
       payload: { analysisRunId: "analysis-run-1" },
       payloadSha256: SHA256,
       sourceAssetSha256: [SHA256],

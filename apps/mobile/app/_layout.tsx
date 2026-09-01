@@ -23,20 +23,20 @@ import {
   reminderCaptureId,
 } from "@/lib/notifications";
 import {
-  purgeOralSightBackgroundTemporaryFiles,
-  purgeOralSightTemporaryFiles,
+  purgeStoma3DBackgroundTemporaryFiles,
+  purgeStoma3DTemporaryFiles,
 } from "@/lib/tempFiles";
-import { useOralSightStore } from "@/store/useOralSightStore";
+import { useStoma3DStore } from "@/store/useStoma3DStore";
 import { useAppTheme, useShouldReduceMotion } from "@/theme";
 
 function RootLayoutContent() {
   const theme = useAppTheme();
-  const hydrate = useOralSightStore((state) => state.hydrate);
-  const deleteEverything = useOralSightStore((state) => state.deleteEverything);
+  const hydrate = useStoma3DStore((state) => state.hydrate);
+  const deleteEverything = useStoma3DStore((state) => state.deleteEverything);
   const reducedMotion = useShouldReduceMotion();
-  const hydrated = useOralSightStore((state) => state.hydrated);
-  const storageError = useOralSightStore((state) => state.storageError);
-  const consentedAt = useOralSightStore((state) => state.consentedAt);
+  const hydrated = useStoma3DStore((state) => state.hydrated);
+  const storageError = useStoma3DStore((state) => state.storageError);
+  const consentedAt = useStoma3DStore((state) => state.consentedAt);
   const [resetBusy, setResetBusy] = useState(false);
   const [resetError, setResetError] = useState<string | null>(null);
   const segments = useSegments();
@@ -47,9 +47,9 @@ function RootLayoutContent() {
     hydrated && !storageError && !consentedAt && routeRequiresConsent(segments);
   useEffect(() => {
     let active = true;
-    void purgeOralSightTemporaryFiles()
+    void purgeStoma3DTemporaryFiles()
       .catch(() => {
-        console.warn("[ORALSIGHT_TEMP_PURGE_FAILED]");
+        console.warn("[STOMA3D_TEMP_PURGE_FAILED]");
       })
       .finally(() => {
         if (active) void hydrate();
@@ -69,8 +69,8 @@ function RootLayoutContent() {
         if (cloudSessionStatus === "signed_in") void syncCloud();
         return;
       }
-      void purgeOralSightBackgroundTemporaryFiles().catch(() => {
-        console.warn("[ORALSIGHT_BACKGROUND_TEMP_PURGE_FAILED]");
+      void purgeStoma3DBackgroundTemporaryFiles().catch(() => {
+        console.warn("[STOMA3D_BACKGROUND_TEMP_PURGE_FAILED]");
       });
     });
     return () => subscription.remove();
@@ -78,13 +78,13 @@ function RootLayoutContent() {
 
   useEffect(() => {
     void configureLocalNotifications().catch(() => {
-      console.warn("[ORALSIGHT_NOTIFICATION_SETUP_FAILED]");
+      console.warn("[STOMA3D_NOTIFICATION_SETUP_FAILED]");
     });
     const openReminder = (notification: Notifications.Notification) => {
       const captureId = reminderCaptureId(notification);
       if (
         !captureId ||
-        !useOralSightStore
+        !useStoma3DStore
           .getState()
           .captures.some((capture) => capture.id === captureId)
       ) {
@@ -159,11 +159,11 @@ function RootLayoutContent() {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Delete local data and reset"
-            accessibilityHint="Permanently removes all local OralSight observations and reports"
+            accessibilityHint="Permanently removes all local Stoma3D observations and reports"
             disabled={resetBusy}
             onPress={() =>
               Alert.alert(
-                "Reset all local OralSight data?",
+                "Reset all local Stoma3D data?",
                 "This permanently deletes the protected database, images, reports, and encryption keys on this device. This cannot be undone.",
                 [
                   { text: "Cancel", style: "cancel" },

@@ -20,7 +20,7 @@ test("keeps Expo CLI local and gates Hermes source maps for short-path builds", 
     reactNativeDir = new File(["node", "--print", "require.resolve('react-native/package.json')"].execute(null, rootDir).text.trim()).getParentFile().getAbsoluteFile()
     cliFile = file("\${projectRoot}/scripts/expo-cli-shim.cjs")
     bundleCommand = "export:embed"
-    if ((findProperty("oralsight.disableHermesSourceMaps") ?: false).toBoolean()) {
+    if ((findProperty("stoma3d.disableHermesSourceMaps") ?: false).toBoolean()) {
         hermesFlags = ["-O"]
     }
 }`,

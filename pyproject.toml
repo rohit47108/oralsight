@@ -1,7 +1,7 @@
 [project]
-name = "oralsight-workspace"
+name = "stoma3d-workspace"
 version = "0.1.0"
-description = "Python workspace for OralSight inference and research evaluation"
+description = "Python workspace for Stoma3D inference and research evaluation"
 requires-python = ">=3.12,<3.15"
 dependencies = []
 

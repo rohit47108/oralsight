@@ -101,7 +101,7 @@ describe("outline adjustment geometry", () => {
       note: "  Boundary follows the visible edge.  ",
     });
     expect(parseOutlineAdjustment(body)).toEqual({
-      schema: "oralsight-outline-adjustment-v1",
+      schema: "stoma3d-outline-adjustment-v1",
       observationId: "observation-1",
       captureViewId: "capture-view-1",
       region: "left_buccal_mucosa",

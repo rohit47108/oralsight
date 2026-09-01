@@ -58,7 +58,7 @@ export function ProductShell({
       ? "Clinical review"
       : area === "shared"
         ? "Shared record"
-        : "My OralSight";
+        : "My Stoma3D";
 
   return (
     <div className={`product-shell product-shell--${area}`}>
@@ -93,7 +93,7 @@ export function ProductShell({
         <footer className="product-disclaimer">
           <strong>This result is not a diagnosis.</strong>
           <span>
-            Use OralSight records to support a professional conversation.
+            Use Stoma3D records to support a professional conversation.
           </span>
         </footer>
       </div>

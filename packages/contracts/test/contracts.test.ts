@@ -16,7 +16,7 @@ import {
 } from "../src/testing";
 import bundledDemo from "../fixtures/bundled-demo.json";
 
-describe("OralSight contracts", () => {
+describe("Stoma3D contracts", () => {
   it("requires every canonical region for completion", () => {
     expect(isCompleteRegionSet(MOUTH_REGIONS)).toBe(true);
     expect(isCompleteRegionSet(MOUTH_REGIONS.slice(0, 7))).toBe(false);
@@ -141,7 +141,7 @@ describe("OralSight contracts", () => {
       analyzeMetadataSchema.parse({
         ...live,
         calibration: {
-          cardVersion: "oralsight-calibration-v1",
+          cardVersion: "stoma3d-calibration-v1",
           markerId: 17,
           markerSideMm: 20,
           planeConfirmed: true,
@@ -152,7 +152,7 @@ describe("OralSight contracts", () => {
       analyzeMetadataSchema.parse({
         ...live,
         calibration: {
-          cardVersion: "oralsight-calibration-v1",
+          cardVersion: "stoma3d-calibration-v1",
           markerId: 9,
           markerSideMm: 20,
           planeConfirmed: true,
@@ -246,7 +246,7 @@ describe("OralSight contracts", () => {
         measurementLabel: "approximate image-normalized change",
       },
       calibratedMeasurementChanges: {
-        cardVersion: "oralsight-calibration-v1",
+        cardVersion: "stoma3d-calibration-v1",
         markerId: 17,
         markerSideMm: 20,
         baselineWidthMm: 4,

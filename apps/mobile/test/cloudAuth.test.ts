@@ -12,8 +12,8 @@ import {
 
 const config: OidcConfig = {
   issuer: "https://identity.example.test",
-  clientId: "oralsight-mobile",
-  redirectUri: "oralsight://auth/callback",
+  clientId: "stoma3d-mobile",
+  redirectUri: "stoma3d://auth/callback",
   scopes: ["openid", "profile", "offline_access"],
 };
 
@@ -71,7 +71,7 @@ describe("OIDC authorization-code PKCE", () => {
   it("rejects a callback with the wrong state", () => {
     expect(() =>
       validateAuthorizationCallback(
-        "oralsight://auth/callback?code=abc&state=wrong",
+        "stoma3d://auth/callback?code=abc&state=wrong",
         "expected",
       ),
     ).toThrow(/verified/i);

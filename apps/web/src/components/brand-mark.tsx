@@ -2,7 +2,7 @@ import Link from "next/link";
 
 export function BrandMark() {
   return (
-    <Link className="brand-mark" href="/" aria-label="OralSight home">
+    <Link className="brand-mark" href="/" aria-label="Stoma3D home">
       <svg
         className="brand-mark__symbol"
         viewBox="0 0 32 32"
@@ -36,7 +36,7 @@ export function BrandMark() {
           opacity=".34"
         />
       </svg>
-      <span>OralSight</span>
+      <span>Stoma3D</span>
     </Link>
   );
 }

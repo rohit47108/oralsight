@@ -11,7 +11,7 @@ $repositoryPrefix = $repositoryRoot.TrimEnd(
 ) + [System.IO.Path]::DirectorySeparatorChar
 if ([string]::IsNullOrWhiteSpace($OutputPath)) {
     $parentDirectory = Split-Path -Parent $repositoryRoot
-    $OutputPath = Join-Path $parentDirectory "OralSight-source.zip"
+    $OutputPath = Join-Path $parentDirectory "Stoma3D-source.zip"
 }
 
 $outputFullPath = [System.IO.Path]::GetFullPath($OutputPath)

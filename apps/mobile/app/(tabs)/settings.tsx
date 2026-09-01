@@ -11,23 +11,23 @@ import {
   ToggleRow,
 } from "@/components/Ui";
 import { bundledGuidanceStatus } from "@/lib/guidanceRules";
-import { useOralSightStore } from "@/store/useOralSightStore";
+import { useStoma3DStore } from "@/store/useStoma3DStore";
 import { useAppTheme } from "@/theme";
-import { CONTRACT_VERSION } from "@oralsight/contracts";
+import { CONTRACT_VERSION } from "@stoma3d/contracts";
 import { useCloudStore } from "@/cloud/useCloudStore";
 
 export default function SettingsRoute() {
   const theme = useAppTheme();
-  const settings = useOralSightStore((state) => state.settings);
-  const updateSettings = useOralSightStore((state) => state.updateSettings);
-  const deleteEverything = useOralSightStore((state) => state.deleteEverything);
+  const settings = useStoma3DStore((state) => state.settings);
+  const updateSettings = useStoma3DStore((state) => state.updateSettings);
+  const deleteEverything = useStoma3DStore((state) => state.deleteEverything);
   const [deleting, setDeleting] = useState(false);
   const cloud = useCloudStore();
   const guidance = bundledGuidanceStatus();
 
   const confirmDeletion = () =>
     Alert.alert(
-      "Delete all OralSight data?",
+      "Delete all Stoma3D data?",
       "This removes the encrypted database, captures, reports, comparisons, and consent record, then rotates installation keys. This cannot be undone.",
       [
         { text: "Cancel", style: "cancel" },
@@ -42,7 +42,7 @@ export default function SettingsRoute() {
                 setDeleting(false);
                 Alert.alert(
                   "Deletion incomplete",
-                  "OralSight could not verify that every local file and key was removed. Your data has not been reported as deleted. Try again before sharing or uninstalling the app.",
+                  "Stoma3D could not verify that every local file and key was removed. Your data has not been reported as deleted. Try again before sharing or uninstalling the app.",
                 );
               });
           },
@@ -88,7 +88,7 @@ export default function SettingsRoute() {
       <Card>
         <SectionTitle
           title="Accessibility"
-          subtitle="OralSight also follows your device text-size and appearance settings."
+          subtitle="Stoma3D also follows your device text-size and appearance settings."
           icon="accessibility-outline"
         />
         <ToggleRow
@@ -151,7 +151,7 @@ export default function SettingsRoute() {
           description={
             cloud.sessionStatus === "signed_in"
               ? "Off by default. Approved app-use events are linked to your account for consent and deletion, kept for 30 days, and shown to admins only as grouped totals. Never includes images, symptoms, regions, results, record IDs, free text, advertising IDs, or precise event times."
-              : "Sign in to choose this optional account setting. It stays off while you use OralSight locally."
+              : "Sign in to choose this optional account setting. It stays off while you use Stoma3D locally."
           }
           value={settings.analyticsOptIn}
           disabled={cloud.sessionStatus !== "signed_in" || cloud.busy}
@@ -202,7 +202,7 @@ export default function SettingsRoute() {
         />
       </Card>
       <Text style={[styles.version, { color: theme.secondaryText }]}>
-        OralSight research app · contract {CONTRACT_VERSION} · accounts and
+        Stoma3D research app · contract {CONTRACT_VERSION} · accounts and
         analytics are optional
       </Text>
     </Screen>

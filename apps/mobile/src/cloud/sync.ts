@@ -15,7 +15,7 @@ import {
   updateCloudMetadata,
   type CloudOutboxInsert,
 } from "@/lib/storage";
-import { useOralSightStore } from "@/store/useOralSightStore";
+import { useStoma3DStore } from "@/store/useStoma3DStore";
 import type { PersistedAppState } from "@/types";
 
 import { PlatformClient, newIdempotencyKey } from "./client";
@@ -46,8 +46,8 @@ import {
 import { materializeRemoteCaptures } from "./materialize";
 import { requireActiveProductConsent } from "./consent";
 
-const INSTALLATION_ID_KEY = "oralsight.cloud.installation-id.v1";
-const DEVICE_ID_KEY_PREFIX = "oralsight.cloud.device-id.v1.";
+const INSTALLATION_ID_KEY = "stoma3d.cloud.installation-id.v1";
+const DEVICE_ID_KEY_PREFIX = "stoma3d.cloud.device-id.v1.";
 
 interface EntityMarker {
   entityType: SyncOperationInput["entityType"];
@@ -117,7 +117,7 @@ async function ensureDevice(
     {
       installationId: installId,
       platform: Platform.OS === "ios" ? "ios" : "android",
-      displayName: "OralSight mobile",
+      displayName: "Stoma3D mobile",
     },
     `device:${installId}`,
   );
@@ -324,7 +324,7 @@ async function pullRemote(options: {
   const metadata = await cloudMetadata("cloud.");
   let cursor = metadata["cloud.cursor"] ?? undefined;
   let pulled = 0;
-  let state = (await loadPersistedState()) ?? useOralSightStore.getState();
+  let state = (await loadPersistedState()) ?? useStoma3DStore.getState();
   const metadataUpdates: Record<string, string | null> = {};
 
   for (let pageNumber = 0; pageNumber < 100; pageNumber += 1) {
@@ -399,7 +399,7 @@ async function pullRemote(options: {
     }
     if (changes.length > 0) {
       state = mergeRemoteChanges(state, changes);
-      await useOralSightStore.getState().applyCloudState(state);
+      await useStoma3DStore.getState().applyCloudState(state);
       pulled += changes.length;
     }
     cursor = page.cursor.cursor;

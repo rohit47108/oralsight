@@ -1,4 +1,4 @@
-"""Generate printable OralSight calibration cards at an exact 300 DPI scale."""
+"""Generate printable Stoma3D calibration cards at an exact 300 DPI scale."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ DPI = 300
 MM_PER_INCH = 25.4
 MARKER_SIDE_MM = 20.0
 MARKER_ID = 17
-CARD_VERSION = "oralsight-calibration-v1"
+CARD_VERSION = "stoma3d-calibration-v1"
 REFERENCE_BAR_MM = 50.0
 NEUTRAL_PATCH_VALUES = (35, 100, 170, 235)
 
@@ -100,7 +100,7 @@ def build_card(*, page_width_mm: float, page_height_mm: float) -> Image.Image:
     small_font = _font(_px(2.4))
     small_bold = _font(_px(2.5), bold=True)
 
-    draw.text((margin, margin), "OralSight calibration card", fill=ink, font=title_font)
+    draw.text((margin, margin), "Stoma3D calibration card", fill=ink, font=title_font)
     subtitle_y = margin + _px(8)
     draw.text(
         (margin, subtitle_y),
@@ -143,7 +143,7 @@ def build_card(*, page_width_mm: float, page_height_mm: float) -> Image.Image:
 
     payload = json.dumps(
         {
-            "schema": "oralsight_calibration_card",
+            "schema": "stoma3d_calibration_card",
             "version": CARD_VERSION,
             "marker_dictionary": "DICT_4X4_50",
             "marker_id": MARKER_ID,
@@ -246,11 +246,11 @@ def generate(output_dir: Path) -> list[Path]:
         ("letter", 215.9, 279.4),
     ):
         card = build_card(page_width_mm=width_mm, page_height_mm=height_mm)
-        pdf_path = output_dir / f"oralsight-calibration-{name}.pdf"
+        pdf_path = output_dir / f"stoma3d-calibration-{name}.pdf"
         card.save(pdf_path, "PDF", resolution=DPI, quality=100)
         generated.append(pdf_path)
         if name == "a4":
-            preview_path = output_dir / "oralsight-calibration-preview.png"
+            preview_path = output_dir / "stoma3d-calibration-preview.png"
             preview = card.copy()
             preview.thumbnail((_px(105), _px(148.5)), Image.Resampling.LANCZOS)
             preview.save(preview_path, "PNG", optimize=True)

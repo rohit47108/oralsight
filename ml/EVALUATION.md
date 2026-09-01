@@ -1,6 +1,6 @@
 # Aggregate evaluation contract
 
-`oralsight-evaluate-gates` accepts one JSON object containing `evaluation_id` and the five
+`stoma3d-evaluate-gates` accepts one JSON object containing `evaluation_id` and the five
 sections below. Values at a threshold pass; any missing, non-finite, malformed, or lower
 quality evidence disables only that head. Metrics must come from locked, audited,
 patient-disjoint held-out evaluation—not training or synthetic fixtures.
@@ -20,7 +20,7 @@ bound. Appearance class keys are `red-patch`, `white-patch`, `ulcer-like`, `mixe
 `variation`, `opmd`, and `oral_cancer`.
 
 ```powershell
-python -m oralsight_ml.gates aggregate-evaluation.json `
+python -m stoma3d_ml.gates aggregate-evaluation.json `
   --output release-gates.json `
   --require segmentation `
   --require anatomy

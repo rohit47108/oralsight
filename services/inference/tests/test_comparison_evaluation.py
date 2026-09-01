@@ -6,9 +6,9 @@ import cv2
 import numpy as np
 import pytest
 
-from oralsight_api import comparison_evaluation
-from oralsight_api.contracts import ModelHead, QualityResult
-from oralsight_api.model_adapters import SegmentationPrediction
+from stoma3d_api import comparison_evaluation
+from stoma3d_api.contracts import ModelHead, QualityResult
+from stoma3d_api.model_adapters import SegmentationPrediction
 
 
 class _RepeatableSegmentationAdapter:

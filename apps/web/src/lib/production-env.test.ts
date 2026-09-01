@@ -6,14 +6,14 @@ import { hostedWorkspaceEnabled } from "@/lib/production-env";
 const realEnvironment = {
   NODE_ENV: "production",
   VERCEL: "1",
-  AUTH0_DOMAIN: "identity.oralsight.test",
+  AUTH0_DOMAIN: "identity.stoma3d.test",
   AUTH0_CLIENT_ID: "public-client-id",
   AUTH0_CLIENT_SECRET: "server-client-secret-value",
   AUTH0_SECRET: "a".repeat(64),
-  AUTH0_AUDIENCE: "oralsight-platform-api",
-  APP_BASE_URL: "https://app.oralsight.test",
-  NEXT_PUBLIC_SITE_URL: "https://app.oralsight.test",
-  ORALSIGHT_PLATFORM_API_URL: "https://api.oralsight.test",
+  AUTH0_AUDIENCE: "stoma3d-platform-api",
+  APP_BASE_URL: "https://app.stoma3d.test",
+  NEXT_PUBLIC_SITE_URL: "https://app.stoma3d.test",
+  STOMA3D_PLATFORM_API_URL: "https://api.stoma3d.test",
 };
 
 describe("production web environment", () => {
@@ -33,8 +33,8 @@ describe("production web environment", () => {
     const environment = {
       NODE_ENV: "production",
       VERCEL: "1",
-      ORALSIGHT_WEB_MODE: "public",
-      NEXT_PUBLIC_SITE_URL: "https://oralsight.vercel.app",
+      STOMA3D_WEB_MODE: "public",
+      NEXT_PUBLIC_SITE_URL: "https://stoma3d.vercel.app",
     };
 
     expect(() => validateProductionWebEnvironment(environment)).not.toThrow();
@@ -46,8 +46,8 @@ describe("production web environment", () => {
       validateProductionWebEnvironment({
         NODE_ENV: "production",
         VERCEL: "1",
-        ORALSIGHT_WEB_MODE: "public",
-        NEXT_PUBLIC_SITE_URL: "http://oralsight.test",
+        STOMA3D_WEB_MODE: "public",
+        NEXT_PUBLIC_SITE_URL: "http://stoma3d.test",
       }),
     ).toThrow(/NEXT_PUBLIC_SITE_URL.*HTTPS/);
   });
@@ -59,19 +59,19 @@ describe("production web environment", () => {
   it("does not offer hosted sign-in when runtime credentials are absent", () => {
     expect(
       hostedWorkspaceEnabled({
-        NEXT_PUBLIC_SITE_URL: "https://oralsight.vercel.app",
+        NEXT_PUBLIC_SITE_URL: "https://stoma3d.vercel.app",
       }),
     ).toBe(false);
   });
 
   it("honors an explicit hosted mode so a bad deployment fails loudly", () => {
-    expect(hostedWorkspaceEnabled({ ORALSIGHT_WEB_MODE: "hosted" })).toBe(true);
+    expect(hostedWorkspaceEnabled({ STOMA3D_WEB_MODE: "hosted" })).toBe(true);
     expect(() =>
       validateProductionWebEnvironment({
         NODE_ENV: "production",
         VERCEL: "1",
-        ORALSIGHT_WEB_MODE: "hosted",
-        NEXT_PUBLIC_SITE_URL: "https://oralsight.vercel.app",
+        STOMA3D_WEB_MODE: "hosted",
+        NEXT_PUBLIC_SITE_URL: "https://stoma3d.vercel.app",
       }),
     ).toThrow(/AUTH0_DOMAIN/);
   });
@@ -94,13 +94,13 @@ describe("production web environment", () => {
       ...realEnvironment,
       VERCEL: "0",
       CI: "true",
-      ORALSIGHT_ALLOW_CI_DUMMY_WEB_ENV: "true",
+      STOMA3D_ALLOW_CI_DUMMY_WEB_ENV: "true",
       AUTH0_DOMAIN: "ci-identity.invalid",
       AUTH0_CLIENT_SECRET: "ci-client-secret",
       AUTH0_SECRET: "ci-secret",
       APP_BASE_URL: "https://ci-web.invalid",
       NEXT_PUBLIC_SITE_URL: "https://ci-web.invalid",
-      ORALSIGHT_PLATFORM_API_URL: "https://ci-platform.invalid",
+      STOMA3D_PLATFORM_API_URL: "https://ci-platform.invalid",
     };
 
     expect(() => validateProductionWebEnvironment(environment)).not.toThrow();
@@ -113,7 +113,7 @@ describe("production web environment", () => {
       validateProductionWebEnvironment({
         ...realEnvironment,
         CI: "true",
-        ORALSIGHT_ALLOW_CI_DUMMY_WEB_ENV: "true",
+        STOMA3D_ALLOW_CI_DUMMY_WEB_ENV: "true",
         AUTH0_DOMAIN: "ci-identity.invalid",
       }),
     ).toThrow(/placeholder/);
@@ -123,7 +123,7 @@ describe("production web environment", () => {
     expect(() =>
       validateProductionWebEnvironment({
         ...realEnvironment,
-        ORALSIGHT_PLATFORM_API_URL: "http://api.oralsight.test",
+        STOMA3D_PLATFORM_API_URL: "http://api.stoma3d.test",
       }),
     ).toThrow(/HTTPS/);
   });

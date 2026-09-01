@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from oralsight_ml.reidentification_release import (
+from stoma3d_ml.reidentification_release import (
     PAIR_MANIFEST_COLUMNS,
     binary_match_metrics,
     generate_deterministic_pairs,

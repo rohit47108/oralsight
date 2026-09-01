@@ -39,7 +39,7 @@ describe("shared-record exchange cookie", () => {
 
     expect(response.status).toBe(200);
     const cookie = response.headers.get("set-cookie") ?? "";
-    expect(cookie).toContain("oralsight_share_token=opaque-exchange-token");
+    expect(cookie).toContain("stoma3d_share_token=opaque-exchange-token");
     expect(cookie).toContain("Path=/");
     expect(cookie).toContain("HttpOnly");
     expect(cookie).toContain("SameSite=strict");

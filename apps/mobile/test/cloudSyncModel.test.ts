@@ -61,7 +61,7 @@ describe("local-first encrypted sync model", () => {
           angle: "primary",
           mediaKind: "image",
           capturedAt: "2026-08-06T12:01:00.000Z",
-          encryptedUri: "file:///private/oralsight-vault/secret.osv",
+          encryptedUri: "file:///private/stoma3d-vault/secret.osv",
           mimeType: "image/jpeg",
           inputOrigin: "live_capture",
           captureSource: "camera",

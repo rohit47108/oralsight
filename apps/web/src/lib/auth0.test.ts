@@ -8,7 +8,7 @@ describe("getAuth0Client", () => {
   });
 
   it("fails clearly when hosted accounts are disabled", () => {
-    vi.stubEnv("ORALSIGHT_WEB_MODE", "public");
+    vi.stubEnv("STOMA3D_WEB_MODE", "public");
 
     expect(() => getAuth0Client()).toThrow(/hosted accounts are disabled/i);
   });

@@ -1,6 +1,6 @@
 import { Canvas, Path } from "@shopify/react-native-skia";
 import { StyleSheet, Text, View } from "react-native";
-import type { MouthRegion } from "@oralsight/contracts";
+import type { MouthRegion } from "@stoma3d/contracts";
 
 import { captureGuideSpec } from "@/lib/captureGuide";
 

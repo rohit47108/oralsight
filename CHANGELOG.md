@@ -1,6 +1,6 @@
 # Changelog
 
-All notable OralSight source-release changes are recorded here.
+All notable Stoma3D source-release changes are recorded here.
 
 ## 0.1.0 - 2026-08-13
 

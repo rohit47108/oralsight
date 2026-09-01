@@ -4,7 +4,7 @@
   "enabled": false,
   "intended_use": "Non-diagnostic review-priority messaging from clinician-approved deterministic rules.",
   "disclaimer": "This result is not a diagnosis.",
-  "neutral_message": "OralSight cannot determine what an observation means. Consider sharing persistent, changing, or concerning symptoms with a dentist or physician.",
+  "neutral_message": "Stoma3D cannot determine what an observation means. Consider sharing persistent, changing, or concerning symptoms with a dentist or physician.",
   "messages": {},
   "approval": null,
   "rules": []

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from oralsight_ml.gates import evaluate_release_gates
+from stoma3d_ml.gates import evaluate_release_gates
 
 from .helpers import copied_passing_evaluation, passing_evaluation
 

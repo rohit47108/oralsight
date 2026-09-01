@@ -42,7 +42,7 @@ Direct runtime families in this build are:
 Assets and their exact checksums, provenance, and declared CC0 status are recorded in
 `docs/licenses-model-cards/ASSET_DATA_INVENTORY.csv`. Dataset permission requires a
 separate evidence review; a paper or download link is not a redistribution license.
-No public license has been selected for the OralSight source tree itself; asset and
+No public license has been selected for the Stoma3D source tree itself; asset and
 dependency licenses do not grant a source-repository license.
 
 ## Final attestation checklist

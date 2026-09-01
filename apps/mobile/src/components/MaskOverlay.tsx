@@ -7,7 +7,7 @@ import {
   type LayoutChangeEvent,
 } from "react-native";
 import { Canvas, Path, Skia } from "@shopify/react-native-skia";
-import type { CandidateMask } from "@oralsight/contracts";
+import type { CandidateMask } from "@stoma3d/contracts";
 
 import { useAppTheme } from "@/theme";
 

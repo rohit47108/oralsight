@@ -3,9 +3,9 @@ requires = ["hatchling>=1.25"]
 build-backend = "hatchling.build"
 
 [project]
-name = "oralsight-inference"
+name = "stoma3d-inference"
 version = "0.1.0"
-description = "Stateless, non-diagnostic image analysis service for the OralSight research prototype"
+description = "Stateless, non-diagnostic image analysis service for the Stoma3D research prototype"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
@@ -28,13 +28,13 @@ dev = [
 ]
 
 [project.scripts]
-oralsight-evaluate-repeat-capture = "oralsight_api.comparison_evaluation:main"
+stoma3d-evaluate-repeat-capture = "stoma3d_api.comparison_evaluation:main"
 
 [tool.vercel]
 entrypoint = "vercel_entrypoint:app"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/oralsight_api"]
+packages = ["src/stoma3d_api"]
 
 [tool.pytest.ini_options]
 addopts = "-q --strict-markers"
@@ -43,4 +43,4 @@ testpaths = ["tests"]
 
 [tool.coverage.run]
 branch = true
-source = ["oralsight_api"]
+source = ["stoma3d_api"]

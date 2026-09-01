@@ -1,6 +1,6 @@
-# OralSight architecture
+# Stoma3D architecture
 
-> **This result is not a diagnosis.** OralSight is a non-diagnostic research
+> **This result is not a diagnosis.** Stoma3D is a non-diagnostic research
 > prototype. A passing engineering check is not clinical validation.
 
 ## Trust boundaries
@@ -115,7 +115,7 @@ and a pinned Ed25519 public key.
 The server signs the exact UTF-8 JSON body using the domain-separated message:
 
 ```text
-oralsight-response-v1\n<request-id>\n<raw-response-body>
+stoma3d-response-v1\n<request-id>\n<raw-response-body>
 ```
 
 The mobile client verifies the signature, request ID, derived key ID, schema,

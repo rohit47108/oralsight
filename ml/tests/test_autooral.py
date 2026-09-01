@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from oralsight_ml.autooral import _build_parser, _normalized_image_number
+from stoma3d_ml.autooral import _build_parser, _normalized_image_number
 
 
 def test_normalizes_autooral_image_number() -> None:

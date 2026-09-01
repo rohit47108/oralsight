@@ -4,7 +4,7 @@ import hashlib
 import json
 from pathlib import Path
 
-from oralsight_ml.smart_om import (
+from stoma3d_ml.smart_om import (
     SmartOmSample,
     assign_patient_splits,
     discover_samples,

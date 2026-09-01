@@ -4,7 +4,7 @@ import type {
   ComparisonResult,
   MouthRegion,
   QualityResult,
-} from "@oralsight/contracts";
+} from "@stoma3d/contracts";
 
 import {
   buildTrajectorySeries,

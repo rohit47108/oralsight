@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from oralsight_ml.model_card import generate_model_card
+from stoma3d_ml.model_card import generate_model_card
 
 from .helpers import passing_evaluation
 

@@ -8,7 +8,7 @@ import { scanSteps } from "@/content/site";
 export const metadata: Metadata = {
   title: "How it works",
   description:
-    "See the OralSight path from consent and eight-region capture to review, comparison, and a report you control.",
+    "See the Stoma3D path from consent and eight-region capture to review, comparison, and a report you control.",
 };
 
 export default function HowItWorksPage() {
@@ -22,7 +22,7 @@ export default function HowItWorksPage() {
 
       <section
         className="process-layout page-width"
-        aria-label="OralSight workflow"
+        aria-label="Stoma3D workflow"
       >
         <ol className="process-list">
           {scanSteps.map((step, index) => (
@@ -60,7 +60,7 @@ export default function HowItWorksPage() {
             </p>
             <p>
               During capture, motion feedback helps you steady the phone. After
-              the shutter, OralSight checks blur, lighting, glare, obstruction,
+              the shutter, Stoma3D checks blur, lighting, glare, obstruction,
               faces, and whether the selected mouth region is present. Rejected
               images are not saved or sent for analysis.
             </p>

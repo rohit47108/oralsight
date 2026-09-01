@@ -18,7 +18,7 @@ import {
   type ModelHead,
   type MouthRegion,
   type QualityResult,
-} from "@oralsight/contracts";
+} from "@stoma3d/contracts";
 
 import { API_BASE_URL } from "@/constants";
 import {
@@ -137,7 +137,7 @@ async function fetchWithTimeout(
     } catch (error) {
       if (__DEV__) {
         console.warn(
-          "[OralSight] Analysis transport failed before a response was received.",
+          "[Stoma3D] Analysis transport failed before a response was received.",
           error,
         );
       }
@@ -182,8 +182,8 @@ async function secureJsonBody(
         "A pinned response signing public key is required outside loopback development.",
       );
     }
-    const signatureBase64 = response.headers.get("x-oralsight-signature");
-    const keyId = response.headers.get("x-oralsight-key-id");
+    const signatureBase64 = response.headers.get("x-stoma3d-signature");
+    const keyId = response.headers.get("x-stoma3d-key-id");
     if (!signatureBase64 || !keyId) {
       throw new Error(
         "Inference response omitted its required Ed25519 signature.",

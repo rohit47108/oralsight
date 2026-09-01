@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "OralSight",
-    short_name: "OralSight",
+    name: "Stoma3D",
+    short_name: "Stoma3D",
     description:
       "A consistent eight-region capture path for non-diagnostic oral observations.",
     start_url: "/",

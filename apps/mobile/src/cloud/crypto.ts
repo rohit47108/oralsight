@@ -40,7 +40,7 @@ function fromBase64Url(value: string): Uint8Array {
 }
 
 function accountKeyName(accountId: string): string {
-  return `oralsight.cloud.sync-key.v1.${hex(sha256(new TextEncoder().encode(accountId))).slice(0, 32)}`;
+  return `stoma3d.cloud.sync-key.v1.${hex(sha256(new TextEncoder().encode(accountId))).slice(0, 32)}`;
 }
 
 function keyId(key: Uint8Array): string {
@@ -57,7 +57,7 @@ function aad(
   entityId: string,
 ): Uint8Array {
   return new TextEncoder().encode(
-    `oralsight-cloud-sync-v1:${accountId}:${entityType}:${entityId}`,
+    `stoma3d-cloud-sync-v1:${accountId}:${entityType}:${entityId}`,
   );
 }
 

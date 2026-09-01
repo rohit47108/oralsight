@@ -38,10 +38,10 @@ import type {
   ComparisonResult,
   MediaKind,
   MouthRegion,
-} from "@oralsight/contracts";
+} from "@stoma3d/contracts";
 
-const DATABASE_NAME = "oralsight.db";
-const DATABASE_KEY_NAME = "oralsight.database-key.v1";
+const DATABASE_NAME = "stoma3d.db";
+const DATABASE_KEY_NAME = "stoma3d.database-key.v1";
 const HEX_DATABASE_KEY = /^[a-f0-9]{64}$/;
 
 let databasePromise: Promise<SQLite.SQLiteDatabase> | null = null;
@@ -796,7 +796,7 @@ export function queuePersistedState(state: PersistedAppState): Promise<void> {
     });
   });
   writeQueue = operation.catch(() => {
-    console.warn("[ORALSIGHT_STORAGE_WRITE_FAILED]");
+    console.warn("[STOMA3D_STORAGE_WRITE_FAILED]");
   });
   return operation;
 }
@@ -821,7 +821,7 @@ function queueDatabaseWrite(
 ): Promise<void> {
   const operation = writeQueue.then(async () => task(await getDatabase()));
   writeQueue = operation.catch(() => {
-    console.warn("[ORALSIGHT_CLOUD_STORAGE_WRITE_FAILED]");
+    console.warn("[STOMA3D_CLOUD_STORAGE_WRITE_FAILED]");
   });
   return operation;
 }
@@ -1042,6 +1042,6 @@ export async function deleteAllLocalDataAndRotateKeys(): Promise<void> {
     failures.push("DB_KEY_ROTATE");
   }
   if (failures.length > 0) {
-    throw new Error(`ORALSIGHT_LOCAL_RESET_INCOMPLETE:${failures.join(",")}`);
+    throw new Error(`STOMA3D_LOCAL_RESET_INCOMPLETE:${failures.join(",")}`);
   }
 }

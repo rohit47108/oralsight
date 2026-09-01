@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { ComparisonResult } from "@oralsight/contracts";
+import type { ComparisonResult } from "@stoma3d/contracts";
 
 import { pinsAfterConfirmedComparison } from "../src/lib/observationPins";
 import type { CaptureRecord, ObservationPin } from "../src/types";

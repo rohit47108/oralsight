@@ -6,7 +6,7 @@ const REQUIRED_WEB_ENVIRONMENT = [
   "AUTH0_AUDIENCE",
   "APP_BASE_URL",
   "NEXT_PUBLIC_SITE_URL",
-  "ORALSIGHT_PLATFORM_API_URL",
+  "STOMA3D_PLATFORM_API_URL",
 ] as const;
 
 type RequiredVariable = (typeof REQUIRED_WEB_ENVIRONMENT)[number];
@@ -22,14 +22,14 @@ function requireValue(
   const value = environment[name]?.trim();
   if (!value) {
     throw new Error(
-      `[OralSight web] Missing required production environment variable: ${name}`,
+      `[Stoma3D web] Missing required production environment variable: ${name}`,
     );
   }
   return value;
 }
 
 function requireOrigin(
-  name: "APP_BASE_URL" | "NEXT_PUBLIC_SITE_URL" | "ORALSIGHT_PLATFORM_API_URL",
+  name: "APP_BASE_URL" | "NEXT_PUBLIC_SITE_URL" | "STOMA3D_PLATFORM_API_URL",
   value: string,
   requireHttps: boolean,
 ): void {
@@ -37,23 +37,23 @@ function requireOrigin(
   try {
     parsed = new URL(value);
   } catch {
-    throw new Error(`[OralSight web] ${name} must be an absolute URL.`);
+    throw new Error(`[Stoma3D web] ${name} must be an absolute URL.`);
   }
   if (parsed.username || parsed.password) {
-    throw new Error(`[OralSight web] ${name} must not contain credentials.`);
+    throw new Error(`[Stoma3D web] ${name} must not contain credentials.`);
   }
   if (requireHttps && parsed.protocol !== "https:") {
-    throw new Error(`[OralSight web] ${name} must use HTTPS on Vercel.`);
+    throw new Error(`[Stoma3D web] ${name} must use HTTPS on Vercel.`);
   }
   if (!requireHttps && !["http:", "https:"].includes(parsed.protocol)) {
-    throw new Error(`[OralSight web] ${name} must use HTTP or HTTPS.`);
+    throw new Error(`[Stoma3D web] ${name} must use HTTP or HTTPS.`);
   }
 }
 
 export function hostedWorkspaceEnabled(
   environment: Environment = process.env,
 ): boolean {
-  const mode = environment.ORALSIGHT_WEB_MODE?.trim().toLowerCase();
+  const mode = environment.STOMA3D_WEB_MODE?.trim().toLowerCase();
   if (mode === "public") return false;
   if (mode === "hosted") return true;
   return REQUIRED_WEB_ENVIRONMENT.every((name) =>
@@ -69,11 +69,11 @@ export function validateProductionWebEnvironment(
     environment.NODE_ENV === "production" || isVercelBuild;
   if (!isProductionBuild) return;
 
-  if (environment.ORALSIGHT_WEB_MODE?.trim().toLowerCase() === "public") {
+  if (environment.STOMA3D_WEB_MODE?.trim().toLowerCase() === "public") {
     const siteUrl = requireValue(environment, "NEXT_PUBLIC_SITE_URL");
     if (PLACEHOLDER_PATTERN.test(siteUrl)) {
       throw new Error(
-        "[OralSight web] NEXT_PUBLIC_SITE_URL still contains a placeholder value.",
+        "[Stoma3D web] NEXT_PUBLIC_SITE_URL still contains a placeholder value.",
       );
     }
     requireOrigin("NEXT_PUBLIC_SITE_URL", siteUrl, isVercelBuild);
@@ -81,7 +81,7 @@ export function validateProductionWebEnvironment(
   }
 
   const allowCiDummyValues =
-    environment.ORALSIGHT_ALLOW_CI_DUMMY_WEB_ENV === "true" &&
+    environment.STOMA3D_ALLOW_CI_DUMMY_WEB_ENV === "true" &&
     environment.CI === "true" &&
     !isVercelBuild;
 
@@ -96,13 +96,13 @@ export function validateProductionWebEnvironment(
     for (const name of REQUIRED_WEB_ENVIRONMENT) {
       if (PLACEHOLDER_PATTERN.test(values[name])) {
         throw new Error(
-          `[OralSight web] ${name} still contains a placeholder value.`,
+          `[Stoma3D web] ${name} still contains a placeholder value.`,
         );
       }
     }
     if (!/^[a-f0-9]{64,}$/i.test(values.AUTH0_SECRET)) {
       throw new Error(
-        "[OralSight web] AUTH0_SECRET must be at least 32 random bytes encoded as hexadecimal.",
+        "[Stoma3D web] AUTH0_SECRET must be at least 32 random bytes encoded as hexadecimal.",
       );
     }
   }
@@ -112,7 +112,7 @@ export function validateProductionWebEnvironment(
     !/^[a-z0-9.-]+$/i.test(values.AUTH0_DOMAIN)
   ) {
     throw new Error(
-      "[OralSight web] AUTH0_DOMAIN must be a hostname without a protocol or path.",
+      "[Stoma3D web] AUTH0_DOMAIN must be a hostname without a protocol or path.",
     );
   }
 
@@ -123,14 +123,14 @@ export function validateProductionWebEnvironment(
     isVercelBuild,
   );
   requireOrigin(
-    "ORALSIGHT_PLATFORM_API_URL",
-    values.ORALSIGHT_PLATFORM_API_URL,
+    "STOMA3D_PLATFORM_API_URL",
+    values.STOMA3D_PLATFORM_API_URL,
     isVercelBuild,
   );
 
   if (allowCiDummyValues) {
     console.warn(
-      "[OralSight web] Explicit CI-only dummy environment enabled. Vercel deployments cannot use this bypass.",
+      "[Stoma3D web] Explicit CI-only dummy environment enabled. Vercel deployments cannot use this bypass.",
     );
   }
 }

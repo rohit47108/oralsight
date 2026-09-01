@@ -52,7 +52,7 @@ export default async function ProfessionalApplicationPage() {
           <p className="workspace-kicker">Professional access</p>
           <h1>Request a clinician workspace.</h1>
           <p>
-            An OralSight identity administrator must invite the account first.
+            An Stoma3D identity administrator must invite the account first.
             Credential review and secure sign-in activation remain separate
             checks.
           </p>
@@ -102,8 +102,8 @@ export default async function ProfessionalApplicationPage() {
           <h2 id="invitation-title">An invitation is required first</h2>
           <ol>
             <li>
-              Ask the OralSight identity administrator for professional access
-              and an invitation reference.
+              Ask the Stoma3D identity administrator for professional access and
+              an invitation reference.
             </li>
             <li>
               The administrator assigns the clinician application role (

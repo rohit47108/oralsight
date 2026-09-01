@@ -10,7 +10,7 @@ import { PrintButton } from "@/components/print-button";
 export const metadata: Metadata = {
   title: "Print calibration card",
   description:
-    "Print the versioned 20 mm OralSight reference used by supported calibrated captures.",
+    "Print the versioned 20 mm Stoma3D reference used by supported calibrated captures.",
 };
 
 export default function CalibrationPage() {
@@ -18,7 +18,7 @@ export default function CalibrationPage() {
     <div className="calibration-page">
       <section className="calibration-intro page-width">
         <p className="eyebrow">Physical scale reference</p>
-        <h1>Print the OralSight calibration card.</h1>
+        <h1>Print the Stoma3D calibration card.</h1>
         <p>
           Use this card only with a supported capture flow. Print it at 100%
           scale, check the ruler, and keep the marker flat in the same plane as
@@ -27,14 +27,14 @@ export default function CalibrationPage() {
         <div className="calibration-actions">
           <a
             className="button"
-            href="/calibration/oralsight-calibration-a4.pdf"
+            href="/calibration/stoma3d-calibration-a4.pdf"
             download
           >
             Download A4 PDF
           </a>
           <a
             className="text-button"
-            href="/calibration/oralsight-calibration-letter.pdf"
+            href="/calibration/stoma3d-calibration-letter.pdf"
             download
           >
             Download US Letter PDF
@@ -51,10 +51,10 @@ export default function CalibrationPage() {
         <div className="calibration-card">
           <header className="calibration-card__header">
             <div>
-              <span>OralSight physical reference</span>
+              <span>Stoma3D physical reference</span>
               <h2 id="card-title">20 mm capture card</h2>
             </div>
-            <strong>oralsight-calibration-v1</strong>
+            <strong>stoma3d-calibration-v1</strong>
           </header>
           <div className="calibration-card__body">
             <div className="marker-block">
@@ -113,8 +113,8 @@ export default function CalibrationPage() {
         <article>
           <h2>Use only after a valid check</h2>
           <p>
-            A printed card alone does not validate a measurement. OralSight
-            shows millimeter estimates only when the captured marker passes the
+            A printed card alone does not validate a measurement. Stoma3D shows
+            millimeter estimates only when the captured marker passes the
             platform’s scale, angle, visibility, and confidence checks.
           </p>
         </article>

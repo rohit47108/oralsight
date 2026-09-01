@@ -5,7 +5,7 @@ from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import func, select
 
-from oralsight_platform.models import (
+from stoma3d_platform.models import (
     AccessGrantStatus,
     CandidateObservation,
     CaptureAsset,

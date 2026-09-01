@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from oralsight_ml.manifest import validate_manifest
+from stoma3d_ml.manifest import validate_manifest
 
 from .helpers import manifest_row
 

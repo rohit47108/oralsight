@@ -4,15 +4,15 @@ import cv2
 import numpy as np
 import pytest
 
-from oralsight_api.calibration import (
+from stoma3d_api.calibration import (
     CALIBRATION_DICTIONARY,
     CALIBRATION_MARKER_ID,
     EXPECTED_NEUTRAL_PATCH_VALUES,
     estimate_calibrated_bounding_box,
     estimate_neutral_color_reference,
 )
-from oralsight_api.model_adapters import SegmentationPrediction
-from oralsight_api.processing import SanitizedImage, candidate_from_model_mask
+from stoma3d_api.model_adapters import SegmentationPrediction
+from stoma3d_api.processing import SanitizedImage, candidate_from_model_mask
 
 
 def _calibration_scene(*, marker_id: int = CALIBRATION_MARKER_ID) -> np.ndarray:

@@ -83,7 +83,7 @@ export async function requestDeleteAll(
     return {
       status: "accepted",
       message:
-        "Deletion was requested. OralSight will remove account records and stored blobs through the deletion job.",
+        "Deletion was requested. Stoma3D will remove account records and stored blobs through the deletion job.",
       requestId: request.requestId,
     };
   } catch (error) {

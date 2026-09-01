@@ -3,13 +3,13 @@ requires = ["hatchling>=1.27"]
 build-backend = "hatchling.build"
 
 [project]
-name = "oralsight-ml"
+name = "stoma3d-ml"
 version = "0.1.0"
-description = "Fail-closed research evaluation and training utilities for OralSight"
+description = "Fail-closed research evaluation and training utilities for Stoma3D"
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "Proprietary research prototype; see repository license inventory" }
-authors = [{ name = "OralSight student team" }]
+authors = [{ name = "Stoma3D student team" }]
 dependencies = []
 
 [project.optional-dependencies]
@@ -28,19 +28,19 @@ research = [
 ]
 
 [project.scripts]
-oralsight-validate-manifest = "oralsight_ml.manifest:main"
-oralsight-evaluate-gates = "oralsight_ml.gates:main"
-oralsight-subgroup-report = "oralsight_ml.subgroups:main"
-oralsight-model-card = "oralsight_ml.model_card:main"
-oralsight-train-baseline = "oralsight_ml.train:main"
-oralsight-train-release = "oralsight_ml.release_training:main"
-oralsight-train-reidentification-release = "oralsight_ml.reidentification_release:main"
-oralsight-segmentation-soup = "oralsight_ml.segmentation_soup:main"
-oralsight-prepare-smart-om = "oralsight_ml.smart_om:main"
-oralsight-prepare-autooral = "oralsight_ml.autooral:main"
+stoma3d-validate-manifest = "stoma3d_ml.manifest:main"
+stoma3d-evaluate-gates = "stoma3d_ml.gates:main"
+stoma3d-subgroup-report = "stoma3d_ml.subgroups:main"
+stoma3d-model-card = "stoma3d_ml.model_card:main"
+stoma3d-train-baseline = "stoma3d_ml.train:main"
+stoma3d-train-release = "stoma3d_ml.release_training:main"
+stoma3d-train-reidentification-release = "stoma3d_ml.reidentification_release:main"
+stoma3d-segmentation-soup = "stoma3d_ml.segmentation_soup:main"
+stoma3d-prepare-smart-om = "stoma3d_ml.smart_om:main"
+stoma3d-prepare-autooral = "stoma3d_ml.autooral:main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/oralsight_ml"]
+packages = ["src/stoma3d_ml"]
 
 [tool.pytest.ini_options]
 addopts = "-ra --strict-markers"

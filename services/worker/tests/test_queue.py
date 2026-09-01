@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from oralsight_worker.queue import IdempotencyClaim, QueueMessage, RedisStreamQueue
-from oralsight_worker.settings import Settings
+from stoma3d_worker.queue import IdempotencyClaim, QueueMessage, RedisStreamQueue
+from stoma3d_worker.settings import Settings
 
 
 class NoopRedis:
@@ -142,7 +142,7 @@ async def test_consumer_group_reclaims_stale_then_reads_new(envelope) -> None:
     redis.autoclaim_response = ("0-0", [])
     redis.read_response = [
         (
-            "oralsight:jobs:v1",
+            "stoma3d:jobs:v1",
             [("2-0", {"envelope": envelope.model_dump_json(by_alias=True)})],
         )
     ]
@@ -179,7 +179,7 @@ async def test_heartbeat_cancellation_and_idempotency_lifecycle(envelope) -> Non
 
 
 async def test_queue_terminal_retry_and_retention_operations(envelope) -> None:
-    redis = FakeRedis(retention_entries=["oralsight:jobs:dead:v1|9-0", "bad"])
+    redis = FakeRedis(retention_entries=["stoma3d:jobs:dead:v1|9-0", "bad"])
     queue = RedisStreamQueue(redis, Settings(environment="test"))
     message = QueueMessage("1-0", envelope)
 

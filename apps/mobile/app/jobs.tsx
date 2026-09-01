@@ -11,7 +11,7 @@ import { shareableCloudResources } from "@/cloud/productSync";
 import { useCloudStore } from "@/cloud/useCloudStore";
 import { Screen } from "@/components/Screen";
 import { Button, Card, ChoiceChip, SectionTitle } from "@/components/Ui";
-import { useOralSightStore } from "@/store/useOralSightStore";
+import { useStoma3DStore } from "@/store/useStoma3DStore";
 import { useAppTheme } from "@/theme";
 
 function jobLabel(type: string): string {
@@ -31,7 +31,7 @@ function jobLabel(type: string): string {
 export default function JobsRoute() {
   const theme = useAppTheme();
   const cloud = useCloudStore();
-  const sessions = useOralSightStore((state) => state.sessions);
+  const sessions = useStoma3DStore((state) => state.sessions);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [syncedSessionIds, setSyncedSessionIds] = useState<string[]>([]);
 

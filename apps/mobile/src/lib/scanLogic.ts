@@ -4,7 +4,7 @@ import {
   type CaptureProtocol,
   type ComparisonResult,
   type MouthRegion,
-} from "@oralsight/contracts";
+} from "@stoma3d/contracts";
 
 import type { CaptureRecord } from "@/types";
 

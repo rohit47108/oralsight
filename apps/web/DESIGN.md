@@ -1,4 +1,4 @@
-# OralSight public site design
+# Stoma3D public site design
 
 ## Direction
 

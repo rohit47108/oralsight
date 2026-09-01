@@ -1,9 +1,9 @@
 stages:
   validate_manifest:
-    cmd: python -m oralsight_ml.manifest manifests/dataset.csv --require-audited
+    cmd: python -m stoma3d_ml.manifest manifests/dataset.csv --require-audited
     deps:
       - manifests/dataset.csv
-      - src/oralsight_ml/manifest.py
+      - src/stoma3d_ml/manifest.py
 
 # Training stages are added only after an audited manifest is copied to
 # manifests/dataset.csv and its controlled data root is configured locally. Medical

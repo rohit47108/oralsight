@@ -3,9 +3,9 @@ requires = ["hatchling>=1.25"]
 build-backend = "hatchling.build"
 
 [project]
-name = "oralsight-platform-api"
+name = "stoma3d-platform-api"
 version = "0.1.0"
-description = "Stateful identity, sync, audit, and lifecycle API for OralSight"
+description = "Stateful identity, sync, audit, and lifecycle API for Stoma3D"
 readme = "README.md"
 requires-python = ">=3.12,<3.15"
 dependencies = [
@@ -35,13 +35,13 @@ dev = [
 ]
 
 [project.scripts]
-oralsight-platform-api = "oralsight_platform.main:run"
-oralsight-bootstrap-admin = "oralsight_platform.admin_bootstrap:main"
-oralsight-add-admin = "oralsight_platform.admin_bootstrap:add_admin_main"
-oralsight-recover-admin = "oralsight_platform.admin_bootstrap:recover_admin_main"
+stoma3d-platform-api = "stoma3d_platform.main:run"
+stoma3d-bootstrap-admin = "stoma3d_platform.admin_bootstrap:main"
+stoma3d-add-admin = "stoma3d_platform.admin_bootstrap:add_admin_main"
+stoma3d-recover-admin = "stoma3d_platform.admin_bootstrap:recover_admin_main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/oralsight_platform"]
+packages = ["src/stoma3d_platform"]
 
 [tool.pytest.ini_options]
 addopts = "-q --strict-markers"
@@ -51,4 +51,4 @@ testpaths = ["tests"]
 
 [tool.coverage.run]
 branch = true
-source = ["oralsight_platform"]
+source = ["stoma3d_platform"]

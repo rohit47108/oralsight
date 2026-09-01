@@ -24,7 +24,7 @@ export interface DeletionReceiptStorageAdapter {
 }
 
 export const DELETION_RECEIPT_KEY =
-  "oralsight.account-deletion.receipt.v1" as const;
+  "stoma3d.account-deletion.receipt.v1" as const;
 
 export class DeletionReceiptRepository {
   constructor(

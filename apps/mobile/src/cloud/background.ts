@@ -6,7 +6,7 @@ import { readDeletionPollingReceipt } from "./deletionReceiptStorage";
 import { restoreCloudSession } from "./session";
 import { rememberCloudSyncError, runCloudSync } from "./sync";
 
-export const CLOUD_SYNC_TASK = "oralsight-encrypted-cloud-sync-v1";
+export const CLOUD_SYNC_TASK = "stoma3d-encrypted-cloud-sync-v1";
 
 if (!TaskManager.isTaskDefined(CLOUD_SYNC_TASK)) {
   TaskManager.defineTask(CLOUD_SYNC_TASK, async () => {

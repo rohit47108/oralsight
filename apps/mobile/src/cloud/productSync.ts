@@ -454,7 +454,7 @@ export async function syncProductResources(options: {
           ...(primary.calibrationRequested
             ? {
                 calibration: {
-                  cardVersion: "oralsight-calibration-v1",
+                  cardVersion: "stoma3d-calibration-v1",
                   markerId: 17,
                   markerSideMm: 20,
                   planeConfirmed: primary.calibrationPlaneConfirmed === true,

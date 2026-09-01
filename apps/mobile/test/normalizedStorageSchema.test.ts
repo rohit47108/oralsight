@@ -3,7 +3,7 @@ import {
   DISCLAIMER,
   type AnalysisResult,
   type ComparisonResult,
-} from "@oralsight/contracts";
+} from "@stoma3d/contracts";
 import { describe, expect, it } from "vitest";
 
 import {

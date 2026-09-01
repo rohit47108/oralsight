@@ -1,4 +1,4 @@
-import type { QualityResult } from "@oralsight/contracts";
+import type { QualityResult } from "@stoma3d/contracts";
 
 import { TRANSPORT_IMAGE_BYTE_LIMIT } from "../constants";
 

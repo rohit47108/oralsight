@@ -4,8 +4,8 @@ from sqlalchemy import Enum
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.schema import CreateTable
 
-from oralsight_platform.database import Base
-from oralsight_platform.models import User, UserRole
+from stoma3d_platform.database import Base
+from stoma3d_platform.models import User, UserRole
 
 
 def test_initial_metadata_contains_every_required_product_table() -> None:

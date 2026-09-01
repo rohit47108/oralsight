@@ -1,6 +1,6 @@
 import { ImageResponse } from "next/og";
 
-export const alt = "OralSight - A clearer way to keep track";
+export const alt = "Stoma3D - A clearer way to keep track";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -44,7 +44,7 @@ export default function OpenGraphImage() {
               borderRadius: 42,
             }}
           />
-          OralSight
+          Stoma3D
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           {["Consent", "Eight regions", "Review", "Share"].map(

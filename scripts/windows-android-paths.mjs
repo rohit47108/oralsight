@@ -177,7 +177,7 @@ export function createGradleInvocation(mode, architecture) {
     "-Pkotlin.incremental=false",
   ];
   if (mode.endsWith("-release")) {
-    arguments_.push("-Poralsight.disableHermesSourceMaps=true");
+    arguments_.push("-Pstoma3d.disableHermesSourceMaps=true");
   }
   arguments_.push("--stacktrace");
 

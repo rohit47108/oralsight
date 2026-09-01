@@ -16,7 +16,7 @@ const roadmap = [
   ],
   [
     "Deformable anatomical reconstruction",
-    "OralSight can build a personalized multi-view observation surface for coverage and location. Reconstructing a true patient-specific, deformable mouth anatomy remains a research problem.",
+    "Stoma3D can build a personalized multi-view observation surface for coverage and location. Reconstructing a true patient-specific, deformable mouth anatomy remains a research problem.",
   ],
   [
     "Expanded model releases",
@@ -33,7 +33,7 @@ export default function RoadmapRoute() {
   return (
     <Screen
       title="Research roadmap"
-      eyebrow="Beyond the OralSight product"
+      eyebrow="Beyond the Stoma3D product"
       action={
         <Button label="Back" variant="ghost" onPress={() => router.back()} />
       }
@@ -42,9 +42,9 @@ export default function RoadmapRoute() {
         <SectionTitle title="What remains research" icon="flag-outline" />
         <Text style={[styles.body, { color: theme.text }]}>
           Capture, comparison, reporting, sharing, clinician review, the
-          observation map, and the education tools belong to OralSight. The
-          items below require work outside that product build or evidence that
-          cannot be created in software alone.
+          observation map, and the education tools belong to Stoma3D. The items
+          below require work outside that product build or evidence that cannot
+          be created in software alone.
         </Text>
       </Card>
       {roadmap.map(([title, body]) => (

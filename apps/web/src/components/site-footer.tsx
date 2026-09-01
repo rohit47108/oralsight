@@ -18,7 +18,7 @@ export function SiteFooter() {
           </span>
           <strong>{DISCLAIMER}</strong>
           <span>
-            OralSight records and organizes observations for discussion with a
+            Stoma3D records and organizes observations for discussion with a
             qualified professional.
           </span>
         </div>
@@ -46,7 +46,7 @@ export function SiteFooter() {
         </nav>
       </div>
       <div className="page-width footer-bottom">
-        <span>© {new Date().getFullYear()} OralSight</span>
+        <span>© {new Date().getFullYear()} Stoma3D</span>
         <span>Guided oral observation and comparison</span>
       </div>
     </footer>

@@ -21,7 +21,7 @@ export default async function PrivilegedAccessSetupPage() {
           <p className="workspace-kicker">Account access</p>
           <h1>One sign-in step remains.</h1>
           <p>
-            Your OralSight platform role is ready. Your sign-in account still
+            Your Stoma3D platform role is ready. Your sign-in account still
             needs the matching {readableLabel(requiredRole)} access level before
             protected records can open.
           </p>
@@ -33,7 +33,7 @@ export default async function PrivilegedAccessSetupPage() {
       <ol className="verification-path">
         <li data-state="complete">
           <strong>Platform role recorded</strong>
-          <span>OralSight has saved the approved account role.</span>
+          <span>Stoma3D has saved the approved account role.</span>
         </li>
         <li data-state="current">
           <strong>Sign-in access assigned</strong>
@@ -50,7 +50,7 @@ export default async function PrivilegedAccessSetupPage() {
       <section className="professional-boundary">
         <h2>Why the workspace stays locked</h2>
         <p>
-          OralSight requires the saved platform role and a freshly verified
+          Stoma3D requires the saved platform role and a freshly verified
           sign-in role. Either one alone is not enough.
         </p>
         <a className="button" href="/auth/logout?returnTo=%2Fsignin">

@@ -8,7 +8,7 @@ import {
   inputOriginSchema,
   mouthRegionSchema,
   qualityResultSchema,
-} from "@oralsight/contracts";
+} from "@stoma3d/contracts";
 import { z } from "zod";
 
 import type { PersistedAppState } from "@/types";
@@ -86,7 +86,7 @@ const captureSchema = z
     frameTimeMs: z.number().int().nonnegative().max(60_000).optional(),
     calibrationRequested: z.boolean().optional(),
     calibrationPlaneConfirmed: z.boolean().optional(),
-    calibrationCardVersion: z.literal("oralsight-calibration-v1").optional(),
+    calibrationCardVersion: z.literal("stoma3d-calibration-v1").optional(),
     calibration: calibrationResultSchema.optional(),
     privacyConfirmedByUser: z.boolean().optional(),
     regionConfirmedByUser: z.boolean().optional(),
@@ -145,7 +145,7 @@ const captureSchema = z
     if (
       capture.calibrationRequested === true &&
       (capture.calibrationPlaneConfirmed !== true ||
-        capture.calibrationCardVersion !== "oralsight-calibration-v1")
+        capture.calibrationCardVersion !== "stoma3d-calibration-v1")
     ) {
       context.addIssue({
         code: "custom",

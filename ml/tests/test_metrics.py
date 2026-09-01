@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import unittest
 
-from oralsight_ml.metrics import (
+from stoma3d_ml.metrics import (
     classification_metrics,
     expected_calibration_error,
     multiclass_calibration_metrics,
     wilson_lower_bound,
 )
-from oralsight_ml.release_training import (
+from stoma3d_ml.release_training import (
     _largest_connected_components,
     _presence_positive_weight,
     _segmentation_gate_selection_key,

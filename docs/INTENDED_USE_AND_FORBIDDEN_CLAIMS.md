@@ -2,7 +2,7 @@
 
 ## Fixed intended use
 
-OralSight is a student-directed, AI-assisted, non-diagnostic research product
+Stoma3D is a student-directed, AI-assisted, non-diagnostic research product
 intended to help a person:
 
 - follow a structured eight-region oral photography workflow;
@@ -40,7 +40,7 @@ diagnose an oral condition. Every result screen and report must include:
 
 ## Forbidden public, in-app, report, and judge-demo claims
 
-Never state or imply that OralSight:
+Never state or imply that Stoma3D:
 
 - diagnoses, detects, confirms, rules out, or predicts cancer or any other disease;
 - proves that an area is benign, harmless, malignant, precancerous, or normal;

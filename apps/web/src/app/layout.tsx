@@ -5,28 +5,28 @@ import { SiteChrome } from "@/components/site-chrome";
 
 import "./globals.css";
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://oralsight.org";
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://stoma3d.org";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "OralSight - Guided mouth scans and visual change tracking",
-    template: "%s - OralSight",
+    default: "Stoma3D - Guided mouth scans and visual change tracking",
+    template: "%s - Stoma3D",
   },
   description:
-    "OralSight guides a consistent eight-region mouth scan, checks each capture, tracks visible observations, and prepares a report you control.",
-  applicationName: "OralSight",
+    "Stoma3D guides a consistent eight-region mouth scan, checks each capture, tracks visible observations, and prepares a report you control.",
+  applicationName: "Stoma3D",
   category: "health",
   openGraph: {
     type: "website",
-    siteName: "OralSight",
-    title: "OralSight - Guided mouth scans and visual change tracking",
+    siteName: "Stoma3D",
+    title: "Stoma3D - Guided mouth scans and visual change tracking",
     description:
       "Capture eight consistent mouth views, track visible observations, and create a report you control.",
   },
   twitter: {
     card: "summary",
-    title: "OralSight",
+    title: "Stoma3D",
     description: "Track visible changes, one consistent scan at a time.",
   },
 };

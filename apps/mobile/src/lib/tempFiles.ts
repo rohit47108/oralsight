@@ -1,7 +1,7 @@
 import * as Crypto from "expo-crypto";
 import * as FileSystem from "expo-file-system/legacy";
 
-export type OralSightTempKind = "capture" | "preview" | "share";
+export type Stoma3DTempKind = "capture" | "preview" | "share";
 
 function cacheRoot(): string {
   if (!FileSystem.cacheDirectory) {
@@ -10,14 +10,14 @@ function cacheRoot(): string {
   return FileSystem.cacheDirectory;
 }
 
-export function oralSightTempDirectory(kind: OralSightTempKind): string {
-  return `${cacheRoot()}oralsight-${kind}/`;
+export function stoma3DTempDirectory(kind: Stoma3DTempKind): string {
+  return `${cacheRoot()}stoma3d-${kind}/`;
 }
 
-export async function ensureOralSightTempDirectory(
-  kind: OralSightTempKind,
+export async function ensureStoma3DTempDirectory(
+  kind: Stoma3DTempKind,
 ): Promise<string> {
-  const directory = oralSightTempDirectory(kind);
+  const directory = stoma3DTempDirectory(kind);
   const info = await FileSystem.getInfoAsync(directory);
   if (!info.exists) {
     await FileSystem.makeDirectoryAsync(directory, { intermediates: true });
@@ -25,11 +25,11 @@ export async function ensureOralSightTempDirectory(
   return directory;
 }
 
-export async function createOralSightTempUri(
-  kind: OralSightTempKind,
+export async function createStoma3DTempUri(
+  kind: Stoma3DTempKind,
   extension: "jpg" | "png" | "pdf",
 ): Promise<string> {
-  const directory = await ensureOralSightTempDirectory(kind);
+  const directory = await ensureStoma3DTempDirectory(kind);
   return `${directory}${Crypto.randomUUID()}.${extension}`;
 }
 
@@ -65,16 +65,16 @@ async function purgeDirectories(directories: string[]): Promise<void> {
   );
 }
 
-export async function purgeOralSightBackgroundTemporaryFiles(): Promise<void> {
+export async function purgeStoma3DBackgroundTemporaryFiles(): Promise<void> {
   await purgeDirectories([
-    ...(["capture", "preview"] as const).map(oralSightTempDirectory),
+    ...(["capture", "preview"] as const).map(stoma3DTempDirectory),
     `${cacheRoot()}ImagePicker/`,
   ]);
 }
 
-export async function purgeOralSightTemporaryFiles(): Promise<void> {
+export async function purgeStoma3DTemporaryFiles(): Promise<void> {
   await purgeDirectories([
-    ...(["capture", "preview", "share"] as const).map(oralSightTempDirectory),
+    ...(["capture", "preview", "share"] as const).map(stoma3DTempDirectory),
     `${cacheRoot()}ImagePicker/`,
   ]);
 }

@@ -46,7 +46,7 @@ export function ReportFileViewer({
         <iframe
           className="report-file__frame"
           src={contentHref}
-          title="OralSight clinician-ready PDF report"
+          title="Stoma3D clinician-ready PDF report"
         />
       ) : format === "summary_video" ? (
         <video
@@ -62,7 +62,7 @@ export function ReportFileViewer({
         <iframe
           className="report-file__frame"
           src={contentHref}
-          title="OralSight HTML report"
+          title="Stoma3D HTML report"
           sandbox=""
         />
       ) : (

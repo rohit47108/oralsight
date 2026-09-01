@@ -40,7 +40,7 @@ trigger for any regression or provenance problem.
 Generate the locked card with:
 
 ```powershell
-python -m oralsight_ml.model_card `
+python -m stoma3d_ml.model_card `
   --metadata model-metadata.json `
   --evaluation aggregate-evaluation.json `
   --output model-card.md

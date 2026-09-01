@@ -1,16 +1,16 @@
-# OralSight competition demonstration script
+# Stoma3D competition demonstration script
 
 Target duration: **2:50**. Keep the public video between one and three minutes,
 add captions, and use only synthetic or expressly licensed mouth images. Images
 used during recording are supplied through the real camera or photo picker; none
-are preinstalled in OralSight.
+are preinstalled in Stoma3D.
 
 ## 0:00-0:18 - Team, audience, and problem
 
 **Screen:** Title card with the names of students who actually contributed,
 school, district, and "Research application - not a diagnosis." Open consent.
 
-**Narration:** Introduce the actual team and explain that OralSight gives people
+**Narration:** Introduce the actual team and explain that Stoma3D gives people
 a structured way to photograph visible mouth concerns and discuss changes with a
 professional. State that a phone photograph cannot diagnose cancer or prove an
 area is harmless.
@@ -44,7 +44,7 @@ the model card.
 
 **Narration:** Explain that the released anatomy model checks only whether the
 photo matches the selected mouth region. The locked lesion-segmentation and
-disease experiments failed their required gates, so OralSight shows no candidate
+disease experiments failed their required gates, so Stoma3D shows no candidate
 mask, disease class, or diagnosis.
 
 ## 1:45-2:12 - History and longitudinal boundary
@@ -55,7 +55,7 @@ fixture result. If models later pass, show the two-stage suggestion, full-image
 review, mandatory confirmation, and confidence-gated result from that locked
 build.
 
-**Narration:** Explain that OralSight never links two observations automatically.
+**Narration:** Explain that Stoma3D never links two observations automatically.
 Change stays hidden unless the user confirms the pair and every model,
 registration, and repeated-capture gate passes.
 
@@ -75,7 +75,7 @@ need the documented device-matrix verification.
 stateless FastAPI service, and release-gated model runtime. End on limitations.
 
 **Narration:** Name each student's work truthfully, disclose substantial AI and
-open-source assistance, and close by saying OralSight organizes observations
+open-source assistance, and close by saying Stoma3D organizes observations
 without pretending a phone can diagnose.
 
 ## Recording gate

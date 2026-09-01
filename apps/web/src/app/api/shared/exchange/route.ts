@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { PlatformApiError, exchangeShareSecret } from "@/lib/platform-api";
 import { parseOperationKey } from "@/lib/operation-key";
 
-const SHARE_COOKIE = "oralsight_share_token";
+const SHARE_COOKIE = "stoma3d_share_token";
 
 export async function POST(request: Request) {
   const payload: unknown = await request.json().catch(() => null);

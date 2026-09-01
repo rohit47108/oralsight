@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from oralsight_platform.config import (
+from stoma3d_platform.config import (
     AuthMode,
     ObjectStorageBackend,
     QueueBackend,
@@ -41,7 +41,7 @@ def test_local_issuer_is_rejected_in_production() -> None:
         Settings(
             _env_file=None,
             environment=RuntimeEnvironment.PRODUCTION,
-            database_url="postgresql+asyncpg://user:pass@localhost/oralsight",
+            database_url="postgresql+asyncpg://user:pass@localhost/stoma3d",
             auth_mode=AuthMode.LOCAL_TEST,
         )
 
@@ -51,7 +51,7 @@ def test_remote_oidc_requires_https_issuer_and_jwks() -> None:
         Settings(
             _env_file=None,
             environment=RuntimeEnvironment.PRODUCTION,
-            database_url="postgresql+asyncpg://user:pass@localhost/oralsight",
+            database_url="postgresql+asyncpg://user:pass@localhost/stoma3d",
             auth_mode=AuthMode.OIDC,
         )
 
@@ -61,7 +61,7 @@ def test_schema_autocreation_is_rejected_in_production() -> None:
         Settings(
             _env_file=None,
             environment=RuntimeEnvironment.PRODUCTION,
-            database_url="postgresql+asyncpg://user:pass@localhost/oralsight",
+            database_url="postgresql+asyncpg://user:pass@localhost/stoma3d",
             auth_mode=AuthMode.OIDC,
             oidc_issuer_url="https://identity.example/",
             oidc_jwks_url="https://identity.example/.well-known/jwks.json",
@@ -74,7 +74,7 @@ def _production_settings(**updates) -> Settings:
         "_env_file": None,
         "environment": RuntimeEnvironment.PRODUCTION,
         "database_url": (
-            "postgresql+asyncpg://user:pass@db.example/oralsight?ssl=require"
+            "postgresql+asyncpg://user:pass@db.example/stoma3d?ssl=require"
         ),
         "auth_mode": AuthMode.OIDC,
         "oidc_issuer_url": "https://identity.example/",
@@ -83,7 +83,7 @@ def _production_settings(**updates) -> Settings:
         "deletion_tombstone_current_key": "t" * 32,
         "worker_service_hmac_secret": "w" * 32,
         "object_storage_backend": ObjectStorageBackend.S3,
-        "object_storage_bucket": "oralsight-private",
+        "object_storage_bucket": "stoma3d-private",
         "object_storage_public_base_url": "https://api.example/",
         "queue_backend": QueueBackend.REDIS,
         "redis_url": "rediss://redis.example/0",
@@ -106,7 +106,7 @@ def test_production_requires_tls_managed_dependencies_and_accepts_safe_config() 
         ValidationError, match="PostgreSQL connections must require TLS"
     ):
         _production_settings(
-            database_url="postgresql+asyncpg://user:pass@db.example/oralsight"
+            database_url="postgresql+asyncpg://user:pass@db.example/stoma3d"
         )
     with pytest.raises(ValidationError, match="private S3"):
         _production_settings(object_storage_backend=ObjectStorageBackend.LOCAL)

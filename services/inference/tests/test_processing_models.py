@@ -10,9 +10,9 @@ import cv2
 import numpy as np
 import pytest
 
-from oralsight_api import processing
-from oralsight_api.calibration import CalibrationEstimate, NeutralColorReference
-from oralsight_api.contracts import (
+from stoma3d_api import processing
+from stoma3d_api.calibration import CalibrationEstimate, NeutralColorReference
+from stoma3d_api.contracts import (
     AnalysisOrigin,
     AnalysisStatus,
     AnalyzeMetadata,
@@ -26,19 +26,19 @@ from oralsight_api.contracts import (
     QualityResult,
     RegistrationAlignment,
 )
-from oralsight_api.model_adapters import (
+from stoma3d_api.model_adapters import (
     AdapterPrediction,
     ClassificationPrediction,
     EmbeddingPrediction,
     ModelAdapterError,
     SegmentationPrediction,
 )
-from oralsight_api.processing import (
+from stoma3d_api.processing import (
     SanitizedImage,
     analyze_sanitized_image,
     compare_sanitized_images,
 )
-from oralsight_api.release_manifest import (
+from stoma3d_api.release_manifest import (
     RELEASE_MANIFEST_ENV,
     HeadReleaseState,
     ReleaseRuntimeState,
@@ -231,7 +231,7 @@ def _compare_metadata(
     }
     if with_calibration:
         request = {
-            "cardVersion": "oralsight-calibration-v1",
+            "cardVersion": "stoma3d-calibration-v1",
             "markerId": 17,
             "markerSideMm": 20,
             "planeConfirmed": True,
@@ -306,7 +306,7 @@ def test_analysis_applies_requested_neutral_reference_to_descriptors_only(
             marker_side_mm=marker_side_mm,
         )
         return NeutralColorReference(
-            card_version="oralsight-calibration-v1",
+            card_version="stoma3d-calibration-v1",
             marker_id=17,
             applied=True,
             method="neutral-grayscale-patches-affine-rgb-v1",
@@ -341,7 +341,7 @@ def test_analysis_applies_requested_neutral_reference_to_descriptors_only(
             "inputOrigin": "live_capture",
             "requestedHeads": ["segmentation", "anatomy"],
             "calibration": {
-                "cardVersion": "oralsight-calibration-v1",
+                "cardVersion": "stoma3d-calibration-v1",
                 "markerId": 17,
                 "markerSideMm": 20,
                 "planeConfirmed": True,
@@ -1056,7 +1056,7 @@ def test_comparison_exposes_millimeters_only_after_both_calibrations_pass(
     estimates = iter(
         [
             CalibrationEstimate(
-                card_version="oralsight-calibration-v1",
+                card_version="stoma3d-calibration-v1",
                 marker_id=17,
                 marker_side_mm=20.0,
                 valid=True,
@@ -1069,7 +1069,7 @@ def test_comparison_exposes_millimeters_only_after_both_calibrations_pass(
                 suppression_reasons=(),
             ),
             CalibrationEstimate(
-                card_version="oralsight-calibration-v1",
+                card_version="stoma3d-calibration-v1",
                 marker_id=17,
                 marker_side_mm=20.0,
                 valid=True,
@@ -1129,7 +1129,7 @@ def test_comparison_suppresses_millimeters_when_either_calibration_fails(
         ),
     )
     valid = CalibrationEstimate(
-        card_version="oralsight-calibration-v1",
+        card_version="stoma3d-calibration-v1",
         marker_id=17,
         marker_side_mm=20.0,
         valid=True,
@@ -1142,7 +1142,7 @@ def test_comparison_suppresses_millimeters_when_either_calibration_fails(
         suppression_reasons=(),
     )
     invalid = CalibrationEstimate(
-        card_version="oralsight-calibration-v1",
+        card_version="stoma3d-calibration-v1",
         marker_id=None,
         marker_side_mm=20.0,
         valid=False,

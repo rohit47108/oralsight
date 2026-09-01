@@ -3,7 +3,7 @@ import {
   analysisResultSchema,
   CONTRACT_VERSION,
   DISCLAIMER,
-} from "@oralsight/contracts";
+} from "@stoma3d/contracts";
 
 import { captureStorageRejectionReasons } from "../src/lib/analysisPolicy";
 

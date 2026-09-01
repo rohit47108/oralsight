@@ -21,7 +21,7 @@ from PIL import Image
 from pypdf import PdfReader
 from sqlalchemy import func, select
 
-from oralsight_platform.models import (
+from stoma3d_platform.models import (
     AnalysisOrigin,
     AnalysisRun,
     AnalysisStatus,
@@ -42,16 +42,16 @@ from oralsight_platform.models import (
     new_id,
     utc_now,
 )
-from oralsight_platform.job_outbox import dispatch_job_outbox_once
-from oralsight_platform.object_storage import (
+from stoma3d_platform.job_outbox import dispatch_job_outbox_once
+from stoma3d_platform.object_storage import (
     LocalObjectStorage,
     S3ObjectStorage,
     StorageError,
     StorageIntegrityError,
     StorageNotFound,
 )
-from oralsight_platform.portable_export import decrypt_portable_export
-from oralsight_platform.retention import sweep_retention
+from stoma3d_platform.portable_export import decrypt_portable_export
+from stoma3d_platform.retention import sweep_retention
 
 
 def _idempotent(auth_headers, key: str) -> dict[str, str]:
@@ -69,11 +69,11 @@ def _service_headers(settings, method: str, path: str, body: bytes) -> dict[str,
         hashlib.sha256,
     ).hexdigest()
     return {
-        "X-OralSight-Service": "oralsight-worker",
-        "X-OralSight-Timestamp": timestamp,
-        "X-OralSight-Nonce": nonce,
-        "X-OralSight-Content-SHA256": digest,
-        "X-OralSight-Signature": signature,
+        "X-Stoma3D-Service": "stoma3d-worker",
+        "X-Stoma3D-Timestamp": timestamp,
+        "X-Stoma3D-Nonce": nonce,
+        "X-Stoma3D-Content-SHA256": digest,
+        "X-Stoma3D-Signature": signature,
     }
 
 
@@ -650,7 +650,7 @@ async def test_capture_upload_holds_user_lock_until_delete_all_can_remove_write(
     execute_body = {
         "jobId": deletion.json()["jobId"],
         "subjectAccountId": user_id,
-        "scope": "all_oralsight_data",
+        "scope": "all_stoma3d_data",
         "rotateInstallationKey": True,
     }
     initial = await _signed_json(client, settings, execute_path, execute_body)
@@ -847,7 +847,7 @@ async def test_real_asset_queue_and_worker_fetch(
     assert fetched.content == capture["data"]
 
     notification = {
-        "schemaVersion": "oralsight.job.v1",
+        "schemaVersion": "stoma3d.job.v1",
         "jobId": job.json()["jobId"],
         "outcome": "unavailable",
         "completedAt": datetime.now(UTC).isoformat(),
@@ -1371,7 +1371,7 @@ async def test_delete_all_removes_bytes_rows_and_identity(
             "subjectAccountId": (
                 await client.get("/v2/me", headers=auth_headers())
             ).json()["id"],
-            "scope": "all_oralsight_data",
+            "scope": "all_stoma3d_data",
             "rotateInstallationKey": True,
         },
     )
@@ -1427,7 +1427,7 @@ async def test_delete_all_keeps_recorded_capability_quiescence_as_defense_in_dep
     execute_body = {
         "jobId": deletion.json()["jobId"],
         "subjectAccountId": me.json()["id"],
-        "scope": "all_oralsight_data",
+        "scope": "all_stoma3d_data",
         "rotateInstallationKey": True,
     }
 

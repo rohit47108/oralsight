@@ -16,11 +16,11 @@ ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONUNBUFFERED=1
 WORKDIR /app
 
-RUN addgroup --system oralsight && adduser --system --ingroup oralsight oralsight
-COPY --from=builder --chown=oralsight:oralsight /app/.venv /app/.venv
-COPY --chown=oralsight:oralsight alembic.ini ./alembic.ini
-COPY --chown=oralsight:oralsight alembic ./alembic
+RUN addgroup --system stoma3d && adduser --system --ingroup stoma3d stoma3d
+COPY --from=builder --chown=stoma3d:stoma3d /app/.venv /app/.venv
+COPY --chown=stoma3d:stoma3d alembic.ini ./alembic.ini
+COPY --chown=stoma3d:stoma3d alembic ./alembic
 
-USER oralsight
+USER stoma3d
 EXPOSE 8080
-CMD ["uvicorn", "oralsight_platform.main:app", "--host", "0.0.0.0", "--port", "8080", "--no-access-log", "--no-server-header"]
+CMD ["uvicorn", "stoma3d_platform.main:app", "--host", "0.0.0.0", "--port", "8080", "--no-access-log", "--no-server-header"]

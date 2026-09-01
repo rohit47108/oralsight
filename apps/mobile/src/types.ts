@@ -8,7 +8,7 @@ import type {
   MediaKind,
   MouthRegion,
   QualityResult,
-} from "@oralsight/contracts";
+} from "@stoma3d/contracts";
 
 import type { CaptureGuidanceSnapshot } from "@/components/captureGuidance";
 
@@ -72,7 +72,7 @@ export interface CaptureRecord {
   frameTimeMs?: number;
   calibrationRequested?: boolean;
   calibrationPlaneConfirmed?: boolean;
-  calibrationCardVersion?: "oralsight-calibration-v1";
+  calibrationCardVersion?: "stoma3d-calibration-v1";
   calibration?: CalibrationResult;
   privacyConfirmedByUser?: boolean;
   regionConfirmedByUser?: boolean;

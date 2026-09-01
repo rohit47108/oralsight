@@ -3,9 +3,9 @@ requires = ["hatchling>=1.25"]
 build-backend = "hatchling.build"
 
 [project]
-name = "oralsight-worker"
+name = "stoma3d-worker"
 version = "0.1.0"
-description = "Durable, privacy-preserving asynchronous job worker for OralSight"
+description = "Durable, privacy-preserving asynchronous job worker for Stoma3D"
 readme = "README.md"
 requires-python = ">=3.12,<3.15"
 dependencies = [
@@ -31,10 +31,10 @@ dev = [
 ]
 
 [project.scripts]
-oralsight-worker = "oralsight_worker.main:cli"
+stoma3d-worker = "stoma3d_worker.main:cli"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/oralsight_worker"]
+packages = ["src/stoma3d_worker"]
 
 [tool.pytest.ini_options]
 addopts = "-q --strict-markers"
@@ -44,7 +44,7 @@ testpaths = ["tests"]
 
 [tool.coverage.run]
 branch = true
-source = ["oralsight_worker"]
+source = ["stoma3d_worker"]
 
 [tool.coverage.report]
 show_missing = true

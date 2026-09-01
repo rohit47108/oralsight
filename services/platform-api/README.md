@@ -1,4 +1,4 @@
-# OralSight Platform API
+# Stoma3D Platform API
 
 This service owns product accounts, versioned consent, scan/capture metadata, private
 object storage, durable jobs, encrypted exports, clinician sharing, audit events,
@@ -13,13 +13,13 @@ the credentials and local signing secret, then run:
 ```powershell
 uv sync --all-extras
 uv run alembic upgrade head
-uv run oralsight-platform-api
+uv run stoma3d-platform-api
 ```
 
 The container uses the locked production dependencies and runs as a non-root user:
 
 ```powershell
-docker build -t oralsight-platform-api .
+docker build -t stoma3d-platform-api .
 ```
 
 The repository-level `compose.yaml` is for local development. Production uses
@@ -39,11 +39,11 @@ one-time command with process-scoped environment variables:
 
 ```powershell
 $bootstrapSubject = Read-Host "Exact OIDC subject for the first administrator"
-$env:ORALSIGHT_PLATFORM_BOOTSTRAP_ADMIN_SUBJECT = $bootstrapSubject
-$env:ORALSIGHT_PLATFORM_BOOTSTRAP_CONFIRMATION = "BOOTSTRAP ORALSIGHT FIRST ADMIN"
-uv run oralsight-bootstrap-admin
-Remove-Item Env:ORALSIGHT_PLATFORM_BOOTSTRAP_ADMIN_SUBJECT
-Remove-Item Env:ORALSIGHT_PLATFORM_BOOTSTRAP_CONFIRMATION
+$env:STOMA3D_PLATFORM_BOOTSTRAP_ADMIN_SUBJECT = $bootstrapSubject
+$env:STOMA3D_PLATFORM_BOOTSTRAP_CONFIRMATION = "BOOTSTRAP STOMA3D FIRST ADMIN"
+uv run stoma3d-bootstrap-admin
+Remove-Item Env:STOMA3D_PLATFORM_BOOTSTRAP_ADMIN_SUBJECT
+Remove-Item Env:STOMA3D_PLATFORM_BOOTSTRAP_CONFIRMATION
 $bootstrapSubject = $null
 ```
 
@@ -56,12 +56,12 @@ or output. Assign the `admin` value in the configured access-token role claim,
 then require a fresh sign-in. Both the PostgreSQL role and the validated token
 role are required for administrator routes.
 
-Add a second administrator with `oralsight-add-admin`. This is a trusted
+Add a second administrator with `stoma3d-add-admin`. This is a trusted
 infrastructure-operator action, not proof that another administrator personally
 approved it. Supply distinct target and active-administrator reference subjects
-through temporary `ORALSIGHT_PLATFORM_ADMIN_TARGET_SUBJECT` and
-`ORALSIGHT_PLATFORM_ADMIN_REFERENCE_SUBJECT` values, plus
-`ORALSIGHT_PLATFORM_ADMIN_CONFIRMATION=ADD ORALSIGHT ADMIN`. The active reference
+through temporary `STOMA3D_PLATFORM_ADMIN_TARGET_SUBJECT` and
+`STOMA3D_PLATFORM_ADMIN_REFERENCE_SUBJECT` values, plus
+`STOMA3D_PLATFORM_ADMIN_CONFIRMATION=ADD STOMA3D ADMIN`. The active reference
 proves that this is a normal addition rather than zero-administrator recovery.
 The audit event records the operator method without identifying an approving
 person or printing either subject. Assign `admin` in the exact configured
@@ -74,11 +74,11 @@ still has an administrator:
 
 ```powershell
 $recoverySubject = Read-Host "Exact OIDC subject for the recovery administrator"
-$env:ORALSIGHT_PLATFORM_RECOVERY_ADMIN_SUBJECT = $recoverySubject
-$env:ORALSIGHT_PLATFORM_RECOVERY_CONFIRMATION = "RECOVER ORALSIGHT SEALED INSTALLATION WITH ZERO ADMINS"
-uv run oralsight-recover-admin
-Remove-Item Env:ORALSIGHT_PLATFORM_RECOVERY_ADMIN_SUBJECT
-Remove-Item Env:ORALSIGHT_PLATFORM_RECOVERY_CONFIRMATION
+$env:STOMA3D_PLATFORM_RECOVERY_ADMIN_SUBJECT = $recoverySubject
+$env:STOMA3D_PLATFORM_RECOVERY_CONFIRMATION = "RECOVER STOMA3D SEALED INSTALLATION WITH ZERO ADMINS"
+uv run stoma3d-recover-admin
+Remove-Item Env:STOMA3D_PLATFORM_RECOVERY_ADMIN_SUBJECT
+Remove-Item Env:STOMA3D_PLATFORM_RECOVERY_CONFIRMATION
 $recoverySubject = $null
 ```
 
@@ -91,7 +91,7 @@ After a fresh sign-in, the applicant opens `/professional-apply` and submits
 credentials with that reference. Approval records the credential decision but
 leaves the account pending. After the identity administrator replaces the token
 role with `clinician`, the clinician signs in again and selects **Check secure
-access**. OralSight promotes the saved role only while observing that value in a
+access**. Stoma3D promotes the saved role only while observing that value in a
 validated token.
 
 The recorded timestamp is when the required role was first observed in a
@@ -100,7 +100,7 @@ current-access signal. Every protected request still checks the current token. P
 are stripped 900 seconds after token `iat` by default, plus clock leeway.
 Provider-role removal is immediate on token refresh and otherwise bounded by
 that age; it is not an instant revocation channel.
-The validator reads only `ORALSIGHT_PLATFORM_OIDC_ROLE_CLAIM`; it does not fall
+The validator reads only `STOMA3D_PLATFORM_OIDC_ROLE_CLAIM`; it does not fall
 back to a generic `roles` claim.
 
 ## Current endpoints
@@ -174,5 +174,5 @@ the downloaded ciphertext, and the raw/base64 X25519 private key in protected fi
 then decrypt to a new path (the command refuses to overwrite):
 
 ```powershell
-uv run python scripts/decrypt_export.py export.oralsight-export metadata.json recipient-private.key export.zip
+uv run python scripts/decrypt_export.py export.stoma3d-export metadata.json recipient-private.key export.zip
 ```

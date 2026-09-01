@@ -1,6 +1,6 @@
 # Repeat-capture comparison evidence
 
-OralSight reports approximate normalized change only when all of these are true:
+Stoma3D reports approximate normalized change only when all of these are true:
 
 - both images pass privacy and quality checks;
 - the user confirms that they show the same observation;
@@ -18,7 +18,7 @@ unconfirmed pairs, unsafe paths, missing release models, and existing output
 files.
 
 ```powershell
-uv run --frozen --all-packages oralsight-evaluate-repeat-capture `
+uv run --frozen --all-packages stoma3d-evaluate-repeat-capture `
   --pair-manifest C:\controlled\repeat-capture-pairs.csv `
   --data-root C:\controlled `
   --release-manifest services\inference\release\release-manifest.json `

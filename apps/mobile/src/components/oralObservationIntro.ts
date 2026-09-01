@@ -1,4 +1,4 @@
-import { MOUTH_REGIONS, type MouthRegion } from "@oralsight/contracts";
+import { MOUTH_REGIONS, type MouthRegion } from "@stoma3d/contracts";
 
 export function nextIntroRegion(
   current: MouthRegion,

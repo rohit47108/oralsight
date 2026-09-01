@@ -1,14 +1,14 @@
 import { useMemo, useState } from "react";
 import { router } from "expo-router";
 import { StyleSheet, Text, TextInput, View } from "react-native";
-import type { CaptureProtocol } from "@oralsight/contracts";
+import type { CaptureProtocol } from "@stoma3d/contracts";
 
 import { APP_TAGLINE, NEUTRAL_SEEK_CARE_COPY } from "@/constants";
 import { OralObservationMapIntroduction } from "@/components/OralObservationMap";
 import { Screen } from "@/components/Screen";
 import { SymptomBodyMap } from "@/components/SymptomBodyMap";
 import { Button, Card, ChoiceChip, SectionTitle } from "@/components/Ui";
-import { useOralSightStore } from "@/store/useOralSightStore";
+import { useStoma3DStore } from "@/store/useStoma3DStore";
 import { useAppTheme } from "@/theme";
 import type { AgeRange, IntakeProfile } from "@/types";
 
@@ -32,7 +32,7 @@ const symptoms = [
 
 export default function OnboardingRoute() {
   const theme = useAppTheme();
-  const finishConsentAndStartSession = useOralSightStore(
+  const finishConsentAndStartSession = useStoma3DStore(
     (state) => state.finishConsentAndStartSession,
   );
   const [ageRange, setAgeRange] = useState<AgeRange>("prefer_not_to_say");
@@ -103,7 +103,7 @@ export default function OnboardingRoute() {
   };
 
   return (
-    <Screen title="A clearer self-check" eyebrow="Welcome to OralSight">
+    <Screen title="A clearer self-check" eyebrow="Welcome to Stoma3D">
       <Text style={[styles.tagline, { color: theme.primary }]}>
         {APP_TAGLINE}
       </Text>
@@ -111,7 +111,7 @@ export default function OnboardingRoute() {
       <Card accent="amber">
         <SectionTitle title="What this prototype does" icon="eye-outline" />
         <Text style={[styles.body, { color: theme.text }]}>
-          OralSight helps you capture consistent images, describe visible
+          Stoma3D helps you capture consistent images, describe visible
           patterns, and track visual changes for professional discussion.
         </Text>
         <Text style={[styles.strong, { color: theme.text }]}>

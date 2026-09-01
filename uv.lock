@@ -9,11 +9,11 @@ resolution-markers = [
 
 [manifest]
 members = [
-    "oralsight-inference",
-    "oralsight-ml",
-    "oralsight-platform-api",
-    "oralsight-worker",
-    "oralsight-workspace",
+    "stoma3d-inference",
+    "stoma3d-ml",
+    "stoma3d-platform-api",
+    "stoma3d-worker",
+    "stoma3d-workspace",
 ]
 
 [[package]]
@@ -2588,7 +2588,7 @@ wheels = [
 ]
 
 [[package]]
-name = "oralsight-inference"
+name = "stoma3d-inference"
 version = "0.1.0"
 source = { editable = "services/inference" }
 dependencies = [
@@ -2628,7 +2628,7 @@ requires-dist = [
 provides-extras = ["dev"]
 
 [[package]]
-name = "oralsight-ml"
+name = "stoma3d-ml"
 version = "0.1.0"
 source = { editable = "ml" }
 
@@ -2662,7 +2662,7 @@ requires-dist = [
 provides-extras = ["dev", "research"]
 
 [[package]]
-name = "oralsight-platform-api"
+name = "stoma3d-platform-api"
 version = "0.1.0"
 source = { editable = "services/platform-api" }
 dependencies = [
@@ -2716,7 +2716,7 @@ requires-dist = [
 provides-extras = ["dev"]
 
 [[package]]
-name = "oralsight-worker"
+name = "stoma3d-worker"
 version = "0.1.0"
 source = { editable = "services/worker" }
 dependencies = [
@@ -2762,7 +2762,7 @@ requires-dist = [
 provides-extras = ["dev"]
 
 [[package]]
-name = "oralsight-workspace"
+name = "stoma3d-workspace"
 version = "0.1.0"
 source = { virtual = "." }
 

@@ -37,7 +37,7 @@ export function AnalyticsConsentForm({
             Share private product analytics
           </label>
           <p>
-            OralSight can record which feature was used and whether an action
+            Stoma3D can record which feature was used and whether an action
             finished, failed, or was cancelled. Images, record IDs, report
             content, symptoms, model outputs, and free text are never included.
           </p>

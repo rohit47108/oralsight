@@ -3,7 +3,7 @@ import { sha256 } from "@noble/hashes/sha2.js";
 import { bytesToHex, utf8ToBytes } from "@noble/hashes/utils.js";
 import { toByteArray } from "base64-js";
 
-const SIGNATURE_DOMAIN = "oralsight-response-v1";
+const SIGNATURE_DOMAIN = "stoma3d-response-v1";
 
 export function assertEchoedRequestId(
   expectedRequestId: string,

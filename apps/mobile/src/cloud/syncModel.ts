@@ -9,7 +9,7 @@ import type {
   ReportRecord,
   ScanSession,
 } from "../types";
-import type { AnalysisResult, ComparisonResult } from "@oralsight/contracts";
+import type { AnalysisResult, ComparisonResult } from "@stoma3d/contracts";
 
 import type { SyncOperationInput } from "./contracts";
 

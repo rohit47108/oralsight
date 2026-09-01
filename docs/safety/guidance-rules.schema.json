@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://oralsight.local/schemas/guidance-rules.schema.json",
-  "title": "OralSight clinician-reviewed deterministic guidance rules",
+  "$id": "https://stoma3d.local/schemas/guidance-rules.schema.json",
+  "title": "Stoma3D clinician-reviewed deterministic guidance rules",
   "type": "object",
   "additionalProperties": false,
   "required": [

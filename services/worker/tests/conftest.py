@@ -6,7 +6,7 @@ from uuid import UUID
 
 import pytest
 
-from oralsight_worker.models import (
+from stoma3d_worker.models import (
     AnalyzePayload,
     AssetPointer,
     JobEnvelope,

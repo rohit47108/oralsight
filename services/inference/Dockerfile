@@ -4,19 +4,19 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
     PYTHONPATH=/app/src \
-    ORALSIGHT_RELEASE_MANIFEST_PATH=/app/release/release-manifest.json
+    STOMA3D_RELEASE_MANIFEST_PATH=/app/release/release-manifest.json
 
 WORKDIR /app
 
 COPY requirements.lock.txt ./
 
 RUN python -m pip install --require-hashes --no-deps -r requirements.lock.txt \
-    && adduser --disabled-password --gecos "" --uid 10001 oralsight
+    && adduser --disabled-password --gecos "" --uid 10001 stoma3d
 
 COPY src ./src
 COPY release ./release
 
-USER oralsight
+USER stoma3d
 EXPOSE 8000
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
@@ -24,4 +24,4 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
 
 # Access logging is disabled because multipart requests can contain sensitive
 # captures.  Application logs include only method, path, status, and request ID.
-CMD ["python", "-m", "uvicorn", "oralsight_api.main:app", "--host", "0.0.0.0", "--port", "8000", "--no-access-log", "--no-server-header"]
+CMD ["python", "-m", "uvicorn", "stoma3d_api.main:app", "--host", "0.0.0.0", "--port", "8000", "--no-access-log", "--no-server-header"]

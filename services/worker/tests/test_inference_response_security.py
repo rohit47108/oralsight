@@ -11,10 +11,10 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from pydantic import ValidationError
 
-from oralsight_worker.auth import ServiceRequestSigner
-from oralsight_worker.http_client import InternalHttpClient, PermanentJobError
-from oralsight_worker.response_verification import InferenceResponseVerifier
-from oralsight_worker.settings import Settings
+from stoma3d_worker.auth import ServiceRequestSigner
+from stoma3d_worker.http_client import InternalHttpClient, PermanentJobError
+from stoma3d_worker.response_verification import InferenceResponseVerifier
+from stoma3d_worker.settings import Settings
 
 PRIVATE_KEY = Ed25519PrivateKey.from_private_bytes(b"\x17" * 32)
 PUBLIC_KEY_BYTES = PRIVATE_KEY.public_key().public_bytes(Encoding.Raw, PublicFormat.Raw)
@@ -30,7 +30,7 @@ def _client(
     return (
         InternalHttpClient(
             client=raw,
-            signer=ServiceRequestSigner("oralsight-worker", b"x" * 32),
+            signer=ServiceRequestSigner("stoma3d-worker", b"x" * 32),
             platform_api_url="https://platform.internal",
             inference_api_url="https://inference.internal",
             max_asset_bytes=8_000_000,
@@ -55,20 +55,20 @@ def _signed_response(
     request_id = request.headers["X-Request-ID"]
     signed_request_id = echoed_request_id or request_id
     signature = private_key.sign(
-        b"oralsight-response-v1\n"
+        b"stoma3d-response-v1\n"
         + signed_request_id.encode("ascii")
         + b"\n"
         + (body if signed_body is None else signed_body)
     )
     headers = {"X-Request-ID": signed_request_id}
     if include_key_id:
-        headers["X-OralSight-Key-Id"] = key_id or (
+        headers["X-Stoma3D-Key-Id"] = key_id or (
             InferenceResponseVerifier.from_standard_base64(PUBLIC_KEY_B64).key_id
         )
     if cache_control is not None:
         headers["Cache-Control"] = cache_control
     if include_signature:
-        headers["X-OralSight-Signature"] = base64.b64encode(signature).decode("ascii")
+        headers["X-Stoma3D-Signature"] = base64.b64encode(signature).decode("ascii")
     return httpx.Response(200, content=body, headers=headers)
 
 

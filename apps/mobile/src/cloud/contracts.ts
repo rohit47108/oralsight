@@ -4,7 +4,7 @@ import {
   platformApiCandidateObservationResponseSchema,
   platformApiGeneratedArtifactResponseSchema,
   platformApiReportResponseSchema,
-} from "@oralsight/contracts";
+} from "@stoma3d/contracts";
 import { z } from "zod";
 
 export const PLATFORM_CONTRACT_VERSION = "2.0.0" as const;
@@ -549,7 +549,7 @@ export const dataExportArtifactSchema = z
     artifactId: idSchema,
     exportRequestId: idSchema,
     jobId: idSchema,
-    mediaType: z.literal("application/vnd.oralsight.export"),
+    mediaType: z.literal("application/vnd.stoma3d.export"),
     sha256: sha256Schema,
     byteSize: z.number().int().positive(),
     includedFiles: z.boolean(),

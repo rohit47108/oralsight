@@ -1,4 +1,4 @@
-# OralSight completion checklist
+# Stoma3D completion checklist
 
 ## Repository
 

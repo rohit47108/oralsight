@@ -1,4 +1,4 @@
-# OralSight implementation checklist
+# Stoma3D implementation checklist
 
 Last updated: 2026-08-30
 
@@ -9,7 +9,7 @@ Detailed evidence lives in [FINAL_VERIFICATION.md](FINAL_VERIFICATION.md) and
 ## Repository and product
 
 - [x] Keep all source, tests, commits, and deployment configuration in this repository.
-- [x] Keep Parkinson's/NeuroSight out of the OralSight product.
+- [x] Keep Parkinson's/NeuroSight out of the Stoma3D product.
 - [x] Preserve the public repository and exclude secrets, private medical data, restricted datasets, and private model weights.
 - [x] Complete the public website, mobile app, inference service, platform API, worker, shared contracts, ML tooling, assets, and release documents.
 

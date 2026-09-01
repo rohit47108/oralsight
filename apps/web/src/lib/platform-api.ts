@@ -4,8 +4,8 @@ import {
   platformApiClinicianVerificationQueueSchema as clinicianVerificationQueueSchema,
   platformApiClinicianVerificationResponseSchema as clinicianVerificationSchema,
   reportArtifactSchema,
-} from "@oralsight/contracts";
-import type { CaptureSet, ReportArtifact } from "@oralsight/contracts";
+} from "@stoma3d/contracts";
+import type { CaptureSet, ReportArtifact } from "@stoma3d/contracts";
 import { z } from "zod";
 
 import { getAuth0Client } from "@/lib/auth0";
@@ -481,10 +481,10 @@ export class PlatformApiError extends Error {
 }
 
 function platformBaseUrl(): string {
-  const raw = process.env.ORALSIGHT_PLATFORM_API_URL;
+  const raw = process.env.STOMA3D_PLATFORM_API_URL;
   if (!raw) {
     throw new PlatformApiError(
-      "The OralSight service has not been connected.",
+      "The Stoma3D service has not been connected.",
       "platform_not_configured",
       503,
     );
@@ -496,7 +496,7 @@ function platformBaseUrl(): string {
     url.hostname !== "localhost"
   ) {
     throw new PlatformApiError(
-      "The OralSight service must use HTTPS.",
+      "The Stoma3D service must use HTTPS.",
       "platform_https_required",
       503,
     );
@@ -530,7 +530,7 @@ async function platformRequest<T>(
   const parsed = schema.safeParse(payload);
   if (!parsed.success) {
     throw new PlatformApiError(
-      "The service returned data OralSight could not verify.",
+      "The service returned data Stoma3D could not verify.",
       "invalid_platform_response",
       502,
     );
@@ -561,7 +561,7 @@ async function platformFetch(
     });
   } catch {
     throw new PlatformApiError(
-      "The OralSight service could not be reached. Try again.",
+      "The Stoma3D service could not be reached. Try again.",
       "platform_unreachable",
       503,
     );
@@ -574,7 +574,7 @@ function platformResponseError(response: Response, payload: unknown) {
   return new PlatformApiError(
     parsed.success
       ? parsed.data.error.message
-      : "The OralSight service could not complete this request.",
+      : "The Stoma3D service could not complete this request.",
     parsed.success ? parsed.data.error.code : "platform_request_failed",
     response.status,
     parsed.success ? parsed.data.error.requestId : undefined,
@@ -597,7 +597,7 @@ function resourceId(value: string): string {
   const trimmed = value.trim();
   if (!/^[A-Za-z0-9._:-]{1,128}$/.test(trimmed)) {
     throw new PlatformApiError(
-      "Enter a valid OralSight record ID.",
+      "Enter a valid Stoma3D record ID.",
       "invalid_resource_id",
       400,
     );

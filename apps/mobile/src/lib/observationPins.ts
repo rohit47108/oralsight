@@ -1,4 +1,4 @@
-import type { ComparisonResult } from "@oralsight/contracts";
+import type { ComparisonResult } from "@stoma3d/contracts";
 
 import type { CaptureRecord, ObservationPin } from "@/types";
 

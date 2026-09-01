@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MOUTH_REGIONS } from "@oralsight/contracts";
+import { MOUTH_REGIONS } from "@stoma3d/contracts";
 
 import { captureGuideSpec } from "../src/lib/captureGuide";
 

@@ -435,7 +435,7 @@ wheels = [
 ]
 
 [[package]]
-name = "oralsight-worker"
+name = "stoma3d-worker"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [

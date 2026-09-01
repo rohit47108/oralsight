@@ -2,7 +2,7 @@
 
 ## Project Structure
 
-OralSight is a pnpm/uv monorepo. The mobile client is in `apps/mobile` and the
+Stoma3D is a pnpm/uv monorepo. The mobile client is in `apps/mobile` and the
 Next.js web product is in `apps/web`. Shared TypeScript contracts live in
 `packages/contracts`. Python services are split into `services/inference`
 (stateless image analysis), `services/platform-api` (accounts, storage, sync,

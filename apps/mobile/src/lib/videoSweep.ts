@@ -1,4 +1,4 @@
-import type { CaptureAngle, QualityResult } from "@oralsight/contracts";
+import type { CaptureAngle, QualityResult } from "@stoma3d/contracts";
 
 export const SWEEP_ANGLES = [
   "straight",

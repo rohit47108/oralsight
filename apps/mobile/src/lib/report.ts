@@ -7,7 +7,7 @@ import {
   MOUTH_REGION_DETAILS,
   type AnalysisResult,
   type ComparisonResult,
-} from "@oralsight/contracts";
+} from "@stoma3d/contracts";
 
 import { DISCLAIMER, ORAL_MAP_ASSET_VERSION } from "@/constants";
 import { isReleasedModelOutput } from "@/lib/analysisPresentation";
@@ -357,7 +357,7 @@ export async function generateEncryptedObservationReport(
   </style></head><body>
     <div class="page-disclaimer">${DISCLAIMER}</div>
     ${syntheticReport ? '<div class="demo-watermark">SYNTHETIC DEMONSTRATION - NOT PATIENT DATA</div>' : ""}
-    <h1>${syntheticReport ? "OralSight synthetic demonstration report" : "OralSight observation report"}</h1>
+    <h1>${syntheticReport ? "Stoma3D synthetic demonstration report" : "Stoma3D observation report"}</h1>
     <p>Structured visual observations for discussion with a dental or medical professional.</p>
     <div class="warning">${DISCLAIMER}</div>
     <h2>Session</h2><div class="meta">
@@ -402,7 +402,7 @@ export async function generateEncryptedObservationReport(
       <li>Which visible changes, if any, should prompt an earlier follow-up?</li>
       <li>When, if at all, should this area be checked again?</li>
     </ul>
-    <footer class="report-footer">${syntheticReport ? "SYNTHETIC DEMONSTRATION - NOT PATIENT DATA. " : ""}${DISCLAIMER} Generated locally by OralSight. Images and report files are encrypted at rest. Model versions are recorded with each observation.</footer>
+    <footer class="report-footer">${syntheticReport ? "SYNTHETIC DEMONSTRATION - NOT PATIENT DATA. " : ""}${DISCLAIMER} Generated locally by Stoma3D. Images and report files are encrypted at rest. Model versions are recorded with each observation.</footer>
   </body></html>`;
 
   let plaintextPdfUri: string | null = null;
@@ -438,7 +438,7 @@ export async function shareEncryptedReport(
   try {
     await Sharing.shareAsync(temporary, {
       mimeType: "application/pdf",
-      dialogTitle: "Share OralSight observation report",
+      dialogTitle: "Share Stoma3D observation report",
       UTI: "com.adobe.pdf",
     });
     shareSheetOpened = true;

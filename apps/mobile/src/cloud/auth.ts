@@ -472,7 +472,7 @@ export function withOidcDiscovery(
 export class TokenVault {
   constructor(
     private readonly storage: SecureKeyValueAdapter,
-    private readonly key = "oralsight.cloud.oidc.tokens.v1",
+    private readonly key = "stoma3d.cloud.oidc.tokens.v1",
     private readonly now: () => number = Date.now,
   ) {}
 

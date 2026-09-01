@@ -59,7 +59,7 @@ export default async function ClinicianPendingPage() {
                   ? "Submit your professional credentials before access can be reviewed. Patient shares and annotations remain unavailable."
                   : mode === "rejected"
                     ? "Patient shares and annotations remain unavailable. Review the decision before submitting new evidence."
-                    : "OralSight has your professional request, but the platform has not marked this account as verified. Patient shares and annotations remain unavailable."}
+                    : "Stoma3D has your professional request, but the platform has not marked this account as verified. Patient shares and annotations remain unavailable."}
           </p>
         </div>
         <span className="account-state" data-state="pending">

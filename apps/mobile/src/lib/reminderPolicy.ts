@@ -1,4 +1,4 @@
-import type { AnalysisResult } from "@oralsight/contracts";
+import type { AnalysisResult } from "@stoma3d/contracts";
 
 import type { IntakeProfile } from "@/types";
 

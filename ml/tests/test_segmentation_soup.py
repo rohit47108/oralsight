@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from oralsight_ml.segmentation_soup import (
+from stoma3d_ml.segmentation_soup import (
     _build_parser,
     _compatible_configuration,
 )

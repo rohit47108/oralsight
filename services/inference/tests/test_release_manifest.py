@@ -8,19 +8,19 @@ from pathlib import Path
 import pytest
 import numpy as np
 
-from oralsight_api.configuration import (
+from stoma3d_api.configuration import (
     DEMO_FIXTURES_ENV,
     DEPLOYMENT_MODE_ENV,
     REQUIRE_SIGNING_ENV,
     DeploymentMode,
     load_service_configuration,
 )
-from oralsight_api.contracts import ModelHead
-from oralsight_api.model_adapters import (
+from stoma3d_api.contracts import ModelHead
+from stoma3d_api.model_adapters import (
     ClassificationPrediction,
     OnnxAdapterSpec,
 )
-from oralsight_api.release_manifest import (
+from stoma3d_api.release_manifest import (
     RELEASE_MANIFEST_ENV,
     ReleaseManifest,
     load_release_runtime,
@@ -369,7 +369,7 @@ def test_model_card_uses_the_same_immutable_release_state(
         adapter_loader=_stub_adapter_loader,
     )
 
-    api_main = importlib.import_module("oralsight_api.main")
+    api_main = importlib.import_module("stoma3d_api.main")
     monkeypatch.setattr(api_main, "RELEASE_RUNTIME", runtime)
     card = api_main._model_card()
     assert card.enabled_heads == [ModelHead.SEGMENTATION]

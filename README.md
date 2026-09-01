@@ -1,6 +1,6 @@
-# OralSight
+# Stoma3D
 
-OralSight is an iOS and Android app for taking consistent mouth photos and
+Stoma3D is an iOS and Android app for taking consistent mouth photos and
 tracking visible changes. It is not a diagnostic tool.
 
 The normal user flow accepts a camera image or a photo selected from the device,
@@ -13,7 +13,7 @@ The installed app contains no sample mouth images and does not replace a failed
 analysis with a made-up result. A disabled backend fixture exists only for
 service and contract tests.
 
-> **This result is not a diagnosis.** OralSight does not prove cancer,
+> **This result is not a diagnosis.** Stoma3D does not prove cancer,
 > harmlessness, or the absence of disease.
 
 ## What works now
@@ -130,7 +130,7 @@ python .github/scripts/audit_repository.py
 To create a clean source archive after verification:
 
 ```powershell
-.\scripts\package-source.ps1 -OutputPath ..\OralSight-source.zip
+.\scripts\package-source.ps1 -OutputPath ..\Stoma3D-source.zip
 ```
 
 The packager uses Git's non-ignored source-file list, so it omits local
@@ -144,14 +144,14 @@ bundle is intentionally excluded.
 Start the stateless service:
 
 ```powershell
-$env:ORALSIGHT_DEPLOYMENT_MODE = "development"
-$env:ORALSIGHT_REQUIRE_RESPONSE_SIGNING = "false"
-$env:ORALSIGHT_ENABLE_DEMO_FIXTURES = "false"
-$env:ORALSIGHT_RELEASE_MANIFEST_PATH = (
+$env:STOMA3D_DEPLOYMENT_MODE = "development"
+$env:STOMA3D_REQUIRE_RESPONSE_SIGNING = "false"
+$env:STOMA3D_ENABLE_DEMO_FIXTURES = "false"
+$env:STOMA3D_RELEASE_MANIFEST_PATH = (
   Resolve-Path "services/inference/private-release/release-manifest.json"
 ).Path
-py -3.12 -m uv run --frozen --package oralsight-inference `
-  uvicorn oralsight_api.main:app --reload --port 8000 --no-access-log --no-server-header
+py -3.12 -m uv run --frozen --package stoma3d-inference `
+  uvicorn stoma3d_api.main:app --reload --port 8000 --no-access-log --no-server-header
 ```
 
 In another terminal, create or run an Expo development build:
@@ -184,7 +184,7 @@ The native app is distributed as an Android or iOS build, not as a Vercel websit
 Vercel can host the Next.js web product and the stateless OpenCV inference API.
 The account API and continuous worker are stateful container services and are not
 replaced by Vercel. The signed inference release is live at
-`https://oralsight-inference.vercel.app/api`. The web deployment proxies its public
+`https://stoma3d-inference.vercel.app/api`. The web deployment proxies its public
 API routes to that service; the platform and worker remain separate container
 deployments.
 
@@ -219,7 +219,7 @@ requirements are documented in
 
 ## Distribution
 
-OralSight source code is available under the MIT License. The public repository
+Stoma3D source code is available under the MIT License. The public repository
 does not contain the Autooral-assisted segmentation weight. The academic
 competition deployment loads that weight from a private, hash-verified model
 bundle. See [`docs/PUBLIC_DISTRIBUTION.md`](docs/PUBLIC_DISTRIBUTION.md).

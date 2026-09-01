@@ -58,10 +58,10 @@ test("discovers the installed Android SDK and a working Gradle JDK", () => {
 test("parses the drive aliases produced by Windows subst", () => {
   assert.deepEqual(
     parseSubstMappings(
-      "O:\\: => C:\\Users\\student\\Projects\\oralsight\r\nP:\\: => C:\\other\r\n",
+      "O:\\: => C:\\Users\\student\\Projects\\stoma3d\r\nP:\\: => C:\\other\r\n",
     ),
     new Map([
-      ["O:", "C:\\Users\\student\\Projects\\oralsight"],
+      ["O:", "C:\\Users\\student\\Projects\\stoma3d"],
       ["P:", "C:\\other"],
     ]),
   );
@@ -69,9 +69,9 @@ test("parses the drive aliases produced by Windows subst", () => {
 
 test("reuses an existing short alias for the same repository", () => {
   const plan = createWindowsAndroidPlan({
-    repositoryRoot: "C:\\Users\\student\\Projects\\oralsight",
+    repositoryRoot: "C:\\Users\\student\\Projects\\stoma3d",
     userProfile: "C:\\Users\\student",
-    substOutput: "O:\\: => C:\\Users\\student\\Projects\\oralsight\r\n",
+    substOutput: "O:\\: => C:\\Users\\student\\Projects\\stoma3d\r\n",
     driveExists: () => true,
   });
 
@@ -80,14 +80,14 @@ test("reuses an existing short alias for the same repository", () => {
     drive: "O:",
     gradleDirectory: "O:\\apps\\mobile\\android",
     needsSubst: false,
-    repositoryRoot: "C:\\Users\\student\\Projects\\oralsight",
+    repositoryRoot: "C:\\Users\\student\\Projects\\stoma3d",
     virtualStoreDirectory: "C:\\Users\\student\\.osp",
   });
 });
 
 test("does not take a drive that already belongs to another path", () => {
   const plan = createWindowsAndroidPlan({
-    repositoryRoot: "C:\\Users\\student\\Projects\\oralsight",
+    repositoryRoot: "C:\\Users\\student\\Projects\\stoma3d",
     userProfile: "C:\\Users\\student",
     substOutput: "O:\\: => C:\\other\r\n",
     driveExists: (path) => path === "O:\\",
@@ -116,7 +116,7 @@ test("builds an installable release with the JavaScript bundle embedded", () => 
       "app:installRelease",
       "-PreactNativeArchitectures=arm64-v8a",
       "-Pkotlin.incremental=false",
-      "-Poralsight.disableHermesSourceMaps=true",
+      "-Pstoma3d.disableHermesSourceMaps=true",
       "--stacktrace",
     ],
     executable: "gradlew.bat",
@@ -130,7 +130,7 @@ test("runs release bundling and native compilation in one short-path build", () 
       mode: "install-release",
       plan: {
         gradleDirectory: "O:\\apps\\mobile\\android",
-        repositoryRoot: "C:\\Users\\student\\Projects\\oralsight",
+        repositoryRoot: "C:\\Users\\student\\Projects\\stoma3d",
       },
     }),
     [
@@ -139,7 +139,7 @@ test("runs release bundling and native compilation in one short-path build", () 
           "app:installRelease",
           "-PreactNativeArchitectures=x86_64",
           "-Pkotlin.incremental=false",
-          "-Poralsight.disableHermesSourceMaps=true",
+          "-Pstoma3d.disableHermesSourceMaps=true",
           "--stacktrace",
         ],
         directory: "O:\\apps\\mobile\\android",

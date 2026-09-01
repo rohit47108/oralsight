@@ -19,7 +19,7 @@ export default function HomePage() {
   return (
     <>
       <section className="hero page-width" aria-labelledby="hero-heading">
-        <ol className="scan-rail" aria-label="The OralSight flow">
+        <ol className="scan-rail" aria-label="The Stoma3D flow">
           {scanSteps.map((step, index) => (
             <li
               key={step.title}
@@ -42,9 +42,9 @@ export default function HomePage() {
             Track visible changes with a consistent scan.
           </h1>
           <p className="hero-copy__body">
-            OralSight guides you through eight mouth regions, checks each
-            capture, highlights candidate areas, and turns your observations
-            into a timeline and shareable report.
+            Stoma3D guides you through eight mouth regions, checks each capture,
+            highlights candidate areas, and turns your observations into a
+            timeline and shareable report.
           </p>
           <div className="hero-actions">
             <Link className="button" href="/how-it-works#start">
@@ -73,7 +73,7 @@ export default function HomePage() {
             <h2 id="comparison-heading">See the same area, side by side.</h2>
             <p>
               Confirm two observations show the same area, then review them side
-              by side. OralSight checks whether the images align well enough
+              by side. Stoma3D checks whether the images align well enough
               before showing an approximate change.
             </p>
             <Link className="arrow-link" href="/how-it-works#compare">
@@ -181,7 +181,7 @@ export default function HomePage() {
         <article className="report-sheet" aria-label="Report structure preview">
           <header>
             <div>
-              <span className="report-sheet__mark">OralSight</span>
+              <span className="report-sheet__mark">Stoma3D</span>
               <h3>Oral observation report</h3>
             </div>
             <span className="report-sheet__status">Prepared locally</span>
@@ -211,7 +211,7 @@ export default function HomePage() {
 
       <section className="closing-callout">
         <div className="page-width closing-callout__inner">
-          <h2>See how OralSight analyzes each capture.</h2>
+          <h2>See how Stoma3D analyzes each capture.</h2>
           <p>
             Explore the image checks, candidate-area analysis, confidence
             details, comparison rules, and model performance records behind a

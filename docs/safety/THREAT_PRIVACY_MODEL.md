@@ -1,4 +1,4 @@
-# OralSight threat and privacy model
+# Stoma3D threat and privacy model
 
 Status: design and verification checklist for a competition research prototype. It is
 not a certification, legal opinion, HIPAA claim, or guarantee of security.

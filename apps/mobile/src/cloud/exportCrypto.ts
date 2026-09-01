@@ -14,7 +14,7 @@ import { readCloudConfig } from "./config";
 import { CloudError } from "./errors";
 import { cloudAccessToken } from "./session";
 
-const EXPORT_AAD = new TextEncoder().encode("oralsight-portable-export-v1");
+const EXPORT_AAD = new TextEncoder().encode("stoma3d-portable-export-v1");
 
 function hex(value: Uint8Array): string {
   return [...value].map((byte) => byte.toString(16).padStart(2, "0")).join("");
@@ -132,11 +132,11 @@ export async function shareDataExportArtifact(
     plaintext.fill(0);
     throw new Error("Temporary storage is unavailable.");
   }
-  const directory = `${FileSystem.cacheDirectory}oralsight-share/`;
+  const directory = `${FileSystem.cacheDirectory}stoma3d-share/`;
   await FileSystem.makeDirectoryAsync(directory, { intermediates: true }).catch(
     () => undefined,
   );
-  const uri = `${directory}oralsight-export-${artifact.exportRequestId}.zip`;
+  const uri = `${directory}stoma3d-export-${artifact.exportRequestId}.zip`;
   try {
     await FileSystem.writeAsStringAsync(uri, fromByteArray(plaintext), {
       encoding: FileSystem.EncodingType.Base64,
@@ -144,7 +144,7 @@ export async function shareDataExportArtifact(
     plaintext.fill(0);
     await Sharing.shareAsync(uri, {
       mimeType: "application/zip",
-      dialogTitle: "Save OralSight account export",
+      dialogTitle: "Save Stoma3D account export",
       UTI: "public.zip-archive",
     });
   } finally {

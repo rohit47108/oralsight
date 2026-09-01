@@ -1,4 +1,4 @@
-import { MOUTH_REGIONS } from "@oralsight/contracts";
+import { MOUTH_REGIONS } from "@stoma3d/contracts";
 import type { Metadata } from "next";
 import Link from "next/link";
 

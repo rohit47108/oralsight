@@ -189,7 +189,7 @@ function ensureNativeProject() {
 
   runPnpm([
     "--filter",
-    "@oralsight/mobile",
+    "@stoma3d/mobile",
     "exec",
     "expo",
     "prebuild",
@@ -201,7 +201,7 @@ function ensureNativeProject() {
 }
 
 function prepareNativeCache(plan) {
-  const marker = join(nativeCache, ".oralsight-build-alias");
+  const marker = join(nativeCache, ".stoma3d-build-alias");
   const expected = plan.aliasRoot.toUpperCase();
   const existing = existsSync(marker)
     ? readFileSync(marker, "utf8").trim()
@@ -224,7 +224,7 @@ function main() {
 
   const { architecture, command } = parseWindowsAndroidArguments(
     process.argv.slice(2),
-    process.env.ORALSIGHT_ANDROID_ARCH || "x86_64",
+    process.env.STOMA3D_ANDROID_ARCH || "x86_64",
   );
   process.env.NODE_ENV = nodeEnvironmentForWindowsAndroidMode(
     command,
@@ -275,7 +275,7 @@ function main() {
   if (command === "prebuild") {
     runPnpm([
       "--filter",
-      "@oralsight/mobile",
+      "@stoma3d/mobile",
       "exec",
       "expo",
       "prebuild",

@@ -21,8 +21,8 @@ describe("print calibration contract", () => {
       marker_id: 17,
       marker_side_mm: 20,
       reference_bar_mm: 50,
-      schema: "oralsight_calibration_card",
-      version: "oralsight-calibration-v1",
+      schema: "stoma3d_calibration_card",
+      version: "stoma3d-calibration-v1",
     });
   });
 });

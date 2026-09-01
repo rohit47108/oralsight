@@ -1,14 +1,14 @@
 {
-  "name": "oralsight",
+  "name": "stoma3d",
   "version": "0.1.0",
   "private": true,
-  "description": "OralSight non-diagnostic oral observation research prototype",
+  "description": "Stoma3D non-diagnostic oral observation research prototype",
   "packageManager": "pnpm@11.9.0",
   "engines": {
     "node": ">=22 <25"
   },
   "scripts": {
-    "dev:mobile": "pnpm --filter @oralsight/mobile start",
+    "dev:mobile": "pnpm --filter @stoma3d/mobile start",
     "android:doctor:windows": "node scripts/windows-android.mjs doctor",
     "android:setup:windows": "node scripts/windows-android.mjs setup",
     "android:prebuild:windows": "node scripts/windows-android.mjs prebuild",
@@ -16,7 +16,7 @@
     "android:install:windows": "node scripts/windows-android.mjs install",
     "android:build-release:windows": "node scripts/windows-android.mjs build-release",
     "android:install-release:windows": "node scripts/windows-android.mjs install-release",
-    "contracts:generate": "pnpm --filter @oralsight/contracts generate && prettier --write packages/contracts/generated/oralsight-contracts.schema.json packages/contracts/generated/oralsight-platform-contracts.schema.json",
+    "contracts:generate": "pnpm --filter @stoma3d/contracts generate && prettier --write packages/contracts/generated/stoma3d-contracts.schema.json packages/contracts/generated/stoma3d-platform-contracts.schema.json",
     "test": "node --test scripts/*.test.mjs && pnpm -r --if-present test",
     "typecheck": "pnpm -r --if-present typecheck",
     "format:check": "prettier --check .",

@@ -5,7 +5,7 @@ import { PageIntro } from "@/components/page-intro";
 export const metadata: Metadata = {
   title: "Security",
   description:
-    "Review OralSight security controls for local records, requests, accounts, sharing, logs, and deletion.",
+    "Review Stoma3D security controls for local records, requests, accounts, sharing, logs, and deletion.",
 };
 
 export default function SecurityPage() {
@@ -14,7 +14,7 @@ export default function SecurityPage() {
       <PageIntro
         label="Security"
         title="Protection is a set of checks, not a badge."
-        description="OralSight separates local storage, analysis, accounts, and sharing so each part can fail safely and be tested on its own."
+        description="Stoma3D separates local storage, analysis, accounts, and sharing so each part can fail safely and be tested on its own."
       />
 
       <section
@@ -67,8 +67,8 @@ export default function SecurityPage() {
           <div className="long-copy">
             <p>
               Security controls do not by themselves establish HIPAA compliance,
-              clinical approval, or freedom from risk. OralSight does not
-              describe optional cloud sync as end-to-end encrypted.
+              clinical approval, or freedom from risk. Stoma3D does not describe
+              optional cloud sync as end-to-end encrypted.
             </p>
             <p>
               Production releases still require dependency review, threat

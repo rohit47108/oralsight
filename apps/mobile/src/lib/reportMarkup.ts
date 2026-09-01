@@ -1,4 +1,4 @@
-import type { CandidateMask, MouthRegion } from "@oralsight/contracts";
+import type { CandidateMask, MouthRegion } from "@stoma3d/contracts";
 
 function escapeAttribute(value: string): string {
   return value

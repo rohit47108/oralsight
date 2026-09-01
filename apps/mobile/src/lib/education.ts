@@ -2,7 +2,7 @@ import {
   MOUTH_REGION_DETAILS,
   MOUTH_REGIONS,
   type MouthRegion,
-} from "@oralsight/contracts";
+} from "@stoma3d/contracts";
 
 export interface AnatomyLesson {
   region: MouthRegion;
@@ -231,7 +231,7 @@ export interface KnowledgeQuestion {
 export const KNOWLEDGE_QUESTIONS: readonly KnowledgeQuestion[] = [
   {
     id: "quality",
-    prompt: "Why does OralSight reject a blurry image?",
+    prompt: "Why does Stoma3D reject a blurry image?",
     choices: [
       "Blur can hide the detail needed for a useful comparison",
       "Blur always means an area is harmless",
@@ -255,7 +255,7 @@ export const KNOWLEDGE_QUESTIONS: readonly KnowledgeQuestion[] = [
   },
   {
     id: "result",
-    prompt: "What can an OralSight result establish?",
+    prompt: "What can an Stoma3D result establish?",
     choices: [
       "A visible observation and its stated limits",
       "That an area is cancer",

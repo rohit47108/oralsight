@@ -63,7 +63,7 @@ describe("authenticated platform API wire contracts", () => {
       reviewedAt: CREATED_AT,
       retentionExpiresAt: "2033-08-08T12:00:00.000Z",
       identityRole: {
-        requiredClaim: "https://oralsight.app/roles",
+        requiredClaim: "https://stoma3d.app/roles",
         requiredValue: "clinician",
         observationStatus: "awaiting_token_observation",
         oidcRoleObservedAt: null,
@@ -101,7 +101,7 @@ describe("authenticated platform API wire contracts", () => {
       reviewedAt: null,
       retentionExpiresAt: "2033-08-08T12:00:00.000Z",
       identityRole: {
-        requiredClaim: "https://oralsight.app/roles",
+        requiredClaim: "https://stoma3d.app/roles",
         requiredValue: "clinician",
         observationStatus: "not_applicable",
         oidcRoleObservedAt: null,
@@ -141,7 +141,7 @@ describe("authenticated platform API wire contracts", () => {
           reviewedAt: null,
           retentionExpiresAt: "2033-08-08T12:00:00.000Z",
           identityRole: {
-            requiredClaim: "https://oralsight.app/roles",
+            requiredClaim: "https://stoma3d.app/roles",
             requiredValue: "clinician",
             observationStatus: "not_applicable",
             oidcRoleObservedAt: null,

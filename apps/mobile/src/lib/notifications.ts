@@ -4,7 +4,7 @@ import { Platform } from "react-native";
 import { DISCLAIMER } from "@/constants";
 import type { ReminderSuggestion } from "@/lib/reminderPolicy";
 
-const REMINDER_CHANNEL_ID = "oralsight-follow-up";
+const REMINDER_CHANNEL_ID = "stoma3d-follow-up";
 
 export async function configureLocalNotifications(): Promise<void> {
   Notifications.setNotificationHandler({
@@ -17,7 +17,7 @@ export async function configureLocalNotifications(): Promise<void> {
   });
   if (Platform.OS === "android") {
     await Notifications.setNotificationChannelAsync(REMINDER_CHANNEL_ID, {
-      name: "OralSight follow-up reminders",
+      name: "Stoma3D follow-up reminders",
       description: "Reminders you explicitly schedule for saved observations.",
       importance: Notifications.AndroidImportance.DEFAULT,
       vibrationPattern: [0, 180],
@@ -50,11 +50,11 @@ export async function scheduleObservationReminder(input: {
     content: {
       title:
         input.suggestion.reason === "quality_retake"
-          ? "Your OralSight retake reminder"
-          : "Your OralSight follow-up reminder",
+          ? "Your Stoma3D retake reminder"
+          : "Your Stoma3D follow-up reminder",
       body: `You asked to review a saved mouth observation. ${DISCLAIMER}`,
       data: {
-        kind: "oralsight_observation_reminder",
+        kind: "stoma3d_observation_reminder",
         captureId: input.captureId,
       },
       sound: false,
@@ -69,7 +69,7 @@ export async function scheduleObservationReminder(input: {
   return { id, scheduledFor };
 }
 
-export async function cancelAllOralSightReminders(): Promise<void> {
+export async function cancelAllStoma3DReminders(): Promise<void> {
   await Notifications.cancelAllScheduledNotificationsAsync();
   await Notifications.setBadgeCountAsync(0).catch(() => false);
 }
@@ -78,7 +78,7 @@ export function reminderCaptureId(
   notification: Notifications.Notification,
 ): string | null {
   const data = notification.request.content.data;
-  if (data?.kind !== "oralsight_observation_reminder") return null;
+  if (data?.kind !== "stoma3d_observation_reminder") return null;
   const captureId = data.captureId;
   return typeof captureId === "string" &&
     captureId.length <= 128 &&

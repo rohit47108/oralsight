@@ -1,4 +1,4 @@
-# OralSight image-quality calibration note
+# Stoma3D image-quality calibration note
 
 Date: 2026-07-27  
 Status: software calibration evidence; physical-device release testing pending

@@ -6,7 +6,7 @@ import jwt
 import pytest
 from cryptography.hazmat.primitives.asymmetric.rsa import generate_private_key
 
-from oralsight_platform.security import (
+from stoma3d_platform.security import (
     TokenValidationError,
     TokenValidator,
     issue_local_test_token,

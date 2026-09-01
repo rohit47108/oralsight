@@ -4,13 +4,13 @@ import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 
 import { APP_NAME, APP_TAGLINE } from "@/constants";
 import { Screen } from "@/components/Screen";
-import { useOralSightStore } from "@/store/useOralSightStore";
+import { useStoma3DStore } from "@/store/useStoma3DStore";
 import { useAppTheme } from "@/theme";
 
 export default function IndexRoute() {
   const theme = useAppTheme();
-  const hydrated = useOralSightStore((state) => state.hydrated);
-  const consentedAt = useOralSightStore((state) => state.consentedAt);
+  const hydrated = useStoma3DStore((state) => state.hydrated);
+  const consentedAt = useStoma3DStore((state) => state.consentedAt);
   useEffect(() => {
     if (!hydrated) return;
     router.replace(consentedAt ? "/(tabs)/scan" : "/onboarding");

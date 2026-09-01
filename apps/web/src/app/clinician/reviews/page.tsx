@@ -82,8 +82,8 @@ export default async function ClinicianReviewsPage({
           <p className="workspace-kicker">Clinical review</p>
           <h1>Patient-authorized records.</h1>
           <p>
-            Only active grants appear here. OralSight has no patient directory
-            and does not allow open-ended record search.
+            Only active grants appear here. Stoma3D has no patient directory and
+            does not allow open-ended record search.
           </p>
         </div>
       </header>

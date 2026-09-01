@@ -1,4 +1,4 @@
-# OralSight ML research scaffold
+# Stoma3D ML research scaffold
 
 This package validates patient-disjoint dataset manifests, computes calibration and
 subgroup summaries, evaluates fixed release gates, generates model cards, and exposes
@@ -13,8 +13,8 @@ complete gate. Passing a competition gate is not clinical validation.
 ```powershell
 $env:PYTHONPATH = "ml/src"
 python -m unittest discover -s ml/tests -t ml -p "test_*.py"
-python -m oralsight_ml.manifest ml/manifests/dataset.example.csv
-python -m oralsight_ml.gates ml/examples/evaluation.disabled.json
+python -m stoma3d_ml.manifest ml/manifests/dataset.example.csv
+python -m stoma3d_ml.gates ml/examples/evaluation.disabled.json
 ```
 
 With `uv`:
@@ -30,7 +30,7 @@ The command validates licensing, consent scope, patient-level splits, task label
 and on-disk paths before importing optional ML libraries or creating an output:
 
 ```powershell
-uv run --project ml --extra research oralsight-train-baseline `
+uv run --project ml --extra research stoma3d-train-baseline `
   --task anatomy `
   --manifest C:\path\to\audited-manifest.csv `
   --data-root C:\path\to\controlled-dataset `
@@ -48,7 +48,7 @@ Experimental segmentation runs must use `--validation-only`. In that mode the tr
 does not open the locked test images and does not write release evidence:
 
 ```powershell
-uv run --project ml --extra research oralsight-train-release `
+uv run --project ml --extra research stoma3d-train-release `
   --task segmentation `
   --manifest C:\controlled\smart-om-segmentation.csv `
   --data-root C:\controlled\smart-om `
@@ -67,7 +67,7 @@ After the architecture, epoch, and thresholds are frozen, evaluate the exact sel
 checkpoint without retraining it:
 
 ```powershell
-uv run --project ml --extra research oralsight-train-release `
+uv run --project ml --extra research stoma3d-train-release `
   --task segmentation `
   --manifest C:\controlled\smart-om-segmentation.csv `
   --data-root C:\controlled\smart-om `
@@ -89,20 +89,20 @@ is a different model and must not be presented as the selected validation checkp
 A failed locked gate remains disabled.
 
 Two compatible validation-only checkpoints can also be interpolated into one model
-with `oralsight-segmentation-soup`. The command tests only declared interpolation
+with `stoma3d-segmentation-soup`. The command tests only declared interpolation
 weights on validation data and exports one ordinary checkpoint for the exact frozen
 evaluation above. It never loads test rows.
 
 ## Optional Autooral training supplement
 
 The Autooral authors provide 420 pixel-masked oral-ulcer images for academic,
-non-commercial research. OralSight does not redistribute those images. Download and
+non-commercial research. Stoma3D does not redistribute those images. Download and
 audit the archive from the
 [authors' repository](https://github.com/wurenkai/HF-UNet-and-Autooral-dataset), then
 generate a training-only supplemental manifest:
 
 ```powershell
-uv run --project ml --extra research oralsight-prepare-autooral `
+uv run --project ml --extra research stoma3d-prepare-autooral `
   --dataset-root C:\controlled\Autooral_dataset `
   --output-manifest C:\controlled\autooral-training-supplement.csv `
   --archive-sha256 <audited-archive-sha256> `
@@ -128,7 +128,7 @@ pair_id,split,first_sample_id,second_sample_id,expected_match,pair_kind
 Run a data-only check before training:
 
 ```powershell
-uv run --project ml --extra research oralsight-train-reidentification-release `
+uv run --project ml --extra research stoma3d-train-reidentification-release `
   --manifest C:\controlled\longitudinal-manifest.csv `
   --data-root C:\controlled\longitudinal-images `
   --output-dir C:\controlled\runs\reidentification-release `

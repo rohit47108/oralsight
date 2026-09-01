@@ -1,4 +1,4 @@
-# OralSight segmentation-head engineering release review
+# Stoma3D segmentation-head engineering release review
 
 Review date: 2026-08-10
 Review type: engineering model-contract and release-gate review

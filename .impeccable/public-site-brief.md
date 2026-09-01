@@ -1,4 +1,4 @@
-# OralSight public site direction
+# Stoma3D public site direction
 
 ## Approved composition
 
@@ -34,7 +34,7 @@ approved copy.
 
 | Ingredient                            | Implementation medium                              | Decision          |
 | ------------------------------------- | -------------------------------------------------- | ----------------- |
-| OralSight wordmark                    | Semantic text plus small SVG mark                  | Produce in code   |
+| Stoma3D wordmark                      | Semantic text plus small SVG mark                  | Produce in code   |
 | Four-step scan rail                   | Semantic ordered list and CSS rules                | Produce in code   |
 | Phone capture frame                   | Semantic HTML/CSS with real product copy           | Produce in code   |
 | Eight-region mouth guide              | Accessible authored SVG plus text list             | Produce in code   |

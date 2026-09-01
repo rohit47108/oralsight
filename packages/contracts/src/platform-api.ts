@@ -634,7 +634,7 @@ export const platformApiDataExportArtifactResponseSchema = z
     artifactId: idSchema,
     exportRequestId: idSchema,
     jobId: idSchema,
-    mediaType: z.literal("application/vnd.oralsight.export"),
+    mediaType: z.literal("application/vnd.stoma3d.export"),
     sha256: sha256Schema,
     byteSize: z.number().int().positive().max(2_147_483_647),
     includedFiles: z.boolean(),

@@ -3,7 +3,7 @@ import type {
   ComparisonResult,
   InputOrigin,
   MouthRegion,
-} from "@oralsight/contracts";
+} from "@stoma3d/contracts";
 
 import {
   assertLiveMobileInput,

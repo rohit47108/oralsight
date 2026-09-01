@@ -6,18 +6,18 @@ import os
 import pytest
 from sqlalchemy import func, select
 
-from oralsight_platform.admin_bootstrap import (
+from stoma3d_platform.admin_bootstrap import (
     FIRST_ADMIN_CONFIRMATION_PHRASE,
     AdminBootstrapError,
     bootstrap_first_admin,
 )
-from oralsight_platform.config import RuntimeEnvironment, Settings
-from oralsight_platform.database import Database
-from oralsight_platform.models import AuditEvent, User, UserRole
+from stoma3d_platform.config import RuntimeEnvironment, Settings
+from stoma3d_platform.database import Database
+from stoma3d_platform.models import AuditEvent, User, UserRole
 
 
 async def test_postgres_advisory_lock_allows_only_one_first_admin() -> None:
-    database_url = os.environ.get("ORALSIGHT_TEST_POSTGRES_URL")
+    database_url = os.environ.get("STOMA3D_TEST_POSTGRES_URL")
     if not database_url:
         pytest.skip("A dedicated PostgreSQL test URL was not provided.")
 

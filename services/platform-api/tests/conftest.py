@@ -8,9 +8,9 @@ import pytest
 import pytest_asyncio
 from fastapi import FastAPI
 
-from oralsight_platform.config import AuthMode, RuntimeEnvironment, Settings
-from oralsight_platform.main import create_app
-from oralsight_platform.security import issue_local_test_token
+from stoma3d_platform.config import AuthMode, RuntimeEnvironment, Settings
+from stoma3d_platform.main import create_app
+from stoma3d_platform.security import issue_local_test_token
 
 
 @pytest.fixture

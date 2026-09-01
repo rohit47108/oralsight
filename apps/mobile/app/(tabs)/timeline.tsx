@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { router } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { MOUTH_REGION_DETAILS, type MouthRegion } from "@oralsight/contracts";
+import { MOUTH_REGION_DETAILS, type MouthRegion } from "@stoma3d/contracts";
 
 import { Screen } from "@/components/Screen";
 import {
@@ -15,7 +15,7 @@ import { VisualTrajectoryChart } from "@/components/VisualTrajectoryChart";
 import { isEligibleLongitudinalCapture } from "@/lib/longitudinalPolicy";
 import { humanizeResultReason } from "@/lib/resultCopy";
 import { buildTrajectorySeries, captureQualityScore } from "@/lib/trajectory";
-import { useOralSightStore } from "@/store/useOralSightStore";
+import { useStoma3DStore } from "@/store/useStoma3DStore";
 import { useAppTheme } from "@/theme";
 
 const REGION_DETAIL_BY_ID = new Map(
@@ -24,15 +24,15 @@ const REGION_DETAIL_BY_ID = new Map(
 
 export default function TimelineRoute() {
   const theme = useAppTheme();
-  const storedCaptures = useOralSightStore((state) => state.captures);
+  const storedCaptures = useStoma3DStore((state) => state.captures);
   const captures = useMemo(
     () => storedCaptures.filter((capture) => !capture.samplePlaceholder),
     [storedCaptures],
   );
-  const analyses = useOralSightStore((state) => state.analyses);
-  const comparisons = useOralSightStore((state) => state.comparisons);
-  const pins = useOralSightStore((state) => state.pins);
-  const sessions = useOralSightStore((state) => state.sessions);
+  const analyses = useStoma3DStore((state) => state.analyses);
+  const comparisons = useStoma3DStore((state) => state.comparisons);
+  const pins = useStoma3DStore((state) => state.pins);
+  const sessions = useStoma3DStore((state) => state.sessions);
   const [selectedTrajectoryRegion, setSelectedTrajectoryRegion] =
     useState<MouthRegion | null>(null);
   const capturesById = useMemo(
@@ -90,7 +90,7 @@ export default function TimelineRoute() {
               title="Review before linking"
               subtitle={
                 comparisonReady
-                  ? "Two accepted live observations of the same region from separate scans are available. OralSight can request a gated match suggestion, but you must review and confirm the pair before any change calculation is attempted."
+                  ? "Two accepted live observations of the same region from separate scans are available. Stoma3D can request a gated match suggestion, but you must review and confirm the pair before any change calculation is attempted."
                   : "A comparison requires accepted live captures of the same region from two separate scans. An honest model abstention does not hide an otherwise valid capture."
               }
               icon="person-circle-outline"

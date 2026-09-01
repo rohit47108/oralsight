@@ -1,4 +1,4 @@
-import type { AnalysisResult, MouthRegion } from "@oralsight/contracts";
+import type { AnalysisResult, MouthRegion } from "@stoma3d/contracts";
 
 export function captureStorageRejectionReasons(
   analysis: AnalysisResult,

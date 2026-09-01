@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { AnalysisResult, ComparisonResult } from "@oralsight/contracts";
+import type { AnalysisResult, ComparisonResult } from "@stoma3d/contracts";
 
 import {
   comparisonsEndingInSession,

@@ -1,8 +1,8 @@
-# OralSight design system
+# Stoma3D design system
 
 ## Product character
 
-OralSight is a safety-first native health tool for everyday users. It should feel
+Stoma3D is a safety-first native health tool for everyday users. It should feel
 calm, clear, private, and dependable. It should not look like a game, a diagnostic
 device, or a marketing dashboard.
 

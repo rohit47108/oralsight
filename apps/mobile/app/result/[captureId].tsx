@@ -10,7 +10,7 @@ import {
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { MOUTH_REGION_DETAILS } from "@oralsight/contracts";
+import { MOUTH_REGION_DETAILS } from "@stoma3d/contracts";
 
 import { MaskOverlay } from "@/components/MaskOverlay";
 import { Screen } from "@/components/Screen";
@@ -26,36 +26,36 @@ import { scheduleObservationReminder } from "@/lib/notifications";
 import { reminderSuggestion } from "@/lib/reminderPolicy";
 import { analysisStatusTitle, humanizeResultReason } from "@/lib/resultCopy";
 import { decryptToTemporaryFile, removeTemporaryFile } from "@/lib/secureFiles";
-import { useOralSightStore } from "@/store/useOralSightStore";
+import { useStoma3DStore } from "@/store/useStoma3DStore";
 import { useAppTheme } from "@/theme";
 import type { IntakeProfile } from "@/types";
 
 export default function ResultRoute() {
   const theme = useAppTheme();
   const { captureId } = useLocalSearchParams<{ captureId?: string }>();
-  const capture = useOralSightStore((state) =>
+  const capture = useStoma3DStore((state) =>
     state.captures.find((item) => item.id === captureId),
   );
-  const analysis = useOralSightStore((state) =>
+  const analysis = useStoma3DStore((state) =>
     captureId ? state.analyses[captureId] : undefined,
   );
-  const observationPin = useOralSightStore((state) =>
+  const observationPin = useStoma3DStore((state) =>
     captureId
       ? state.pins.find((pin) => pin.captureIds.includes(captureId))
       : undefined,
   );
   const pinConfirmed = Boolean(observationPin);
-  const confirmObservationPin = useOralSightStore(
+  const confirmObservationPin = useStoma3DStore(
     (state) => state.confirmObservationPin,
   );
-  const updateCaptureAnalysis = useOralSightStore(
+  const updateCaptureAnalysis = useStoma3DStore(
     (state) => state.updateCaptureAnalysis,
   );
-  const discardCapture = useOralSightStore((state) => state.discardCapture);
-  const setActiveSession = useOralSightStore((state) => state.setActiveSession);
-  const sessions = useOralSightStore((state) => state.sessions);
-  const comparisons = useOralSightStore((state) => state.comparisons);
-  const currentProfile = useOralSightStore((state) => state.profile);
+  const discardCapture = useStoma3DStore((state) => state.discardCapture);
+  const setActiveSession = useStoma3DStore((state) => state.setActiveSession);
+  const sessions = useStoma3DStore((state) => state.sessions);
+  const comparisons = useStoma3DStore((state) => state.comparisons);
+  const currentProfile = useStoma3DStore((state) => state.profile);
   const [previewUri, setPreviewUri] = useState<string | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [previewEpoch, setPreviewEpoch] = useState(0);
@@ -121,7 +121,7 @@ export default function ResultRoute() {
       })
       .catch(() => {
         if (active) {
-          console.warn("[ORALSIGHT_RESULT_PREVIEW_FAILED]");
+          console.warn("[STOMA3D_RESULT_PREVIEW_FAILED]");
           setPreviewError(
             "The protected image could not be opened on this device.",
           );
@@ -272,7 +272,7 @@ export default function ResultRoute() {
         inputOrigin: "live_capture",
         localQuality: capture.quality,
         ...(capture.calibrationRequested === true &&
-        capture.calibrationCardVersion === "oralsight-calibration-v1"
+        capture.calibrationCardVersion === "stoma3d-calibration-v1"
           ? {
               calibration: {
                 cardVersion: capture.calibrationCardVersion,
@@ -496,7 +496,7 @@ export default function ResultRoute() {
                 ? "Observation pin confirmed"
                 : "Confirm map location"
             }
-            subtitle="OralSight never links or re-identifies observations automatically."
+            subtitle="Stoma3D never links or re-identifies observations automatically."
             icon={pinConfirmed ? "location" : "location-outline"}
           />
           {pinConfirmed ? (

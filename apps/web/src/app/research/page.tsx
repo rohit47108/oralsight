@@ -5,7 +5,7 @@ import { PageIntro } from "@/components/page-intro";
 export const metadata: Metadata = {
   title: "Analysis & evidence",
   description:
-    "See how OralSight checks captures, highlights candidate areas, records confidence, and publishes model performance.",
+    "See how Stoma3D checks captures, highlights candidate areas, records confidence, and publishes model performance.",
 };
 
 const releaseGates = [
@@ -44,7 +44,7 @@ export default function ResearchPage() {
       <PageIntro
         label="Analysis & evidence"
         title="Every result carries its own record."
-        description="OralSight keeps capture quality, model versions, confidence, and limitations beside the image so a result can be understood and checked."
+        description="Stoma3D keeps capture quality, model versions, confidence, and limitations beside the image so a result can be understood and checked."
       />
 
       <section
@@ -58,7 +58,7 @@ export default function ResearchPage() {
           </h2>
         </div>
         <p>
-          OralSight reads a versioned model card at runtime. It lists the active
+          Stoma3D reads a versioned model card at runtime. It lists the active
           analysis tools, exact model versions and hashes, evaluation metrics,
           known limits, and release status for the service you are using.
         </p>
@@ -195,10 +195,10 @@ export default function ResearchPage() {
           </div>
           <div className="long-copy">
             <p>
-              OralSight can organize symptom answers, duration, progression,
-              image quality, and uncertainty using a signed, versioned guidance
-              file. The app records the exact guidance version used and always
-              keeps model categories out of that decision.
+              Stoma3D can organize symptom answers, duration, progression, image
+              quality, and uncertainty using a signed, versioned guidance file.
+              The app records the exact guidance version used and always keeps
+              model categories out of that decision.
             </p>
           </div>
         </div>

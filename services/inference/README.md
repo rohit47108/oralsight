@@ -1,6 +1,6 @@
-# OralSight inference service
+# Stoma3D inference service
 
-This directory contains the stateless FastAPI service for OralSight. It performs
+This directory contains the stateless FastAPI service for Stoma3D. It performs
 deterministic capture-quality checks, runs release-gated ONNX heads through OpenCV DNN,
 and computes confidence-gated registration diagnostics. The public source includes
 the hash-pinned anatomy model. The competition deployment loads candidate segmentation
@@ -20,13 +20,13 @@ therefore stays outside the public repository and is supplied only to the
 academic competition inference deployment. See the checked release review and
 [SMART-OM-only attempt evidence](../../docs/licenses-model-cards/SEGMENTATION_SMART_OM_ONLY_ATTEMPT.json).
 
-For local candidate outlining, set `ORALSIGHT_RELEASE_MANIFEST_PATH` to the
+For local candidate outlining, set `STOMA3D_RELEASE_MANIFEST_PATH` to the
 manifest in `services/inference/private-release`. The expected bundle layout and
 public-source boundary are documented in
 [`docs/PUBLIC_DISTRIBUTION.md`](../../docs/PUBLIC_DISTRIBUTION.md).
 
 For a private competition container, run
-`docker build -f Dockerfile.private -t oralsight-inference:competition .` from
+`docker build -f Dockerfile.private -t stoma3d-inference:competition .` from
 this directory. That build deliberately fails when the local private bundle is
 absent. The regular `Dockerfile` remains safe to build from a public clone.
 
@@ -40,11 +40,11 @@ From the repository root:
 
 ```powershell
 py -3.12 -m pip install --upgrade uv
-py -3.12 -m uv sync --frozen --package oralsight-inference --extra dev
-py -3.12 -m uv run --frozen --package oralsight-inference `
-  uvicorn oralsight_api.main:app --reload --port 8000 --no-access-log
-py -3.12 -m uv run --frozen --package oralsight-inference pytest services/inference/tests
-py -3.12 -m uv run --frozen --package oralsight-inference `
+py -3.12 -m uv sync --frozen --package stoma3d-inference --extra dev
+py -3.12 -m uv run --frozen --package stoma3d-inference `
+  uvicorn stoma3d_api.main:app --reload --port 8000 --no-access-log
+py -3.12 -m uv run --frozen --package stoma3d-inference pytest services/inference/tests
+py -3.12 -m uv run --frozen --package stoma3d-inference `
   python services/inference/scripts/smoke_http.py
 ```
 
@@ -60,8 +60,8 @@ Build the container with this directory as the Docker context. The command below
 loopback-only local development; it is unsigned and is not a production deployment:
 
 ```powershell
-docker build -t oralsight-inference services/inference
-docker run --rm -p 8000:8000 oralsight-inference
+docker build -t stoma3d-inference services/inference
+docker run --rm -p 8000:8000 stoma3d-inference
 ```
 
 ## Public API
@@ -122,7 +122,7 @@ only that no candidate crossed the threshold. Appearance,
 disease-category, and re-identification values likewise come only from their
 corresponding released heads.
 
-When the exact OralSight card is requested and detected, the service may use all
+When the exact Stoma3D card is requested and detected, the service may use all
 four neutral patches to normalize only the candidate's approximate mean-redness
 and mean-brightness descriptors. The correction is applied to a copied pixel
 array only after the marker, pose, proximity, same-plane, patch-visibility,
@@ -157,9 +157,9 @@ contract. Failed gates return explicit suppression reasons and no change value.
 
 ## Model release manifest
 
-`ORALSIGHT_RELEASE_MANIFEST_PATH` may point to a read-only JSON manifest. See
+`STOMA3D_RELEASE_MANIFEST_PATH` may point to a read-only JSON manifest. See
 `release-manifest.example.json` for the fail-closed shape. The schema is implemented in
-`src/oralsight_api/release_manifest.py`; the ONNX-capable schema version is `1.1` and
+`src/stoma3d_api/release_manifest.py`; the ONNX-capable schema version is `1.1` and
 requires:
 
 - a fixed schema version, release ID, UTC creation time, and code revision;
@@ -193,7 +193,7 @@ merely because an ONNX file can execute.
 ## Fixture isolation and privacy
 
 Synthetic fixture responses are disabled by default. They are available only when the
-service starts with `ORALSIGHT_ENABLE_DEMO_FIXTURES=true`; use that setting only for a
+service starts with `STOMA3D_ENABLE_DEMO_FIXTURES=true`; use that setting only for a
 clearly separated demonstration deployment. When disabled, any `bundled_demo` analyze or
 compare request returns `403 demo_fixtures_disabled` before image processing.
 
@@ -220,29 +220,29 @@ capture stays fail-closed.
 
 ## Response signatures
 
-JSON responses can carry detached Ed25519 signatures. Configure a raw 32-byte Ed25519 private key as standard base64 in `ORALSIGHT_RESPONSE_SIGNING_PRIVATE_KEY_B64`. When configured, every JSON response adds:
+JSON responses can carry detached Ed25519 signatures. Configure a raw 32-byte Ed25519 private key as standard base64 in `STOMA3D_RESPONSE_SIGNING_PRIVATE_KEY_B64`. When configured, every JSON response adds:
 
-- `X-OralSight-Signature`: the standard-base64 Ed25519 signature.
-- `X-OralSight-Key-Id`: the first 16 lowercase hexadecimal characters of SHA-256 over the raw 32-byte public key.
+- `X-Stoma3D-Signature`: the standard-base64 Ed25519 signature.
+- `X-Stoma3D-Key-Id`: the first 16 lowercase hexadecimal characters of SHA-256 over the raw 32-byte public key.
 
 The exact signed message is the UTF-8/byte concatenation:
 
 ```text
-oralsight-response-v1\n${X-Request-ID}\n${exact raw JSON response body}
+stoma3d-response-v1\n${X-Request-ID}\n${exact raw JSON response body}
 ```
 
 Clients must verify the signature over the unparsed response bytes and compare the
 derived public-key ID before parsing or trusting the JSON.
-`ORALSIGHT_RESPONSE_SIGNING_KEY_ID` may be set, but startup rejects it unless it exactly
+`STOMA3D_RESPONSE_SIGNING_KEY_ID` may be set, but startup rejects it unless it exactly
 equals the derived key ID. Local development defaults to
-`ORALSIGHT_DEPLOYMENT_MODE=development`, may be unsigned, and omits both signature headers
+`STOMA3D_DEPLOYMENT_MODE=development`, may be unsigned, and omits both signature headers
 when no key is configured.
 
 Production must set both:
 
 ```text
-ORALSIGHT_DEPLOYMENT_MODE=production
-ORALSIGHT_REQUIRE_RESPONSE_SIGNING=true
+STOMA3D_DEPLOYMENT_MODE=production
+STOMA3D_REQUIRE_RESPONSE_SIGNING=true
 ```
 
 Production startup then fails unless a valid private key is available. The repository
@@ -256,8 +256,8 @@ The repository root `vercel.json` defines `services/inference` as a FastAPI
 service, maps `vercel_entrypoint:app`, and rewrites `/api/*` to the service after
 stripping the public prefix. Configure the production variables from
 `.env.example` as protected project variables. The deployed service exposes
-health at `https://oralsight-inference.vercel.app/api/healthz`, and the mobile
-base URL is `https://oralsight-inference.vercel.app/api`.
+health at `https://stoma3d-inference.vercel.app/api/healthz`, and the mobile
+base URL is `https://stoma3d-inference.vercel.app/api`.
 
 The 1,750,000-byte per-image boundary and 3,762,144-byte compare request budget
 leave 737,856 bytes of headroom below a conservative 4,500,000-byte
@@ -286,7 +286,7 @@ requires independent verification.
 
 ## Concurrency and availability
 
-Pillow/OpenCV sanitization, quality analysis, and registration run through `asyncio.to_thread`, so CPU-heavy image work does not execute on the FastAPI event-loop thread. A process-local semaphore bounds active image-processing calls. `ORALSIGHT_MAX_CONCURRENT_INFERENCE` accepts an integer from 1 through 32 and defaults to the smaller of two or the detected CPU count; invalid explicit values fail service startup.
+Pillow/OpenCV sanitization, quality analysis, and registration run through `asyncio.to_thread`, so CPU-heavy image work does not execute on the FastAPI event-loop thread. A process-local semaphore bounds active image-processing calls. `STOMA3D_MAX_CONCURRENT_INFERENCE` accepts an integer from 1 through 32 and defaults to the smaller of two or the detected CPU count; invalid explicit values fail service startup.
 
 The semaphore is not a durable job system: waiting work belongs to the active HTTP
 request, and no payload or result is persisted. Python cannot forcibly stop an OpenCV
@@ -305,7 +305,7 @@ The container installs the hash-pinned runtime dependency export in `requirement
 After an intentional dependency update, refresh the export from the repository root:
 
 ```powershell
-py -3.12 -m uv export --frozen --package oralsight-inference --no-dev --no-emit-project --format requirements.txt --no-header --output-file services/inference/requirements.lock.txt
+py -3.12 -m uv export --frozen --package stoma3d-inference --no-dev --no-emit-project --format requirements.txt --no-header --output-file services/inference/requirements.lock.txt
 ```
 
 CI regenerates this file into a temporary path and compares it byte-for-byte before running the test suite.

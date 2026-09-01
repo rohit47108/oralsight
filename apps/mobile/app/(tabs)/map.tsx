@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { MOUTH_REGION_DETAILS, type MouthRegion } from "@oralsight/contracts";
+import { MOUTH_REGION_DETAILS, type MouthRegion } from "@stoma3d/contracts";
 
 import { OralObservationMap } from "@/components/OralObservationMap";
 import { Screen } from "@/components/Screen";
@@ -12,7 +12,7 @@ import {
   buildRegionObservationSummaries,
 } from "@/lib/observationMap";
 import { animationDurationMs } from "@/lib/motionPreferences";
-import { useOralSightStore } from "@/store/useOralSightStore";
+import { useStoma3DStore } from "@/store/useStoma3DStore";
 import { useAppTheme, useShouldReduceMotion } from "@/theme";
 
 const DETAIL_BY_REGION = new Map(
@@ -34,13 +34,13 @@ const statusLabel = (status: string) =>
 export default function MapRoute() {
   const theme = useAppTheme();
   const reduceMotion = useShouldReduceMotion();
-  const animationSpeed = useOralSightStore(
+  const animationSpeed = useStoma3DStore(
     (state) => state.settings.animationSpeed,
   );
-  const captures = useOralSightStore((state) => state.captures);
-  const analyses = useOralSightStore((state) => state.analyses);
-  const pins = useOralSightStore((state) => state.pins);
-  const activeSessionId = useOralSightStore((state) => state.activeSessionId);
+  const captures = useStoma3DStore((state) => state.captures);
+  const analyses = useStoma3DStore((state) => state.analyses);
+  const pins = useStoma3DStore((state) => state.pins);
+  const activeSessionId = useStoma3DStore((state) => state.activeSessionId);
   const [selected, setSelected] = useState<MouthRegion | null>(null);
   const [replayIndex, setReplayIndex] = useState(0);
   const [replaying, setReplaying] = useState(false);

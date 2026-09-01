@@ -23,7 +23,7 @@ export default async function AccountPage() {
           <p className="workspace-kicker">Account</p>
           <h1>Identity, access, and deletion.</h1>
           <p>
-            Sign-in information stays with the identity provider. OralSight
+            Sign-in information stays with the identity provider. Stoma3D
             account records stay in the platform service.
           </p>
         </div>
@@ -57,9 +57,8 @@ export default async function AccountPage() {
           <p className="workspace-kicker">Privacy choice</p>
           <h2 id="analytics-title">Product analytics</h2>
           <p>
-            You decide whether OralSight may collect a short-lived record of
-            basic app use. This setting does not affect scans, analysis, or
-            sharing.
+            You decide whether Stoma3D may collect a short-lived record of basic
+            app use. This setting does not affect scans, analysis, or sharing.
           </p>
         </div>
         {analytics.ok ? (
@@ -77,7 +76,7 @@ export default async function AccountPage() {
       <section className="danger-zone" aria-labelledby="delete-title">
         <div>
           <p className="workspace-kicker">Permanent deletion</p>
-          <h2 id="delete-title">Delete all OralSight account data</h2>
+          <h2 id="delete-title">Delete all Stoma3D account data</h2>
           <p>
             This queues removal of account rows, images, generated files, and
             reports. The request cannot be undone after deletion finishes.

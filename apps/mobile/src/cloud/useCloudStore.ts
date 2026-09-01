@@ -5,7 +5,7 @@ import {
   cloudMetadata,
   updateCloudMetadata,
 } from "@/lib/storage";
-import { useOralSightStore } from "@/store/useOralSightStore";
+import { useStoma3DStore } from "@/store/useStoma3DStore";
 
 import {
   registerCloudBackgroundSync,
@@ -148,7 +148,7 @@ async function finalizeCompletedDeletion(
   await clearCloudState();
   await deleteCloudSyncKey(receipt.accountId);
   await clearCloudInstallationIdentity(receipt.accountId);
-  useOralSightStore.getState().updateSettings({ analyticsOptIn: false });
+  useStoma3DStore.getState().updateSettings({ analyticsOptIn: false });
   await clearCloudCredentials();
   // The receipt is deliberately cleared last. If any prior cleanup step fails,
   // the completed receipt keeps the next launch in fail-closed deletion mode.
@@ -165,7 +165,7 @@ async function abandonCloudSession(accountId: string): Promise<void> {
     deleteCloudSyncKey(accountId),
     clearCloudInstallationIdentity(accountId),
   ]);
-  useOralSightStore.getState().updateSettings({ analyticsOptIn: false });
+  useStoma3DStore.getState().updateSettings({ analyticsOptIn: false });
 }
 
 function deletionState(
@@ -254,7 +254,7 @@ export const useCloudStore = create<CloudState>((set, get) => {
       });
       if (deletionOutcome.mode !== "normal") {
         await unregisterCloudBackgroundSync().catch(() => undefined);
-        useOralSightStore.getState().updateSettings({ analyticsOptIn: false });
+        useStoma3DStore.getState().updateSettings({ analyticsOptIn: false });
         set(
           deletionOutcome.mode === "deletion_completed"
             ? completedDeletionState(deletionOutcome.receipt)
@@ -294,7 +294,7 @@ export const useCloudStore = create<CloudState>((set, get) => {
           loadProductConsentState(client),
         ]);
         const cloudWorkEnabled = !account.deletionPending;
-        useOralSightStore.getState().updateSettings({
+        useStoma3DStore.getState().updateSettings({
           analyticsOptIn: cloudWorkEnabled && analyticsConsent.enabled,
         });
         set({
@@ -381,7 +381,7 @@ export const useCloudStore = create<CloudState>((set, get) => {
           loadProductConsentState(client),
         ]);
         const cloudWorkEnabled = !account.deletionPending;
-        useOralSightStore.getState().updateSettings({
+        useStoma3DStore.getState().updateSettings({
           analyticsOptIn: cloudWorkEnabled && analyticsConsent.enabled,
         });
         set({
@@ -439,7 +439,7 @@ export const useCloudStore = create<CloudState>((set, get) => {
       try {
         await unregisterCloudBackgroundSync().catch(() => undefined);
         await signOutOfCloud();
-        useOralSightStore.getState().updateSettings({ analyticsOptIn: false });
+        useStoma3DStore.getState().updateSettings({ analyticsOptIn: false });
         set({
           sessionStatus: "signed_out",
           account: null,
@@ -559,7 +559,7 @@ export const useCloudStore = create<CloudState>((set, get) => {
             loadProductConsentState(client),
           ]);
         const cloudWorkEnabled = !account.deletionPending;
-        useOralSightStore.getState().updateSettings({
+        useStoma3DStore.getState().updateSettings({
           analyticsOptIn: cloudWorkEnabled && analyticsConsent.enabled,
         });
         set({
@@ -806,7 +806,7 @@ export const useCloudStore = create<CloudState>((set, get) => {
         }
         requestedReceipt = protection.receipt;
         await unregisterCloudBackgroundSync().catch(() => undefined);
-        useOralSightStore.getState().updateSettings({ analyticsOptIn: false });
+        useStoma3DStore.getState().updateSettings({ analyticsOptIn: false });
         set(deletionState(requestedReceipt, null));
         const cleanup = await Promise.allSettled([
           clearCloudState(),
@@ -835,9 +835,7 @@ export const useCloudStore = create<CloudState>((set, get) => {
       } catch (error) {
         if (requestedReceipt) {
           await unregisterCloudBackgroundSync().catch(() => undefined);
-          useOralSightStore
-            .getState()
-            .updateSettings({ analyticsOptIn: false });
+          useStoma3DStore.getState().updateSettings({ analyticsOptIn: false });
           set(
             deletionState(
               requestedReceipt,
@@ -900,9 +898,7 @@ export const useCloudStore = create<CloudState>((set, get) => {
               "Sign in before enabling limited product analytics.",
             );
           }
-          useOralSightStore
-            .getState()
-            .updateSettings({ analyticsOptIn: false });
+          useStoma3DStore.getState().updateSettings({ analyticsOptIn: false });
           set({ analyticsConsent: null });
           return;
         }
@@ -914,7 +910,7 @@ export const useCloudStore = create<CloudState>((set, get) => {
         const consent = await new PlatformClient().updateAnalyticsConsent(
           enabled,
         );
-        useOralSightStore.getState().updateSettings({
+        useStoma3DStore.getState().updateSettings({
           analyticsOptIn: consent.enabled,
         });
         set({ analyticsConsent: consent });

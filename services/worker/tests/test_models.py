@@ -7,7 +7,7 @@ from uuid import UUID
 import pytest
 from pydantic import ValidationError
 
-from oralsight_worker.models import (
+from stoma3d_worker.models import (
     AnalysisOrigin,
     AnalysisStatus,
     CalibrationRequest,
@@ -183,7 +183,7 @@ def test_live_analysis_cannot_request_fixture_origin() -> None:
 
 def test_calibration_request_is_version_and_marker_bound() -> None:
     request = CalibrationRequest(plane_confirmed=True)
-    assert request.card_version == "oralsight-calibration-v1"
+    assert request.card_version == "stoma3d-calibration-v1"
     assert request.marker_id == 17
     assert request.marker_side_mm == 20.0
     with pytest.raises(ValidationError):

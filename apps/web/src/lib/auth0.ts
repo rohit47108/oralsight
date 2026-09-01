@@ -7,13 +7,13 @@ let client: Auth0Client | null = null;
 export function getAuth0Client(): Auth0Client {
   if (!hostedWorkspaceEnabled()) {
     throw new Error(
-      "OralSight hosted accounts are disabled for this public-site deployment.",
+      "Stoma3D hosted accounts are disabled for this public-site deployment.",
     );
   }
   if (!client) {
     client = new Auth0Client({
       authorizationParameters: {
-        audience: process.env.AUTH0_AUDIENCE ?? "oralsight-platform-api",
+        audience: process.env.AUTH0_AUDIENCE ?? "stoma3d-platform-api",
         scope: "openid profile email offline_access",
       },
       enableAccessTokenEndpoint: false,

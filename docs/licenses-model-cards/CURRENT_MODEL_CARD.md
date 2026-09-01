@@ -1,4 +1,4 @@
-# OralSight current model release state
+# Stoma3D current model release state
 
 Last updated: 2026-08-26
 Threshold version: `2026.1`

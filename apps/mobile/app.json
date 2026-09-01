@@ -1,26 +1,26 @@
 {
   "expo": {
-    "name": "OralSight",
-    "slug": "oralsight",
+    "name": "Stoma3D",
+    "slug": "stoma3d",
     "version": "0.1.0",
-    "icon": "./assets/oralsight-icon.png",
+    "icon": "./assets/stoma3d-icon.png",
     "orientation": "default",
-    "scheme": "oralsight",
+    "scheme": "stoma3d",
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "org.oralsight.prototype",
-      "icon": "./assets/oralsight-icon.png",
+      "bundleIdentifier": "org.stoma3d.prototype",
+      "icon": "./assets/stoma3d-icon.png",
       "infoPlist": {
-        "NSCameraUsageDescription": "OralSight uses the camera only when you choose to create a structured mouth observation.",
+        "NSCameraUsageDescription": "Stoma3D uses the camera only when you choose to create a structured mouth observation.",
         "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
-      "package": "org.oralsight.prototype",
+      "package": "org.stoma3d.prototype",
       "allowBackup": false,
       "adaptiveIcon": {
-        "foregroundImage": "./assets/oralsight-adaptive-foreground.png",
+        "foregroundImage": "./assets/stoma3d-adaptive-foreground.png",
         "backgroundColor": "#F5FAF9"
       },
       "permissions": ["CAMERA", "VIBRATE"],
@@ -31,22 +31,22 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Allow OralSight to capture a mouth observation you choose to record.",
+          "cameraPermission": "Allow Stoma3D to capture a mouth observation you choose to record.",
           "recordAudioAndroid": false
         }
       ],
       [
         "expo-image-picker",
         {
-          "photosPermission": "Allow OralSight to select a mouth image you choose to analyze.",
-          "cameraPermission": "Allow OralSight to capture a mouth observation you choose to record."
+          "photosPermission": "Allow Stoma3D to select a mouth image you choose to analyze.",
+          "cameraPermission": "Allow Stoma3D to capture a mouth observation you choose to record."
         }
       ],
       [
         "expo-secure-store",
         {
           "configureAndroidBackup": true,
-          "faceIDPermission": "Allow OralSight to protect your local observations."
+          "faceIDPermission": "Allow Stoma3D to protect your local observations."
         }
       ],
       [
@@ -68,7 +68,7 @@
         "expo-notifications",
         {
           "color": "#0B7A75",
-          "defaultChannel": "oralsight-follow-up"
+          "defaultChannel": "stoma3d-follow-up"
         }
       ],
       "expo-sharing",
@@ -76,12 +76,12 @@
         "expo-splash-screen",
         {
           "backgroundColor": "#F5FAF9",
-          "image": "./assets/oralsight-adaptive-foreground.png",
+          "image": "./assets/stoma3d-adaptive-foreground.png",
           "imageWidth": 180,
           "resizeMode": "contain",
           "dark": {
             "backgroundColor": "#071A21",
-            "image": "./assets/oralsight-adaptive-foreground.png"
+            "image": "./assets/stoma3d-adaptive-foreground.png"
           }
         }
       ],

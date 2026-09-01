@@ -35,7 +35,7 @@ function patchAppBuildGradle(contents) {
   lines.splice(
     bundleCommandIndex + 1,
     0,
-    `${indentation}if ((findProperty("oralsight.disableHermesSourceMaps") ?: false).toBoolean()) {`,
+    `${indentation}if ((findProperty("stoma3d.disableHermesSourceMaps") ?: false).toBoolean()) {`,
     `${indentation}    hermesFlags = ["-O"]`,
     `${indentation}}`,
   );

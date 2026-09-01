@@ -1,6 +1,6 @@
 # Public source and private model bundle
 
-The OralSight source code is published under the MIT License. Third-party
+The Stoma3D source code is published under the MIT License. Third-party
 packages and assets keep their own licenses as listed in
 `docs/licenses-model-cards`.
 
@@ -19,7 +19,7 @@ Git. A working bundle contains:
 - `anatomy.onnx`
 - `segmentation.onnx`
 
-Set `ORALSIGHT_RELEASE_MANIFEST_PATH` to the absolute path of the private
+Set `STOMA3D_RELEASE_MANIFEST_PATH` to the absolute path of the private
 manifest. The service verifies every artifact hash and runs a startup inference
 check before enabling a head. Missing or changed files leave that head
 unavailable instead of loading an unverified model.
@@ -33,7 +33,7 @@ For a full competition container deployment, run this from
 `services/inference` after preparing the bundle:
 
 ```powershell
-docker build -f Dockerfile.private -t oralsight-inference:competition .
+docker build -f Dockerfile.private -t stoma3d-inference:competition .
 ```
 
 That build requires the ignored directory, so a public clone cannot

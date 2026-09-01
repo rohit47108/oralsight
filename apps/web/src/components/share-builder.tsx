@@ -106,7 +106,7 @@ export function ShareBuilder({
                 </select>
               </label>
               <label>
-                OralSight record ID
+                Stoma3D record ID
                 <input
                   name="manualResourceId"
                   required={!recordOptions.length}
@@ -182,8 +182,8 @@ export function ShareBuilder({
                   : ""}
             </span>
             <p className="quiet-copy">
-              The secret stays after the # in this link. OralSight never places
-              it in server logs or access history.
+              The secret stays after the # in this link. Stoma3D never places it
+              in server logs or access history.
             </p>
           </div>
         </div>

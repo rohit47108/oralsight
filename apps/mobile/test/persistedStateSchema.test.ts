@@ -109,7 +109,7 @@ describe("persisted state validation", () => {
             measurementLabel: "approximate image-normalized change",
           },
           calibratedMeasurementChanges: {
-            cardVersion: "oralsight-calibration-v1",
+            cardVersion: "stoma3d-calibration-v1",
             markerId: 17,
             markerSideMm: 20,
             baselineWidthMm: 8,
@@ -346,13 +346,13 @@ describe("persisted state validation", () => {
         stateWithCapture({
           ...baseCapture,
           calibrationPlaneConfirmed: true,
-          calibrationCardVersion: "oralsight-calibration-v1",
+          calibrationCardVersion: "stoma3d-calibration-v1",
         }),
       ).captures[0],
     ).toMatchObject({
       calibrationRequested: true,
       calibrationPlaneConfirmed: true,
-      calibrationCardVersion: "oralsight-calibration-v1",
+      calibrationCardVersion: "stoma3d-calibration-v1",
     });
   });
 });

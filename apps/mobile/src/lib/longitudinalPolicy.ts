@@ -3,7 +3,7 @@ import type {
   ComparisonResult,
   MouthRegion,
   QualityResult,
-} from "@oralsight/contracts";
+} from "@stoma3d/contracts";
 
 interface DatedCapture {
   capturedAt: string;

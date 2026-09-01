@@ -74,7 +74,7 @@ export default async function ReportsPage({
         </div>
         <small id={invalid ? "report-id-error" : "report-id-help"}>
           {invalid
-            ? "Enter the report ID exactly as OralSight shows it."
+            ? "Enter the report ID exactly as Stoma3D shows it."
             : "Reports from another account are never returned."}
         </small>
       </form>
@@ -95,7 +95,7 @@ export default async function ReportsPage({
           body={
             before
               ? "You have reached the beginning of this account’s report history."
-              : "A report appears here after OralSight prepares it from an accepted scan."
+              : "A report appears here after Stoma3D prepares it from an accepted scan."
           }
           action={
             before

@@ -44,42 +44,42 @@ AUDITED_FILE_SHA256 = {
         "73c118539f03fa5e54047ecd9f19408d781b1a847be89fe94d18709301d98d90"
     ),
     "apps/mobile/src/components/OralObservationMap.tsx": (
-        "b653a1c864c7c22cdf908fc10f4d2602d0e9b26ebf96ab8c84d47e435f1a4d95"
+        "42c5e68380f7efdb21ab114ce7173bb10256d45d14b5dda8c56fdf2b5fc1d586"
     ),
-    "apps/mobile/assets/oralsight-adaptive-foreground.png": (
+    "apps/mobile/assets/stoma3d-adaptive-foreground.png": (
         "0ef561cfc7d2fbcc18be62de2403a709559b4bd995885d7b964b31614e5f4ce3"
     ),
-    "apps/mobile/assets/oralsight-icon.png": (
+    "apps/mobile/assets/stoma3d-icon.png": (
         "279dc14ae6a284ee35758c4ce29d66c3a5b8b83ad686726a2c10688d21a83e91"
     ),
     "assets/mouth/manifest.json": (
-        "bf4e74bbfa2e719d224bebb64ad215765b8ac96059ea3635a5777ba98f2fbb10"
+        "c6a2f1fde11896a908b97fab27b65f7c32b0bcdff3deb4aae52cc23f26dbad33"
     ),
-    "assets/mouth/calibration/oralsight-calibration-a4.pdf": (
-        "48de2473442af9b68cb1e6e965b332054576d452c3fc79edf8f2d50914f7e92f"
+    "assets/mouth/calibration/stoma3d-calibration-a4.pdf": (
+        "2ceff689f42ae25ff3ae0070b41dfa75e4b59b38ca1c0e5352ed2580424432bc"
     ),
-    "assets/mouth/calibration/oralsight-calibration-letter.pdf": (
-        "1d40839a8095667b2ce9b4ddb3dc72b5ae505b90f8e55e4143f4f524d0f80514"
+    "assets/mouth/calibration/stoma3d-calibration-letter.pdf": (
+        "42cbc9717202ba6a81c599abc81d6b780023f3eae8980b4136a51fabc6d0e633"
     ),
-    "assets/mouth/calibration/oralsight-calibration-preview.png": (
-        "a89f32d03e823f17a7e57f32d03e7188e0b5b4e3aef3b4ced96b6bbd3314d26e"
+    "assets/mouth/calibration/stoma3d-calibration-preview.png": (
+        "8d23651efe5f9fac2636941384683d0144dfc3dc679179c485be18aac92f6ff1"
     ),
-    "apps/web/public/calibration/oralsight-calibration-a4.pdf": (
-        "48de2473442af9b68cb1e6e965b332054576d452c3fc79edf8f2d50914f7e92f"
+    "apps/web/public/calibration/stoma3d-calibration-a4.pdf": (
+        "2ceff689f42ae25ff3ae0070b41dfa75e4b59b38ca1c0e5352ed2580424432bc"
     ),
-    "apps/web/public/calibration/oralsight-calibration-letter.pdf": (
-        "1d40839a8095667b2ce9b4ddb3dc72b5ae505b90f8e55e4143f4f524d0f80514"
+    "apps/web/public/calibration/stoma3d-calibration-letter.pdf": (
+        "42cbc9717202ba6a81c599abc81d6b780023f3eae8980b4136a51fabc6d0e633"
     ),
-    "apps/web/public/calibration/oralsight-calibration-preview.png": (
-        "a89f32d03e823f17a7e57f32d03e7188e0b5b4e3aef3b4ced96b6bbd3314d26e"
+    "apps/web/public/calibration/stoma3d-calibration-preview.png": (
+        "8d23651efe5f9fac2636941384683d0144dfc3dc679179c485be18aac92f6ff1"
     ),
     "packages/contracts/fixtures/bundled-demo.json": (
-        "29f536ce044e49303f2a48f66ee15ff1611b081ebf01745ef75dd86097137727"
+        "4021151554fd5de429467a4901fccd6d8ab0590ec7b32de609c5f68a34662ef3"
     ),
     "services/inference/release/anatomy.onnx": (
         "335cacfa5ceab8d32d6b903c65d482c246ac6ac2a7e7a831f6ede27d62a553a9"
     ),
-    "services/inference/src/oralsight_api/assets/face_detection_yunet_2023mar.onnx": (
+    "services/inference/src/stoma3d_api/assets/face_detection_yunet_2023mar.onnx": (
         "8f2383e4dd3cfbb4553ea8718107fc0423210dc964f9f4280604804ed2552fa4"
     ),
 }
@@ -97,18 +97,18 @@ AUDITED_FILE_LICENSE = {
     ".impeccable/mocks/public-direction-c-observation-archive.png": "CC0-1.0",
     "apps/web/src/app/icon.svg": "CC0-1.0",
     "apps/mobile/src/components/OralObservationMap.tsx": "CC0-1.0",
-    "apps/mobile/assets/oralsight-adaptive-foreground.png": ("OpenAI generated output"),
-    "apps/mobile/assets/oralsight-icon.png": "OpenAI generated output",
+    "apps/mobile/assets/stoma3d-adaptive-foreground.png": ("OpenAI generated output"),
+    "apps/mobile/assets/stoma3d-icon.png": "OpenAI generated output",
     "assets/mouth/manifest.json": "CC0-1.0",
-    "assets/mouth/calibration/oralsight-calibration-a4.pdf": "CC0-1.0",
-    "assets/mouth/calibration/oralsight-calibration-letter.pdf": "CC0-1.0",
-    "assets/mouth/calibration/oralsight-calibration-preview.png": "CC0-1.0",
-    "apps/web/public/calibration/oralsight-calibration-a4.pdf": "CC0-1.0",
-    "apps/web/public/calibration/oralsight-calibration-letter.pdf": "CC0-1.0",
-    "apps/web/public/calibration/oralsight-calibration-preview.png": "CC0-1.0",
+    "assets/mouth/calibration/stoma3d-calibration-a4.pdf": "CC0-1.0",
+    "assets/mouth/calibration/stoma3d-calibration-letter.pdf": "CC0-1.0",
+    "assets/mouth/calibration/stoma3d-calibration-preview.png": "CC0-1.0",
+    "apps/web/public/calibration/stoma3d-calibration-a4.pdf": "CC0-1.0",
+    "apps/web/public/calibration/stoma3d-calibration-letter.pdf": "CC0-1.0",
+    "apps/web/public/calibration/stoma3d-calibration-preview.png": "CC0-1.0",
     "packages/contracts/fixtures/bundled-demo.json": "CC0-1.0",
     "services/inference/release/anatomy.onnx": "CC BY 4.0",
-    "services/inference/src/oralsight_api/assets/face_detection_yunet_2023mar.onnx": (
+    "services/inference/src/stoma3d_api/assets/face_detection_yunet_2023mar.onnx": (
         "MIT"
     ),
 }
@@ -335,7 +335,7 @@ def _python_constant_values(path: str, name: str, audit: Audit) -> tuple[str, ..
 
 
 def _service_enum_values(class_name: str, audit: Audit) -> tuple[str, ...]:
-    path = "services/inference/src/oralsight_api/contracts.py"
+    path = "services/inference/src/stoma3d_api/contracts.py"
     tree = ast.parse(_read(path), filename=path)
     for node in tree.body:
         if isinstance(node, ast.ClassDef) and node.name == class_name:
@@ -365,7 +365,7 @@ def audit_regions_and_assets(audit: Audit) -> None:
 
     typescript = _typescript_regions(audit)
     ml_python = _python_constant_values(
-        "ml/src/oralsight_ml/constants.py", "MOUTH_REGIONS", audit
+        "ml/src/stoma3d_ml/constants.py", "MOUTH_REGIONS", audit
     )
     service_python = _service_enum_values("MouthRegion", audit)
     manifest_regions = tuple(
@@ -384,7 +384,7 @@ def audit_regions_and_assets(audit: Audit) -> None:
 
     appearance_typescript = _typescript_zod_enum("appearanceClassSchema", audit)
     appearance_ml = _python_constant_values(
-        "ml/src/oralsight_ml/constants.py", "APPEARANCE_CLASSES", audit
+        "ml/src/stoma3d_ml/constants.py", "APPEARANCE_CLASSES", audit
     )
     appearance_service = _service_enum_values("AppearanceClass", audit)
     audit.require(
@@ -395,7 +395,7 @@ def audit_regions_and_assets(audit: Audit) -> None:
 
     disease_typescript = _typescript_zod_enum("diseaseResearchClassSchema", audit)
     disease_ml = _python_constant_values(
-        "ml/src/oralsight_ml/constants.py", "DISEASE_CLASSES", audit
+        "ml/src/stoma3d_ml/constants.py", "DISEASE_CLASSES", audit
     )
     disease_service = _service_enum_values("DiseaseResearchClass", audit)
     audit.require(
@@ -529,8 +529,8 @@ def audit_dependency_inventory(audit: Audit) -> None:
         return
 
     lock_hashes = {
-        "oralsight:pnpm-lock-sha256": _sha256(ROOT / "pnpm-lock.yaml"),
-        "oralsight:uv-lock-sha256": _sha256(ROOT / "uv.lock"),
+        "stoma3d:pnpm-lock-sha256": _sha256(ROOT / "pnpm-lock.yaml"),
+        "stoma3d:uv-lock-sha256": _sha256(ROOT / "uv.lock"),
     }
     try:
         sbom = json.loads(sbom_path.read_text(encoding="utf-8"))

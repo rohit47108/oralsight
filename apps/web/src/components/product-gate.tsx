@@ -23,8 +23,8 @@ export function ProductGate({
           <p className="workspace-kicker">Private workspace</p>
           <h1>
             {workspaceEnabled
-              ? "Sign in to your OralSight account."
-              : "Continue with the OralSight mobile app."}
+              ? "Sign in to your Stoma3D account."
+              : "Continue with the Stoma3D mobile app."}
           </h1>
           <p>
             {workspaceEnabled
@@ -44,7 +44,7 @@ export function ProductGate({
             </Link>
           )}
           <Link className="text-link" href="/">
-            Return to OralSight
+            Return to Stoma3D
           </Link>
         </div>
         <p className="product-gate__disclaimer">

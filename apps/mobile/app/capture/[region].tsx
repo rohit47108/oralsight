@@ -16,7 +16,7 @@ import {
   mouthRegionSchema,
   type CaptureAngle,
   type QualityResult,
-} from "@oralsight/contracts";
+} from "@stoma3d/contracts";
 
 import { CaptureGuideOverlay } from "@/components/CaptureGuideOverlay";
 import { CaptureGuidanceMetrics } from "@/components/CaptureGuidanceMetrics";
@@ -61,7 +61,7 @@ import {
   sweepInstruction,
   type SweepAngle,
 } from "@/lib/videoSweep";
-import { useOralSightStore } from "@/store/useOralSightStore";
+import { useStoma3DStore } from "@/store/useStoma3DStore";
 import { useAppTheme } from "@/theme";
 import type { CaptureRecord } from "@/types";
 import { CALIBRATION_CARD_VERSION, PUBLIC_WEB_URL } from "@/constants";
@@ -89,11 +89,11 @@ export default function CaptureRoute() {
   const parsedRegion = mouthRegionSchema.safeParse(params.region);
   const region = parsedRegion.success ? parsedRegion.data : null;
   const detail = MOUTH_REGION_DETAILS.find((item) => item.id === region);
-  const activeSessionId = useOralSightStore((state) => state.activeSessionId);
-  const sessions = useOralSightStore((state) => state.sessions);
-  const settings = useOralSightStore((state) => state.settings);
-  const captures = useOralSightStore((state) => state.captures);
-  const addCaptures = useOralSightStore((state) => state.addCaptures);
+  const activeSessionId = useStoma3DStore((state) => state.activeSessionId);
+  const sessions = useStoma3DStore((state) => state.sessions);
+  const settings = useStoma3DStore((state) => state.settings);
+  const captures = useStoma3DStore((state) => state.captures);
+  const addCaptures = useStoma3DStore((state) => state.addCaptures);
   const faceDetector = useFaceDetection();
   const cameraRef = useRef<CameraView>(null);
   const videoPlayer = useVideoPlayer(null);
@@ -989,13 +989,13 @@ export default function CaptureRoute() {
           ) : null}
           {sensorAvailable === false ? (
             <Text style={[styles.sensorNote, { color: theme.secondaryText }]}>
-              Motion sensing is unavailable on this device. OralSight will rely
-              on the post-capture focus and exposure checks.
+              Motion sensing is unavailable on this device. Stoma3D will rely on
+              the post-capture focus and exposure checks.
             </Text>
           ) : null}
           <Text style={[styles.privacy, { color: theme.secondaryText }]}>
             {isSweep
-              ? "The raw sweep stays in temporary device storage while OralSight selects quality-checked frames, then is deleted. Only the three confirmed frames can be protected or uploaded."
+              ? "The raw sweep stays in temporary device storage while Stoma3D selects quality-checked frames, then is deleted. Only the three confirmed frames can be protected or uploaded."
               : "Camera and library images are re-encoded to remove metadata and checked on this device for image quality and visible faces before protected storage or upload. You must also confirm the privacy framing before anything is sent."}
           </Text>
           {settings.caregiverMode ? (
@@ -1010,7 +1010,7 @@ export default function CaptureRoute() {
           <Card accent={calibrationEnabled ? "teal" : undefined}>
             <SectionTitle
               title="Optional physical scale card"
-              subtitle="Use the printed 20 mm OralSight marker only when someone can hold it beside the target without touching tissue. The marker and target must stay in the same plane."
+              subtitle="Use the printed 20 mm Stoma3D marker only when someone can hold it beside the target without touching tissue. The marker and target must stay in the same plane."
               icon="resize-outline"
             />
             <ChoiceChip

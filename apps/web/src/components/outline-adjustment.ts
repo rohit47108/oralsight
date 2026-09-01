@@ -1,5 +1,5 @@
 export const OUTLINE_ADJUSTMENT_SCHEMA =
-  "oralsight-outline-adjustment-v1" as const;
+  "stoma3d-outline-adjustment-v1" as const;
 
 export type NormalizedPoint = [number, number];
 

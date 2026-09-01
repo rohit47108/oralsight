@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import unittest
 
-from oralsight_ml.subgroups import build_subgroup_report
+from stoma3d_ml.subgroups import build_subgroup_report
 
 
 class SubgroupTests(unittest.TestCase):

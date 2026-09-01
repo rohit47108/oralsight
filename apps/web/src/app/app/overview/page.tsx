@@ -12,7 +12,7 @@ import {
 } from "@/lib/platform-api";
 import { readableDate, readableLabel } from "@/lib/presentation";
 
-export const metadata: Metadata = { title: "My OralSight" };
+export const metadata: Metadata = { title: "My Stoma3D" };
 
 type Loaded<T> = { ok: true; value: T } | { ok: false };
 
@@ -73,7 +73,7 @@ export default async function PatientOverviewPage() {
     <div className="workspace-page">
       <header className="workspace-heading">
         <div>
-          <p className="workspace-kicker">My OralSight</p>
+          <p className="workspace-kicker">My Stoma3D</p>
           <h1>Keep each record easy to find.</h1>
           <p>
             Capture on your phone. Your synced scans, prepared reports, and

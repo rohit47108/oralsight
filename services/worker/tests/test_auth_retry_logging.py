@@ -7,9 +7,9 @@ import logging
 
 import pytest
 
-from oralsight_worker.auth import ServiceRequestSigner
-from oralsight_worker.retry import RetryPolicy
-from oralsight_worker.safe_logging import SafeEventLogger
+from stoma3d_worker.auth import ServiceRequestSigner
+from stoma3d_worker.retry import RetryPolicy
+from stoma3d_worker.safe_logging import SafeEventLogger
 
 
 class FixedRandom:
@@ -22,7 +22,7 @@ class FixedRandom:
 
 def test_hmac_signature_covers_method_path_time_nonce_and_body() -> None:
     secret = b"a" * 32
-    signer = ServiceRequestSigner("oralsight-worker", secret)
+    signer = ServiceRequestSigner("stoma3d-worker", secret)
     headers = signer.headers(
         "post",
         "https://internal.example/v1/jobs?mode=full",
@@ -33,15 +33,15 @@ def test_hmac_signature_covers_method_path_time_nonce_and_body() -> None:
     digest = hashlib.sha256(b"body").hexdigest()
     canonical = f"POST\n/v1/jobs?mode=full\n123\nabc123\n{digest}".encode()
     assert (
-        headers["X-OralSight-Signature"]
+        headers["X-Stoma3D-Signature"]
         == hmac.new(secret, canonical, hashlib.sha256).hexdigest()
     )
-    assert headers["X-OralSight-Content-SHA256"] == digest
+    assert headers["X-Stoma3D-Content-SHA256"] == digest
 
 
 def test_local_unsigned_hook_returns_no_auth_headers() -> None:
     assert (
-        ServiceRequestSigner("oralsight-worker", None).headers(
+        ServiceRequestSigner("stoma3d-worker", None).headers(
             "GET", "http://127.0.0.1/healthz"
         )
         == {}

@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import pytest
 
-from oralsight_platform.dependencies import Actor, enforce_ownership, require_roles
-from oralsight_platform.errors import ServiceError
-from oralsight_platform.models import UserRole, UserStatus
+from stoma3d_platform.dependencies import Actor, enforce_ownership, require_roles
+from stoma3d_platform.errors import ServiceError
+from stoma3d_platform.models import UserRole, UserStatus
 
 
 def _actor(user_id: str, role: UserRole) -> Actor:

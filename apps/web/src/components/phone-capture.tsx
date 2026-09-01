@@ -3,7 +3,7 @@ export function PhoneCapture() {
     <div
       className="phone-scene"
       role="img"
-      aria-label="OralSight capture screen preview showing the third of eight regions"
+      aria-label="Stoma3D capture screen preview showing the third of eight regions"
     >
       <div className="phone-scene__halo" aria-hidden="true" />
       <div className="phone">

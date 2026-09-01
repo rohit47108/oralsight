@@ -59,7 +59,7 @@ def test_migration_backfills_every_live_asset_for_max_capability_lifetime(
 def test_max_capability_migration_drain_matches_configured_upper_bound() -> None:
     # Keep the migration's conservative historical drain tied to the validated
     # configuration ceiling without importing a live settings instance.
-    from oralsight_platform.config import Settings
+    from stoma3d_platform.config import Settings
 
     transfer = Settings.model_fields["object_transfer_lifetime_seconds"]
     completion = Settings.model_fields["upload_completion_quiet_seconds"]

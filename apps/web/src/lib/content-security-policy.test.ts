@@ -7,7 +7,7 @@ describe("content security policy", () => {
     const policy = buildContentSecurityPolicy("bm9uY2UtZm9yLXRlc3Rz", {
       NODE_ENV: "production",
       AUTH0_DOMAIN: "identity.example.org",
-      ORALSIGHT_PLATFORM_API_URL: "https://api.example.org/v2",
+      STOMA3D_PLATFORM_API_URL: "https://api.example.org/v2",
     });
 
     expect(policy).toContain(

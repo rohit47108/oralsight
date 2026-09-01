@@ -1,8 +1,8 @@
-# Implementation Plan: OralSight Competition Completion
+# Implementation Plan: Stoma3D Competition Completion
 
 ## Objective
 
-Finish OralSight directly in `C:\Users\rohit\Projects\oralsight` as the permanent
+Finish Stoma3D directly in `C:\Users\rohit\Projects\stoma3d` as the permanent
 source of truth, publish a coherent public GitHub repository, deploy and verify the
 web product on Vercel, and keep the mobile, inference, platform, and worker paths
 runnable from the same monorepo.

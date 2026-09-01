@@ -7,9 +7,9 @@ from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from alembic import context
-from oralsight_platform import models  # noqa: F401
-from oralsight_platform.config import get_settings
-from oralsight_platform.database import Base
+from stoma3d_platform import models  # noqa: F401
+from stoma3d_platform.config import get_settings
+from stoma3d_platform.database import Base
 
 config = context.config
 if config.config_file_name is not None:

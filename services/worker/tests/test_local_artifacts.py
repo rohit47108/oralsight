@@ -9,13 +9,13 @@ from uuid import UUID
 
 from PIL import Image, ImageDraw
 
-from oralsight_worker.local_artifacts import (
+from stoma3d_worker.local_artifacts import (
     LocalArtifact,
     SourceView,
     SurfaceAbstention,
     build_observation_surface,
 )
-from oralsight_worker.models import AssetPointer, ReconstructionPin, ReconstructionView
+from stoma3d_worker.models import AssetPointer, ReconstructionPin, ReconstructionView
 
 
 def source_image() -> bytes:

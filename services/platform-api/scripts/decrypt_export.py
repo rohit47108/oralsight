@@ -1,4 +1,4 @@
-"""Decrypt one OralSight export without putting a private key on the command line."""
+"""Decrypt one Stoma3D export without putting a private key on the command line."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from io import BytesIO
 from pathlib import Path, PurePosixPath
 from zipfile import BadZipFile, ZipFile
 
-from oralsight_platform.portable_export import (
+from stoma3d_platform.portable_export import (
     SCHEMA_VERSION,
     decrypt_portable_export,
 )
@@ -63,7 +63,7 @@ def _validate_zip(data: bytes) -> None:
                 ):
                     raise ValueError("A manifest file failed integrity verification.")
     except (BadZipFile, KeyError, json.JSONDecodeError) as exc:
-        raise ValueError("The decrypted export is not a valid OralSight ZIP.") from exc
+        raise ValueError("The decrypted export is not a valid Stoma3D ZIP.") from exc
 
 
 def main() -> None:

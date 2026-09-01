@@ -1,4 +1,4 @@
-# OralSight 2026 delivery roadmap
+# Stoma3D 2026 delivery roadmap
 
 Internal submission target: **October 23, 2026 at noon ET**. October 24-26 is an
 emergency buffer, not planned feature time. Reconfirm the controlling portal deadline

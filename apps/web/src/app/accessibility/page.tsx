@@ -5,7 +5,7 @@ import { PageIntro } from "@/components/page-intro";
 export const metadata: Metadata = {
   title: "Accessibility",
   description:
-    "OralSight accessibility support for screen readers, larger text, contrast, reduced motion, capture guidance, and alternative controls.",
+    "Stoma3D accessibility support for screen readers, larger text, contrast, reduced motion, capture guidance, and alternative controls.",
 };
 
 export default function AccessibilityPage() {

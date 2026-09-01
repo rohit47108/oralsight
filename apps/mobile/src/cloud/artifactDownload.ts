@@ -57,7 +57,7 @@ async function downloadAndShare(options: {
   }
   if (!FileSystem.cacheDirectory)
     throw new Error("Temporary storage is unavailable.");
-  const directory = `${FileSystem.cacheDirectory}oralsight-share/`;
+  const directory = `${FileSystem.cacheDirectory}stoma3d-share/`;
   await FileSystem.makeDirectoryAsync(directory, { intermediates: true }).catch(
     () => undefined,
   );
@@ -109,7 +109,7 @@ export async function shareReportArtifact(
   return downloadAndShare({
     path: `/v2/reports/${encodeURIComponent(artifact.reportArtifactId)}/content`,
     id: artifact.reportArtifactId,
-    filename: `oralsight-report-${artifact.reportArtifactId}.pdf`,
+    filename: `stoma3d-report-${artifact.reportArtifactId}.pdf`,
     mediaType: "application/pdf",
     sha256: artifact.sha256,
     sizeBytes: artifact.byteSize,

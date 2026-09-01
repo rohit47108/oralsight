@@ -6,7 +6,7 @@ import { PageIntro } from "@/components/page-intro";
 export const metadata: Metadata = {
   title: "For professionals",
   description:
-    "See how OralSight structures user-captured observations, provenance, comparisons, limitations, and reports for professional review.",
+    "See how Stoma3D structures user-captured observations, provenance, comparisons, limitations, and reports for professional review.",
 };
 
 export default function ProfessionalsPage() {
@@ -15,7 +15,7 @@ export default function ProfessionalsPage() {
       <PageIntro
         label="For professionals"
         title="A cleaner record for the conversation in front of you."
-        description="OralSight organizes patient-captured observations into a consistent record that is faster to review alongside an examination."
+        description="Stoma3D organizes patient-captured observations into a consistent record that is faster to review alongside an examination."
       />
 
       <section
@@ -129,7 +129,7 @@ export default function ProfessionalsPage() {
       >
         <div>
           <p className="section-label">Clear boundaries</p>
-          <h2 id="boundary-heading">What OralSight leaves to you.</h2>
+          <h2 id="boundary-heading">What Stoma3D leaves to you.</h2>
         </div>
         <ul>
           <li>Diagnosis and differential diagnosis</li>

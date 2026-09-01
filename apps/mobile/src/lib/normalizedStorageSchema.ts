@@ -3,7 +3,7 @@ import type {
   CaptureProtocol,
   ComparisonResult,
   MouthRegion,
-} from "@oralsight/contracts";
+} from "@stoma3d/contracts";
 
 import { parsePersistedAppState } from "./persistedStateSchema";
 import type {

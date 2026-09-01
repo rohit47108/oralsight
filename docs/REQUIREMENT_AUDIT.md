@@ -1,12 +1,12 @@
-# OralSight requirement audit
+# Stoma3D requirement audit
 
 Audit date: 2026-08-30
 
 This audit compares the current repository with:
 
-1. the original **OralSight: Complete Product and Engineering Blueprint**;
-2. the later **OralSight 2026 Competition Build Plan**; and
-3. the later request to expand OralSight into an optional account/cloud product
+1. the original **Stoma3D: Complete Product and Engineering Blueprint**;
+2. the later **Stoma3D 2026 Competition Build Plan**; and
+3. the later request to expand Stoma3D into an optional account/cloud product
    with multi-angle capture, calibration, generated artifacts, sharing, and a
    clinician portal.
 
@@ -180,7 +180,7 @@ called production-complete:
 
 ## Overall verdict
 
-OralSight is not a fixture-driven photo demo: the core capture, live analysis,
+Stoma3D is not a fixture-driven photo demo: the core capture, live analysis,
 local records, optional account/cloud, clinician, artifact, sharing, and deletion
 paths are implemented. It is also not accurate to call every blueprint item
 complete. Personalized geometry remains a generic image-colored surface;

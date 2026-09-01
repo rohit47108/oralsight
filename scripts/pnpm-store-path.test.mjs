@@ -33,7 +33,7 @@ test("finds a package when pnpm hashes the virtual-store directory name", async 
   const { findInstalledPackageRoot } = await import("./pnpm-store-path.mjs");
   assert.equal(typeof findInstalledPackageRoot, "function");
 
-  const virtualStore = mkdtempSync(join(tmpdir(), "oralsight-pnpm-store-"));
+  const virtualStore = mkdtempSync(join(tmpdir(), "stoma3d-pnpm-store-"));
   t.after(() => rmSync(virtualStore, { force: true, recursive: true }));
 
   const packageRoot = join(
@@ -55,7 +55,7 @@ test("finds a package when pnpm hashes the virtual-store directory name", async 
 });
 
 test("returns null when an optional patched package is not installed", (t) => {
-  const virtualStore = mkdtempSync(join(tmpdir(), "oralsight-pnpm-store-"));
+  const virtualStore = mkdtempSync(join(tmpdir(), "stoma3d-pnpm-store-"));
   t.after(() => rmSync(virtualStore, { force: true, recursive: true }));
 
   assert.equal(
@@ -65,7 +65,7 @@ test("returns null when an optional patched package is not installed", (t) => {
 });
 
 test("uses the external virtual store recorded by pnpm", (t) => {
-  const workspaceRoot = mkdtempSync(join(tmpdir(), "oralsight-workspace-"));
+  const workspaceRoot = mkdtempSync(join(tmpdir(), "stoma3d-workspace-"));
   t.after(() => rmSync(workspaceRoot, { force: true, recursive: true }));
 
   const staleWorkspaceStore = join(workspaceRoot, ".pnpm");

@@ -100,7 +100,7 @@ export function DeleteAccountForm({ operationKey }: { operationKey: string }) {
             </strong>
             <p>
               {jobStatus === "completed"
-                ? "OralSight finished the cloud cleanup. Sign out on this device."
+                ? "Stoma3D finished the cloud cleanup. Sign out on this device."
                 : jobStatus === "failed"
                   ? "The cleanup did not finish. Keep the request ID above for support."
                   : "You can leave this page. The protected cleanup job continues on the service."}

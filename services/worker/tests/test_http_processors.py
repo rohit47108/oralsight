@@ -11,13 +11,13 @@ import numpy as np
 import pytest
 from PIL import Image, ImageDraw
 
-from oralsight_worker.auth import ServiceRequestSigner
-from oralsight_worker.http_client import (
+from stoma3d_worker.auth import ServiceRequestSigner
+from stoma3d_worker.http_client import (
     InternalHttpClient,
     PermanentJobError,
     RetryableJobError,
 )
-from oralsight_worker.models import (
+from stoma3d_worker.models import (
     AnalysisOrigin,
     AnalysisStatus,
     CalibrationRequest,
@@ -36,7 +36,7 @@ from oralsight_worker.models import (
     SummaryVideoPayload,
     VideoCandidateMask,
 )
-from oralsight_worker.processors import (
+from stoma3d_worker.processors import (
     AnalysisProcessor,
     ComparisonProcessor,
     DataExportProcessor,
@@ -70,7 +70,7 @@ def internal_client(handler) -> tuple[InternalHttpClient, httpx.AsyncClient]:
     return (
         InternalHttpClient(
             client=client,
-            signer=ServiceRequestSigner("oralsight-worker", b"x" * 32),
+            signer=ServiceRequestSigner("stoma3d-worker", b"x" * 32),
             platform_api_url="https://platform.internal",
             inference_api_url="http://127.0.0.1:8000",
             max_asset_bytes=8_000_000,
@@ -108,7 +108,7 @@ async def test_analysis_fetches_hash_verified_asset_and_calls_real_inference(
 
     async def handler(request: httpx.Request) -> httpx.Response:
         seen.append((request.method, request.url.path))
-        assert request.headers["X-OralSight-Service"] == "oralsight-worker"
+        assert request.headers["X-Stoma3D-Service"] == "stoma3d-worker"
         if request.method == "GET":
             return httpx.Response(
                 200, content=IMAGE_BYTES, headers={"Content-Type": "image/jpeg"}
@@ -160,7 +160,7 @@ async def test_analysis_returns_calibration_only_after_real_marker_gates(
                 200, content=image, headers={"Content-Type": "image/jpeg"}
             )
         body = await request.aread()
-        assert b'"calibration":{"cardVersion":"oralsight-calibration-v1"' in body
+        assert b'"calibration":{"cardVersion":"stoma3d-calibration-v1"' in body
         assert b'"markerId":17' in body
         assert b'"planeConfirmed":true' in body
         return httpx.Response(
@@ -521,7 +521,7 @@ async def test_local_artifact_processors_publish_real_glb_and_mp4(
     assert video.result["summaryVideo"]["manifest"]["notForDiagnosis"] is True
     assert (
         video.result["summaryVideo"]["manifest"]["schemaVersion"]
-        == "oralsight.summary-video.v3"
+        == "stoma3d.summary-video.v3"
     )
     assert video.result["summaryVideo"]["manifest"]["intro"] == {
         "kind": "generic_observation_map_rotation",
@@ -597,7 +597,7 @@ async def test_portable_data_export_is_public_key_encrypted(envelope) -> None:
                 "exportRequestId": str(export_request_id),
                 "status": "complete",
                 "artifactId": "00000000-0000-4000-8000-000000000099",
-                "mediaType": "application/vnd.oralsight.export",
+                "mediaType": "application/vnd.stoma3d.export",
                 "sha256": "a" * 64,
                 "byteSize": 4_096,
                 "encryption": {

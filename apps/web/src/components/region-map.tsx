@@ -22,7 +22,7 @@ export function RegionMap({ compact = false }: { compact?: boolean }) {
         role="img"
         aria-labelledby="region-map-title region-map-description"
       >
-        <title id="region-map-title">The eight OralSight capture regions</title>
+        <title id="region-map-title">The eight Stoma3D capture regions</title>
         <desc id="region-map-description">
           A simplified front-facing mouth guide with numbered markers. The full
           text list follows the drawing.

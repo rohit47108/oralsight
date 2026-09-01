@@ -11,21 +11,21 @@ import {
 import { comparisonsEndingInSession } from "@/lib/longitudinalPolicy";
 import { reportContainsSyntheticData } from "@/lib/reportPolicy";
 import { scanProgress } from "@/lib/scanLogic";
-import { useOralSightStore } from "@/store/useOralSightStore";
+import { useStoma3DStore } from "@/store/useStoma3DStore";
 import { useAppTheme } from "@/theme";
 
 export default function ReportRoute() {
   const theme = useAppTheme();
-  const activeSessionId = useOralSightStore((state) => state.activeSessionId);
-  const sessions = useOralSightStore((state) => state.sessions);
-  const captures = useOralSightStore((state) => state.captures);
-  const analyses = useOralSightStore((state) => state.analyses);
-  const comparisons = useOralSightStore((state) => state.comparisons);
-  const pins = useOralSightStore((state) => state.pins);
-  const reports = useOralSightStore((state) => state.reports);
-  const profile = useOralSightStore((state) => state.profile);
-  const consentedAt = useOralSightStore((state) => state.consentedAt);
-  const addReport = useOralSightStore((state) => state.addReport);
+  const activeSessionId = useStoma3DStore((state) => state.activeSessionId);
+  const sessions = useStoma3DStore((state) => state.sessions);
+  const captures = useStoma3DStore((state) => state.captures);
+  const analyses = useStoma3DStore((state) => state.analyses);
+  const comparisons = useStoma3DStore((state) => state.comparisons);
+  const pins = useStoma3DStore((state) => state.pins);
+  const reports = useStoma3DStore((state) => state.reports);
+  const profile = useStoma3DStore((state) => state.profile);
+  const consentedAt = useStoma3DStore((state) => state.consentedAt);
+  const addReport = useStoma3DStore((state) => state.addReport);
   const [busy, setBusy] = useState(false);
   const [shareBusy, setShareBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);

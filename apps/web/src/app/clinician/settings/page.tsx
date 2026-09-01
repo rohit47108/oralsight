@@ -51,9 +51,9 @@ export default async function ClinicianSettingsPage() {
           <p className="workspace-kicker">Privacy choice</p>
           <h2 id="analytics-title">Product analytics</h2>
           <p>
-            You decide whether OralSight may collect a short-lived record of
-            basic app use. Patient records, annotations, and review content are
-            never included.
+            You decide whether Stoma3D may collect a short-lived record of basic
+            app use. Patient records, annotations, and review content are never
+            included.
           </p>
         </div>
         {analytics.ok ? (
@@ -71,7 +71,7 @@ export default async function ClinicianSettingsPage() {
       <section className="danger-zone" aria-labelledby="delete-title">
         <div>
           <p className="workspace-kicker">Permanent deletion</p>
-          <h2 id="delete-title">Delete all OralSight account data</h2>
+          <h2 id="delete-title">Delete all Stoma3D account data</h2>
           <p>
             This queues removal of the account, professional profile,
             annotations, and stored files owned by this account. The request

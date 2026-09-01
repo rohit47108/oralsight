@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from oralsight_platform.main import app
+from stoma3d_platform.main import app
 
 
 def main() -> None:

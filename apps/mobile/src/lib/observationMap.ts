@@ -2,7 +2,7 @@ import {
   MOUTH_REGIONS,
   type AnalysisResult,
   type MouthRegion,
-} from "@oralsight/contracts";
+} from "@stoma3d/contracts";
 
 import { ORAL_MAP_ASSET_VERSION } from "../constants";
 import type { CaptureRecord, ObservationPin } from "../types";

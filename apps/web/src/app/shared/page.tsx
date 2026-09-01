@@ -10,9 +10,9 @@ import {
 } from "@/lib/platform-api";
 import { readableDate } from "@/lib/presentation";
 
-export const metadata: Metadata = { title: "Shared OralSight record" };
+export const metadata: Metadata = { title: "Shared Stoma3D record" };
 
-const SHARE_COOKIE = "oralsight_share_token";
+const SHARE_COOKIE = "stoma3d_share_token";
 
 export default async function SharedRecordPage({
   searchParams,
@@ -70,7 +70,7 @@ export default async function SharedRecordPage({
       <header className="workspace-heading">
         <div>
           <p className="workspace-kicker">Patient-authorized access</p>
-          <h1>Shared OralSight record</h1>
+          <h1>Shared Stoma3D record</h1>
           <p>
             Access ends {readableDate(scope.value.shareExpiresAt)}. This page
             does not provide access to any other patient record.

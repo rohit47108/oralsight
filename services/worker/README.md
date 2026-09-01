@@ -1,6 +1,6 @@
-# OralSight worker
+# Stoma3D worker
 
-This service runs slow OralSight work outside the request path. It processes
+This service runs slow Stoma3D work outside the request path. It processes
 real captures and existing records; it never substitutes bundled images or
 invented model output.
 
@@ -106,8 +106,8 @@ audio status.
 
 ## Queue guarantees
 
-Jobs are strict `oralsight.job.v1` envelopes on the
-`oralsight:jobs:v1` Redis Stream. A consumer group provides explicit claims and
+Jobs are strict `stoma3d.job.v1` envelopes on the
+`stoma3d:jobs:v1` Redis Stream. A consumer group provides explicit claims and
 stale-job recovery. The worker also provides:
 
 - a per-worker and per-job heartbeat;
@@ -119,7 +119,7 @@ stale-job recovery. The worker also provides:
 - a retention index that deletes expired dead-letter entries.
 
 The platform requests cancellation by setting
-`oralsight:job-cancelled:v1:{jobId}` with a TTL no longer than the job expiry.
+`stoma3d:job-cancelled:v1:{jobId}` with a TTL no longer than the job expiry.
 The worker clears that key after a terminal result; per-job heartbeat keys also
 expire automatically.
 
@@ -151,7 +151,7 @@ recipient. The matching private key remains in protected device storage.
 
 Outbound calls can be signed with a short-lived HMAC proof over the HTTP method,
 path, timestamp, nonce, and exact body hash. Set
-`ORALSIGHT_WORKER_SERVICE_HMAC_SECRET` from a secret manager. Staging and
+`STOMA3D_WORKER_SERVICE_HMAC_SECRET` from a secret manager. Staging and
 production fail at startup when the secret is shorter than 32 bytes or an
 internal service URL is not HTTPS. Development can run unsigned against local
 services.
@@ -166,13 +166,13 @@ different account.
 The analyze and compare calls use a fresh UUIDv4 `X-Request-ID`. Before parsing
 JSON, the worker buffers the bounded response bytes and requires
 `Cache-Control: no-store` plus the exact echoed request ID. When
-`ORALSIGHT_WORKER_INFERENCE_RESPONSE_SIGNING_PUBLIC_KEY_B64` is configured, it
-also requires `X-OralSight-Key-Id` and `X-OralSight-Signature`, derives the
+`STOMA3D_WORKER_INFERENCE_RESPONSE_SIGNING_PUBLIC_KEY_B64` is configured, it
+also requires `X-Stoma3D-Key-Id` and `X-Stoma3D-Signature`, derives the
 expected key ID from the pinned raw Ed25519 public key, and verifies the
 signature over:
 
 ```text
-oralsight-response-v1\n<request-id>\n<exact-response-body>
+stoma3d-response-v1\n<request-id>\n<exact-response-body>
 ```
 
 The worker requests `Accept-Encoding: identity` and rejects an encoded response
@@ -190,18 +190,18 @@ cd services/worker
 Copy-Item .env.example .env
 uv sync --extra dev
 uv run pytest
-uv run uvicorn oralsight_worker.main:app --host 127.0.0.1 --port 8010 --no-access-log
+uv run uvicorn stoma3d_worker.main:app --host 127.0.0.1 --port 8010 --no-access-log
 ```
 
 Run Redis and the platform/inference services separately, then add a valid
-envelope to `oralsight:jobs:v1` under the `envelope` field. The platform API is
+envelope to `stoma3d:jobs:v1` under the `envelope` field. The platform API is
 the intended producer; clients must not publish directly to Redis.
 
 Health endpoints:
 
 - `GET /healthz` proves that the process is alive.
 - `GET /readyz` also checks that the worker loop is running and Redis responds.
-- `oralsight-worker health --url http://127.0.0.1:8010/readyz` is suitable for a
+- `stoma3d-worker health --url http://127.0.0.1:8010/readyz` is suitable for a
   container health check.
 
 ## Internal endpoint contract
@@ -227,14 +227,14 @@ unpublished or substituted artifact as complete.
 Build from this directory:
 
 ```powershell
-docker build -t oralsight-worker .
+docker build -t stoma3d-worker .
 ```
 
 The image installs FFmpeg, DejaVu fonts, and the headless OpenCV runtime. The
-process still runs as the unprivileged `oralsight` user, and temporary render
+process still runs as the unprivileged `stoma3d` user, and temporary render
 directories are removed after each job.
 
-Run at least two consumers with unique `ORALSIGHT_WORKER_CONSUMER_NAME` values.
+Run at least two consumers with unique `STOMA3D_WORKER_CONSUMER_NAME` values.
 Use managed Redis with TLS, private service networking, a secret manager, and
 restricted service identities. Do not enable HTTP access logs or debug logging
 for job requests. Alerts should cover a stale worker heartbeat, growing retry

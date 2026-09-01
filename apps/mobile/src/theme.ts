@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { AccessibilityInfo, useColorScheme } from "react-native";
 
-import { useOralSightStore } from "@/store/useOralSightStore";
+import { useStoma3DStore } from "@/store/useStoma3DStore";
 
 const light = {
   navy: "#102A43",
@@ -45,7 +45,7 @@ const dark = {
 } as const;
 
 export function useAppTheme() {
-  const settings = useOralSightStore((state) => state.settings);
+  const settings = useStoma3DStore((state) => state.settings);
   const colorScheme = useColorScheme() === "dark" ? "dark" : "light";
   const isDark = colorScheme === "dark";
   const palette = isDark ? dark : light;
@@ -100,7 +100,7 @@ export function useAppTheme() {
 export type AppTheme = ReturnType<typeof useAppTheme>;
 
 export function useShouldReduceMotion(): boolean {
-  const appPreference = useOralSightStore(
+  const appPreference = useStoma3DStore(
     (state) => state.settings.reducedMotion,
   );
   // Start conservatively so first-paint motion never precedes the OS query.

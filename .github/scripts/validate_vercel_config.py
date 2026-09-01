@@ -1,4 +1,4 @@
-"""Validate OralSight's Vercel configs against the live schema and repo layout."""
+"""Validate Stoma3D's Vercel configs against the live schema and repo layout."""
 
 from __future__ import annotations
 
@@ -28,7 +28,7 @@ def load_json(path: Path) -> dict[str, Any]:
 
 
 def load_schema() -> dict[str, Any]:
-    request = Request(SCHEMA_URL, headers={"User-Agent": "OralSight-CI/1"})
+    request = Request(SCHEMA_URL, headers={"User-Agent": "Stoma3D-CI/1"})
     with urlopen(request, timeout=20) as response:  # noqa: S310 - fixed HTTPS URL
         value = json.load(response)
     if not isinstance(value, dict):
@@ -88,15 +88,15 @@ def validate_repository_contract(root_config: dict[str, Any]) -> None:
                 raise ValueError("service rewrites must target a declared service")
         elif not (
             isinstance(destination, str)
-            and destination.startswith("https://oralsight-inference.vercel.app/api/")
+            and destination.startswith("https://stoma3d-inference.vercel.app/api/")
         ):
             raise ValueError(
-                "external rewrites must target the verified OralSight inference origin"
+                "external rewrites must target the verified Stoma3D inference origin"
             )
 
     expected_inference_rewrites = {
-        "/api/v1/:path*": "https://oralsight-inference.vercel.app/api/v1/:path*",
-        "/api/healthz": "https://oralsight-inference.vercel.app/api/healthz",
+        "/api/v1/:path*": "https://stoma3d-inference.vercel.app/api/v1/:path*",
+        "/api/healthz": "https://stoma3d-inference.vercel.app/api/healthz",
     }
     actual_inference_rewrites = {
         rewrite.get("source"): rewrite.get("destination")

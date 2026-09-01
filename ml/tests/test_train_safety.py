@@ -5,9 +5,9 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from oralsight_ml.baselines import _log_local_mlflow
-from oralsight_ml.manifest import REQUIRED_COLUMNS
-from oralsight_ml.train import main
+from stoma3d_ml.baselines import _log_local_mlflow
+from stoma3d_ml.manifest import REQUIRED_COLUMNS
+from stoma3d_ml.train import main
 
 from .helpers import manifest_row
 

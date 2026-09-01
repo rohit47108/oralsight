@@ -5,7 +5,7 @@ import { type Href, router } from "expo-router";
 import { Screen } from "@/components/Screen";
 import { Button, Card, SectionTitle } from "@/components/Ui";
 import { useCloudStore } from "@/cloud/useCloudStore";
-import { useOralSightStore } from "@/store/useOralSightStore";
+import { useStoma3DStore } from "@/store/useStoma3DStore";
 import { useAppTheme } from "@/theme";
 
 function readableRole(value: string): string {
@@ -17,7 +17,7 @@ function readableRole(value: string): string {
 export default function AccountRoute() {
   const theme = useAppTheme();
   const cloud = useCloudStore();
-  const deleteLocalData = useOralSightStore((state) => state.deleteEverything);
+  const deleteLocalData = useStoma3DStore((state) => state.deleteEverything);
   const [showRecovery, setShowRecovery] = useState(false);
   const [recoveryInput, setRecoveryInput] = useState("");
   const [deletingEverywhere, setDeletingEverywhere] = useState(false);
@@ -157,7 +157,7 @@ export default function AccountRoute() {
       ) : cloud.sessionStatus !== "signed_in" ? (
         <Card>
           <SectionTitle
-            title="Use OralSight on more than one device"
+            title="Use Stoma3D on more than one device"
             subtitle="Signing in is optional. Your local workspace remains available without an account."
             icon="person-circle-outline"
           />
@@ -291,7 +291,7 @@ export default function AccountRoute() {
             <Card>
               <SectionTitle
                 title="Sync recovery key"
-                subtitle="This key unlocks end-to-end encrypted sync data on another device. OralSight cannot recover it for you."
+                subtitle="This key unlocks end-to-end encrypted sync data on another device. Stoma3D cannot recover it for you."
                 icon="key-outline"
               />
               {showRecovery && cloud.recoveryCode ? (
@@ -320,7 +320,7 @@ export default function AccountRoute() {
                 onPress={() => {
                   if (cloud.recoveryCode) {
                     void Share.share({
-                      title: "OralSight sync recovery key",
+                      title: "Stoma3D sync recovery key",
                       message: cloud.recoveryCode,
                     });
                   }
@@ -383,7 +383,7 @@ export default function AccountRoute() {
           </Card>
           <Card accent="coral">
             <SectionTitle
-              title="Delete OralSight data"
+              title="Delete Stoma3D data"
               subtitle="Choose cloud only, or remove both cloud data and everything stored by this app on this device."
               icon="cloud-offline-outline"
             />

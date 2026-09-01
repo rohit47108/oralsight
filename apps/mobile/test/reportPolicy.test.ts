@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { QualityResult } from "@oralsight/contracts";
+import type { QualityResult } from "@stoma3d/contracts";
 
 import { reportContainsSyntheticData } from "../src/lib/reportPolicy";
 import type { CaptureRecord, ScanSession } from "../src/types";

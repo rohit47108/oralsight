@@ -1,6 +1,6 @@
 # Mobile build and deployment
 
-OralSight is an installed iOS and Android app. Expo Application Services (EAS)
+Stoma3D is an installed iOS and Android app. Expo Application Services (EAS)
 can produce its installable files; Vercel cannot turn the native app into a
 website at a custom domain.
 
@@ -68,12 +68,12 @@ also requires the platform, identity, web, and share values in the matching EAS
 environment:
 
 ```text
-EXPO_PUBLIC_INFERENCE_URL=https://oralsight-inference.vercel.app/api
+EXPO_PUBLIC_INFERENCE_URL=https://stoma3d-inference.vercel.app/api
 EXPO_PUBLIC_RESPONSE_SIGNING_PUBLIC_KEY_B64=O1GBNCptNbSyxbsWBSCdlkSWK9+lY7KJKW2J41h7+98=
 EXPO_PUBLIC_PLATFORM_URL=https://api.example.org
 EXPO_PUBLIC_OIDC_ISSUER=https://example.us.auth0.com
 EXPO_PUBLIC_OIDC_CLIENT_ID=replace-with-public-native-client-id
-EXPO_PUBLIC_OIDC_AUDIENCE=oralsight-platform-api
+EXPO_PUBLIC_OIDC_AUDIENCE=stoma3d-platform-api
 EXPO_PUBLIC_WEB_URL=https://app.example.org
 EXPO_PUBLIC_SHARE_VIEWER_URL=https://app.example.org/shared
 ```
@@ -85,15 +85,15 @@ API secret, or the Ed25519 private key is not.
 The backend must receive the matching private configuration:
 
 ```text
-ORALSIGHT_DEPLOYMENT_MODE=production
-ORALSIGHT_REQUIRE_RESPONSE_SIGNING=true
-ORALSIGHT_RESPONSE_SIGNING_PRIVATE_KEY_B64=BASE64_RAW_32_BYTE_ED25519_PRIVATE_KEY
-ORALSIGHT_ENABLE_DEMO_FIXTURES=false
+STOMA3D_DEPLOYMENT_MODE=production
+STOMA3D_REQUIRE_RESPONSE_SIGNING=true
+STOMA3D_RESPONSE_SIGNING_PRIVATE_KEY_B64=BASE64_RAW_32_BYTE_ED25519_PRIVATE_KEY
+STOMA3D_ENABLE_DEMO_FIXTURES=false
 ```
 
 Store the private key only in the backend host's secret manager. Do not place it
 in an Expo variable, app file, Git commit, build log, or Vercel public
-environment variable. OralSight verifies the exact signed response bytes with
+environment variable. Stoma3D verifies the exact signed response bytes with
 the pinned public key before it accepts the response.
 
 Development builds still default to local loopback services. Configure preview and
@@ -116,14 +116,14 @@ Connect the device with USB debugging enabled, then run:
 adb devices
 adb reverse tcp:8000 tcp:8000
 $env:EXPO_PUBLIC_INFERENCE_URL = "http://127.0.0.1:8000"
-pnpm --filter @oralsight/mobile start
+pnpm --filter @stoma3d/mobile start
 ```
 
 `adb reverse` makes the phone's port 8000 reach the computer's port 8000. This
 is why the app can use the loopback-only HTTP exception during development.
 Repeat `adb reverse` after reconnecting or restarting the device.
 
-Do not replace the URL with a plain-HTTP Wi-Fi or LAN address. OralSight rejects
+Do not replace the URL with a plain-HTTP Wi-Fi or LAN address. Stoma3D rejects
 non-loopback HTTP endpoints.
 
 ### Physical iPhone
@@ -178,7 +178,7 @@ adds private operational details.
 
 Vercel cannot host or install the iOS/Android binary. A custom web domain can
 point to a public information site or the HTTPS API, but opening that domain is
-not the same as installing OralSight.
+not the same as installing Stoma3D.
 
 The repository includes a root Vercel configuration for the web app that proxies
 its public API paths to the separately deployed inference service. The inference
@@ -186,8 +186,8 @@ service also has its own Vercel configuration. Both are validated against Vercel
 current configuration schema.
 
 ```text
-https://oralsight-inference.vercel.app/api/healthz
-https://oralsight-inference.vercel.app/api/v1/model-card
+https://stoma3d-inference.vercel.app/api/healthz
+https://stoma3d-inference.vercel.app/api/v1/model-card
 ```
 
 The selected Vercel project must store the production mode, required signing key, key

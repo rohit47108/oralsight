@@ -1,4 +1,4 @@
-# OralSight primary-source bibliography
+# Stoma3D primary-source bibliography
 
 Last checked for planning: **2026-07-21**. These links support design and competition
 planning; they do not establish regulatory compliance, clinical validity, dataset
@@ -9,7 +9,7 @@ against the frozen release.
 
 - [FDA - How to Determine if Your Product Is a Medical Device](https://www.fda.gov/medical-devices/classify-your-medical-device/how-determine-if-your-product-medical-device)
   informs intended-use review and the decision to avoid diagnostic or disease-detection
-  claims. It is guidance for review, not a determination about OralSight.
+  claims. It is guidance for review, not a determination about Stoma3D.
 - [FTC - Complying with the Health Breach Notification Rule](https://www.ftc.gov/business-guidance/resources/complying-ftcs-health-breach-notification-rule-0)
   informs health-app privacy and breach-response review. Linking it is not a compliance
   claim or legal advice.

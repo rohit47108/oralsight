@@ -6,7 +6,7 @@ import {
   MOUTH_REGION_DETAILS,
   type CaptureAngle,
   type MouthRegion,
-} from "@oralsight/contracts";
+} from "@stoma3d/contracts";
 
 import { OralObservationMap } from "@/components/OralObservationMap";
 import { Screen } from "@/components/Screen";
@@ -18,15 +18,15 @@ import {
   requiredAnglesForProtocol,
   scanProgress,
 } from "@/lib/scanLogic";
-import { useOralSightStore } from "@/store/useOralSightStore";
+import { useStoma3DStore } from "@/store/useStoma3DStore";
 import { useAppTheme } from "@/theme";
 
 export default function ScanRoute() {
   const theme = useAppTheme();
-  const sessions = useOralSightStore((state) => state.sessions);
-  const captures = useOralSightStore((state) => state.captures);
-  const activeSessionId = useOralSightStore((state) => state.activeSessionId);
-  const setActiveSession = useOralSightStore((state) => state.setActiveSession);
+  const sessions = useStoma3DStore((state) => state.sessions);
+  const captures = useStoma3DStore((state) => state.captures);
+  const activeSessionId = useStoma3DStore((state) => state.activeSessionId);
+  const setActiveSession = useStoma3DStore((state) => state.setActiveSession);
   const [selectedRegion, setSelectedRegion] = useState<MouthRegion | null>(
     null,
   );
@@ -66,7 +66,7 @@ export default function ScanRoute() {
           <EmptyState
             icon="scan-circle-outline"
             title="One accepted image per region"
-            body="OralSight guides each capture, rejects unusable images, and marks the scan complete only at 8 of 8."
+            body="Stoma3D guides each capture, rejects unusable images, and marks the scan complete only at 8 of 8."
           />
           <Button
             label="Start a new scan"
@@ -291,7 +291,7 @@ export default function ScanRoute() {
 
 function protocolLabel(
   protocol: ReturnType<
-    typeof useOralSightStore.getState
+    typeof useStoma3DStore.getState
   >["sessions"][number]["protocol"],
 ): string {
   if (protocol === "detailed_multi_angle") return "Detailed photos";
@@ -314,8 +314,8 @@ function SessionList({
   activeSessionId,
   onSelect,
 }: {
-  sessions: ReturnType<typeof useOralSightStore.getState>["sessions"];
-  captures: ReturnType<typeof useOralSightStore.getState>["captures"];
+  sessions: ReturnType<typeof useStoma3DStore.getState>["sessions"];
+  captures: ReturnType<typeof useStoma3DStore.getState>["captures"];
   activeSessionId: string | null;
   onSelect: (sessionId: string) => void;
 }) {

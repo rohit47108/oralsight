@@ -2,8 +2,8 @@ import { fromByteArray } from "base64-js";
 import * as FileSystem from "expo-file-system/legacy";
 
 import { encryptFile } from "@/lib/secureFiles";
-import { createOralSightTempUri, removeFileIfPresent } from "@/lib/tempFiles";
-import { useOralSightStore } from "@/store/useOralSightStore";
+import { createStoma3DTempUri, removeFileIfPresent } from "@/lib/tempFiles";
+import { useStoma3DStore } from "@/store/useStoma3DStore";
 import type { PersistedAppState } from "@/types";
 
 import { downloadVerifiedAsset } from "./assetTransfer";
@@ -53,7 +53,7 @@ export async function materializeRemoteCaptures(options: {
       expectedMimeType: mapping.mimeType,
     });
     const extension = mapping.mimeType === "image/png" ? "png" : "jpg";
-    const temporary = await createOralSightTempUri("capture", extension);
+    const temporary = await createStoma3DTempUri("capture", extension);
     try {
       await FileSystem.writeAsStringAsync(temporary, fromByteArray(bytes), {
         encoding: FileSystem.EncodingType.Base64,
@@ -68,7 +68,7 @@ export async function materializeRemoteCaptures(options: {
           value.id === capture.id ? { ...value, encryptedUri } : value,
         ),
       };
-      await useOralSightStore.getState().applyCloudState(state);
+      await useStoma3DStore.getState().applyCloudState(state);
       downloaded += 1;
     } finally {
       bytes.fill(0);

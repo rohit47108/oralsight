@@ -25,7 +25,7 @@ export function ClinicianGrantForm({
     <form className="clinician-grant-form" action={action}>
       <input type="hidden" name="operationKey" value={operationKey} />
       <fieldset disabled={pending}>
-        <legend>Send to a verified OralSight clinician</legend>
+        <legend>Send to a verified Stoma3D clinician</legend>
         <div className="field-grid">
           <label>
             Clinician account ID

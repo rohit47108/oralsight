@@ -3,7 +3,7 @@ import {
   MOUTH_REGIONS,
   type ComparisonResult,
   type QualityResult,
-} from "@oralsight/contracts";
+} from "@stoma3d/contracts";
 
 import {
   detailedScanProgress,

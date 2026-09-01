@@ -1,5 +1,5 @@
 import { clampComparisonBlend } from "./comparisonSlider";
-import type { RegistrationAlignment } from "@oralsight/contracts";
+import type { RegistrationAlignment } from "@stoma3d/contracts";
 
 export type NormalizedPoint = readonly [number, number];
 

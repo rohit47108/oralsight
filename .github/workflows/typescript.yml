@@ -67,26 +67,26 @@ jobs:
       - name: Lint and build the web product
         env:
           CI: "true"
-          ORALSIGHT_ALLOW_CI_DUMMY_WEB_ENV: "true"
+          STOMA3D_ALLOW_CI_DUMMY_WEB_ENV: "true"
           AUTH0_DOMAIN: ci-identity.invalid
           AUTH0_CLIENT_ID: ci-public-client
           AUTH0_CLIENT_SECRET: ci-client-secret
           AUTH0_SECRET: "0000000000000000000000000000000000000000000000000000000000000000"
-          AUTH0_AUDIENCE: oralsight-platform-api
+          AUTH0_AUDIENCE: stoma3d-platform-api
           APP_BASE_URL: https://ci-web.invalid
           NEXT_PUBLIC_SITE_URL: https://ci-web.invalid
-          ORALSIGHT_PLATFORM_API_URL: https://ci-platform.invalid
+          STOMA3D_PLATFORM_API_URL: https://ci-platform.invalid
         run: |
-          pnpm --filter @oralsight/web lint
-          pnpm --filter @oralsight/web build
+          pnpm --filter @stoma3d/web lint
+          pnpm --filter @stoma3d/web build
       - name: Audit JavaScript dependencies
         run: pnpm audit:dependencies
       - name: Validate Expo public configuration
-        run: pnpm --filter @oralsight/mobile config:public
+        run: pnpm --filter @stoma3d/mobile config:public
       - name: Build production Expo bundles
         run: |
-          pnpm --filter @oralsight/mobile exec expo export --platform android --output-dir /tmp/oralsight-android
-          pnpm --filter @oralsight/mobile exec expo export --platform ios --output-dir /tmp/oralsight-ios
+          pnpm --filter @stoma3d/mobile exec expo export --platform android --output-dir /tmp/stoma3d-android
+          pnpm --filter @stoma3d/mobile exec expo export --platform ios --output-dir /tmp/stoma3d-ios
       - name: Format check
         run: pnpm format:check
 

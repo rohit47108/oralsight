@@ -698,7 +698,7 @@ wheels = [
 ]
 
 [[package]]
-name = "oralsight-platform-api"
+name = "stoma3d-platform-api"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [

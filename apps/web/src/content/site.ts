@@ -1,4 +1,4 @@
-export const SITE_NAME = "OralSight";
+export const SITE_NAME = "Stoma3D";
 export const DISCLAIMER = "This result is not a diagnosis.";
 
 export const primaryNavigation = [

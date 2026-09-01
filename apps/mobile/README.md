@@ -1,6 +1,6 @@
-# OralSight mobile
+# Stoma3D mobile
 
-Expo development-build app for the OralSight non-diagnostic mouth-observation
+Expo development-build app for the Stoma3D non-diagnostic mouth-observation
 workflow.
 
 ## Run
@@ -9,11 +9,11 @@ From the monorepo root:
 
 ```powershell
 pnpm install --frozen-lockfile
-pnpm --filter @oralsight/mobile typecheck
-pnpm --filter @oralsight/mobile test
+pnpm --filter @stoma3d/mobile typecheck
+pnpm --filter @stoma3d/mobile test
 
 $env:EXPO_PUBLIC_INFERENCE_URL = "http://127.0.0.1:8000"
-pnpm --filter @oralsight/mobile android
+pnpm --filter @stoma3d/mobile android
 ```
 
 Use a development build, not Expo Go. Camera, SQLCipher, encrypted files, GL, and
@@ -32,10 +32,10 @@ Plain LAN HTTP is rejected for safety.
 ## Production environment
 
 The checked-in `preview` and `production` EAS profiles already use the deployed
-OralSight API and its public response-verification key:
+Stoma3D API and its public response-verification key:
 
 ```text
-EXPO_PUBLIC_INFERENCE_URL=https://oralsight-inference.vercel.app/api
+EXPO_PUBLIC_INFERENCE_URL=https://stoma3d-inference.vercel.app/api
 EXPO_PUBLIC_RESPONSE_SIGNING_PUBLIC_KEY_B64=O1GBNCptNbSyxbsWBSCdlkSWK9+lY7KJKW2J41h7+98=
 ```
 

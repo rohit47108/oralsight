@@ -9,25 +9,25 @@ import {
   sealAesGcm,
 } from "@/lib/cryptoContainer";
 import {
-  createOralSightTempUri,
-  ensureOralSightTempDirectory,
-  purgeOralSightTemporaryFiles,
+  createStoma3DTempUri,
+  ensureStoma3DTempDirectory,
+  purgeStoma3DTemporaryFiles,
   removeFileIfPresent,
 } from "@/lib/tempFiles";
 import { writeTemporaryBase64File } from "@/lib/safeTemporaryWrite";
 
-const VAULT_KEY_NAME = "oralsight.vault-key.v1";
+const VAULT_KEY_NAME = "stoma3d.vault-key.v1";
 
 function recordBinding(binding: string): Uint8Array {
   if (!binding.trim())
     throw new Error("Protected files require a record binding.");
-  return new TextEncoder().encode(`oralsight-vault-v2:${binding}`);
+  return new TextEncoder().encode(`stoma3d-vault-v2:${binding}`);
 }
 
 function vaultDirectory(): string {
   if (!FileSystem.documentDirectory)
     throw new Error("Protected device storage is unavailable.");
-  return `${FileSystem.documentDirectory}oralsight-vault/`;
+  return `${FileSystem.documentDirectory}stoma3d-vault/`;
 }
 
 async function ensureDirectory(uri: string): Promise<void> {
@@ -97,8 +97,8 @@ export async function decryptToTemporaryFile(
   binding: string,
 ): Promise<string> {
   const tempKind = extension === "pdf" ? "share" : "preview";
-  await ensureOralSightTempDirectory(tempKind);
-  const destination = await createOralSightTempUri(tempKind, extension);
+  await ensureStoma3DTempDirectory(tempKind);
+  const destination = await createStoma3DTempUri(tempKind, extension);
   await writeTemporaryBase64File(
     destination,
     await decryptFileBase64(encryptedUri, binding),
@@ -124,7 +124,7 @@ export async function removeProtectedFile(
 ): Promise<void> {
   if (!uri) return;
   if (!uri.startsWith(vaultDirectory())) {
-    throw new Error("Refusing to delete a file outside the OralSight vault.");
+    throw new Error("Refusing to delete a file outside the Stoma3D vault.");
   }
   await removeFileIfPresent(uri);
 }
@@ -161,7 +161,7 @@ export async function deleteProtectedFilesAndRotateKey(): Promise<void> {
     failures.push("FILES_DELETE");
   }
   try {
-    await purgeOralSightTemporaryFiles();
+    await purgeStoma3DTemporaryFiles();
   } catch {
     failures.push("TEMP_DELETE");
   }
@@ -176,6 +176,6 @@ export async function deleteProtectedFilesAndRotateKey(): Promise<void> {
     failures.push("KEY_ROTATE");
   }
   if (failures.length > 0) {
-    throw new Error(`ORALSIGHT_VAULT_RESET_INCOMPLETE:${failures.join(",")}`);
+    throw new Error(`STOMA3D_VAULT_RESET_INCOMPLETE:${failures.join(",")}`);
   }
 }

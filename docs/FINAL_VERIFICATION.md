@@ -1,4 +1,4 @@
-# OralSight verification record
+# Stoma3D verification record
 
 Snapshot date: 2026-08-30
 
@@ -87,14 +87,14 @@ The following also require owner accounts or physical resources:
 ## Source handoff
 
 The authoritative source is the public `main` branch at
-`https://github.com/rohit47108/oralsight`. A ZIP is not required for normal
+`https://github.com/rohit47108/stoma3d`. A ZIP is not required for normal
 handoff. Generated dependencies, local builds, secrets, databases, captures,
 datasets, and training runs remain excluded from Git.
 
 ## Current deployment status
 
-- Public web: `https://oralsight-sigma.vercel.app`
-- Production inference: `https://oralsight-inference.vercel.app/api`
+- Public web: `https://stoma3d-sigma.vercel.app`
+- Production inference: `https://stoma3d-inference.vercel.app/api`
 - Verified application commit: `931fb23719c2bbf59f7b503284b387e590999222`
 - Verified web deployment: `dpl_53bhPWjFsWRxYQqkP4iEkTU7GJmU`
 - Verified inference deployment: `dpl_DJLQ78T9x9zWaJgVGbj7KwQZ5L8S`

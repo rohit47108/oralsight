@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from oralsight_ml.fresh_holdout import create_fresh_holdout
-from oralsight_ml.manifest import REQUIRED_COLUMNS
+from stoma3d_ml.fresh_holdout import create_fresh_holdout
+from stoma3d_ml.manifest import REQUIRED_COLUMNS
 
 
 def _row(patient: str, split: str, label: str, index: int) -> dict[str, str]:

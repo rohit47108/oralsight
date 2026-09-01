@@ -7,9 +7,9 @@ import httpx
 import pytest
 from pydantic import ValidationError
 
-from oralsight_worker.main import create_app
-from oralsight_worker.runtime import Runtime
-from oralsight_worker.settings import Settings
+from stoma3d_worker.main import create_app
+from stoma3d_worker.runtime import Runtime
+from stoma3d_worker.settings import Settings
 
 
 def test_production_fails_closed_without_secret_or_https() -> None:
@@ -75,7 +75,7 @@ async def test_health_and_ready_endpoints() -> None:
             assert health.json()["status"] == "ok"
             assert ready.json() == {
                 "status": "ready",
-                "service": "oralsight-worker",
+                "service": "stoma3d-worker",
             }
             assert health.headers["cache-control"] == "no-store"
     assert runtime.started and runtime.closed

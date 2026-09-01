@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { AnalysisOrigin, InputOrigin } from "@oralsight/contracts";
+import type { AnalysisOrigin, InputOrigin } from "@stoma3d/contracts";
 
 import {
   assertLiveMobileInput,

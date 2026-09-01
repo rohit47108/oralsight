@@ -9,7 +9,7 @@ import {
   PlatformApiError,
 } from "@/lib/platform-api";
 
-const SHARE_COOKIE = "oralsight_share_token";
+const SHARE_COOKIE = "stoma3d_share_token";
 
 export async function GET(
   _request: Request,

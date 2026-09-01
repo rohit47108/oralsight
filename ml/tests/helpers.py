@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 
-from oralsight_ml.constants import APPEARANCE_CLASSES, DISEASE_CLASSES, MOUTH_REGIONS
+from stoma3d_ml.constants import APPEARANCE_CLASSES, DISEASE_CLASSES, MOUTH_REGIONS
 
 
 def manifest_row(**overrides: str) -> dict[str, str]:

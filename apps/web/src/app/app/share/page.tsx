@@ -89,7 +89,7 @@ export default async function SharingPage() {
         ) : shares.value.items.length === 0 ? (
           <WorkspaceState
             title="No links have been issued."
-            body="Create a link above when you are ready to share a specific OralSight record."
+            body="Create a link above when you are ready to share a specific Stoma3D record."
           />
         ) : (
           <ul className="share-list">

@@ -2,7 +2,7 @@ import { sha256 } from "@noble/hashes/sha2.js";
 import { bytesToHex, utf8ToBytes } from "@noble/hashes/utils.js";
 import { z } from "zod";
 
-import type { AnalysisResult } from "@oralsight/contracts";
+import type { AnalysisResult } from "@stoma3d/contracts";
 
 import bundledGuidanceConfig from "../config/guidance-rules.json";
 import { DISCLAIMER, NEUTRAL_SEEK_CARE_COPY } from "../constants";

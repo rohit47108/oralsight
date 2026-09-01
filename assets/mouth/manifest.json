@@ -1,13 +1,13 @@
 {
   "assetVersion": "procedural-v1",
-  "name": "OralSight procedural oral observation map",
+  "name": "Stoma3D procedural oral observation map",
   "format": "react-three-fiber procedural geometry",
   "license": "CC0-1.0",
   "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
   "provenance": "Created in this repository; no patient anatomy or external mesh is used.",
   "containsPatientData": false,
   "implementationPath": "apps/mobile/src/components/OralObservationMap.tsx",
-  "implementationSha256": "b653a1c864c7c22cdf908fc10f4d2602d0e9b26ebf96ab8c84d47e435f1a4d95",
+  "implementationSha256": "42c5e68380f7efdb21ab114ce7173bb10256d45d14b5dda8c56fdf2b5fc1d586",
   "targetRegions": [
     { "regionId": "dorsal_tongue", "meshId": "tongue_dorsal" },
     { "regionId": "ventral_tongue", "meshId": "tongue_ventral" },

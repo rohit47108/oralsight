@@ -16,7 +16,7 @@ export default async function SignInPage() {
         <section className="signin-sheet" aria-labelledby="signin-title">
           <BrandMark />
           <div>
-            <p className="workspace-kicker">OralSight mobile</p>
+            <p className="workspace-kicker">Stoma3D mobile</p>
             <h1 id="signin-title">The complete scan starts on your phone.</h1>
             <p>
               Use the mobile app for guided capture, image checks, observation
@@ -28,10 +28,10 @@ export default async function SignInPage() {
             Explore the scan flow
           </Link>
           <Link className="text-link" href="/">
-            Back to OralSight
+            Back to Stoma3D
           </Link>
         </section>
-        <aside className="signin-context" aria-label="What OralSight includes">
+        <aside className="signin-context" aria-label="What Stoma3D includes">
           <p className="workspace-kicker">Inside the app</p>
           <dl>
             <div>
@@ -68,18 +68,18 @@ export default async function SignInPage() {
           <h1 id="signin-title">Your observations, under your control.</h1>
           <p>
             Sign in to open synced records, reports, or a clinical review
-            workspace. Capture still happens in the OralSight mobile app.
+            workspace. Capture still happens in the Stoma3D mobile app.
           </p>
         </div>
         <a className="button" href="/auth/login?returnTo=%2Fapp">
           Continue to secure sign in
         </a>
         <p className="signin-sheet__note">
-          OralSight uses an encrypted session cookie. Health images and results
+          Stoma3D uses an encrypted session cookie. Health images and results
           are not stored in your sign-in profile.
         </p>
         <Link className="text-link" href="/">
-          Back to OralSight
+          Back to Stoma3D
         </Link>
       </section>
       <aside className="signin-context" aria-label="What this account opens">

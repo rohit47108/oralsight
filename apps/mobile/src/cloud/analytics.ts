@@ -1,7 +1,7 @@
 import Constants from "expo-constants";
 import { Platform } from "react-native";
 
-import { useOralSightStore } from "../store/useOralSightStore";
+import { useStoma3DStore } from "../store/useStoma3DStore";
 
 import { PlatformClient } from "./client";
 import { analyticsEventSchema, type AnalyticsEvent } from "./contracts";
@@ -31,7 +31,7 @@ export async function trackProductEvent(
   }));
   if (
     deletionReceipt.kind !== "missing" ||
-    !useOralSightStore.getState().settings.analyticsOptIn ||
+    !useStoma3DStore.getState().settings.analyticsOptIn ||
     !readCloudConfig() ||
     !(await restoreCloudSession())
   ) {

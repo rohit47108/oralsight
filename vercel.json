@@ -10,11 +10,11 @@
   "rewrites": [
     {
       "source": "/api/v1/:path*",
-      "destination": "https://oralsight-inference.vercel.app/api/v1/:path*"
+      "destination": "https://stoma3d-inference.vercel.app/api/v1/:path*"
     },
     {
       "source": "/api/healthz",
-      "destination": "https://oralsight-inference.vercel.app/api/healthz"
+      "destination": "https://stoma3d-inference.vercel.app/api/healthz"
     },
     {
       "source": "/(.*)",

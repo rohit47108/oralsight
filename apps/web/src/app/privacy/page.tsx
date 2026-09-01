@@ -6,7 +6,7 @@ import { PageIntro } from "@/components/page-intro";
 export const metadata: Metadata = {
   title: "Privacy",
   description:
-    "Understand what OralSight stores, what leaves your phone, optional sync, sharing, retention, and deletion.",
+    "Understand what Stoma3D stores, what leaves your phone, optional sync, sharing, retention, and deletion.",
 };
 
 export default function PrivacyPage() {
@@ -15,7 +15,7 @@ export default function PrivacyPage() {
       <PageIntro
         label="Privacy"
         title="Your record follows your choices."
-        description="Local use, optional sync, and sharing are separate decisions. OralSight does not require you to make your observations public."
+        description="Local use, optional sync, and sharing are separate decisions. Stoma3D does not require you to make your observations public."
       />
 
       <section

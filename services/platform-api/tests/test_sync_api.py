@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 
 from sqlalchemy import func, select
 
-from oralsight_platform.models import EntityTombstone, SyncChange, SyncEntityState
+from stoma3d_platform.models import EntityTombstone, SyncChange, SyncEntityState
 
 
 def _headers(auth_headers, key: str, subject: str = "auth0|sync-patient"):

@@ -4,7 +4,7 @@ import cv2
 import numpy as np
 import pytest
 
-from oralsight_worker.calibration import MARKER_ID, estimate_calibration
+from stoma3d_worker.calibration import MARKER_ID, estimate_calibration
 
 
 def calibration_image(*, marker_id: int = MARKER_ID) -> bytes:

@@ -22,7 +22,7 @@ export default async function ReportDetailPage({
     const { error } = result;
     const message =
       error instanceof PlatformApiError && error.status === 404
-        ? "This report was not found in your account. Check the report ID in OralSight."
+        ? "This report was not found in your account. Check the report ID in Stoma3D."
         : error instanceof PlatformApiError
           ? error.message
           : "This report could not be opened.";

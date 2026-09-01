@@ -16,7 +16,7 @@ person has explicitly shared or granted.
 
 ## Product Purpose
 
-OralSight helps a user capture one usable primary image for each of eight named mouth
+Stoma3D helps a user capture one usable primary image for each of eight named mouth
 regions, keep those observations protected on the phone, request non-diagnostic image
 processing, review limitations, compare user-confirmed observations, and prepare a PDF
 for a professional discussion. Optional multi-view capture, calibrated estimates,
@@ -62,7 +62,7 @@ itself as a diagnostic product.
 
 ## Brand Commitments
 
-The product name is OralSight. Its voice is calm, direct, and specific. It avoids medical hype, vague reassurance, invented precision, and technical language that does not help the user.
+The product name is Stoma3D. Its voice is calm, direct, and specific. It avoids medical hype, vague reassurance, invented precision, and technical language that does not help the user.
 
 ## Evidence on Hand
 

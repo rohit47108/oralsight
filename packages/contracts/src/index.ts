@@ -280,7 +280,7 @@ export const uncertaintySchema = z
 
 export const analysisCalibrationRequestSchema = z
   .object({
-    cardVersion: z.literal("oralsight-calibration-v1"),
+    cardVersion: z.literal("stoma3d-calibration-v1"),
     markerId: z.literal(17),
     markerSideMm: z.literal(20),
     planeConfirmed: z.boolean(),
@@ -443,7 +443,7 @@ export type PriorAnalysisMetadata = z.infer<typeof priorAnalysisMetadataSchema>;
 
 export const comparisonCalibrationRequestSchema = z
   .object({
-    cardVersion: z.literal("oralsight-calibration-v1"),
+    cardVersion: z.literal("stoma3d-calibration-v1"),
     markerId: z.literal(17),
     markerSideMm: z.literal(20),
     planeConfirmed: z.literal(true),
@@ -532,7 +532,7 @@ export type DescriptorChanges = z.infer<typeof descriptorChangesSchema>;
 
 export const calibratedMeasurementChangesSchema = z
   .object({
-    cardVersion: z.literal("oralsight-calibration-v1"),
+    cardVersion: z.literal("stoma3d-calibration-v1"),
     markerId: z.literal(17),
     markerSideMm: z.literal(20),
     baselineWidthMm: z.number().positive(),

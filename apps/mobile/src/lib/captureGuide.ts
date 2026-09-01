@@ -1,4 +1,4 @@
-import type { MouthRegion } from "@oralsight/contracts";
+import type { MouthRegion } from "@stoma3d/contracts";
 
 export interface CaptureGuideSpec {
   outlinePath: string;

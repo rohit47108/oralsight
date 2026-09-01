@@ -7,11 +7,11 @@ from pathlib import Path
 
 from sqlalchemy import func, select
 
-from oralsight_platform.deletion_tombstones import (
+from stoma3d_platform.deletion_tombstones import (
     LEGACY_SHARE_KEY_VERSION,
     legacy_deletion_receipt_fingerprint,
 )
-from oralsight_platform.models import (
+from stoma3d_platform.models import (
     DeletedSubjectTombstone,
     DeletionRequest,
     DeletionStatus,
@@ -20,7 +20,7 @@ from oralsight_platform.models import (
     new_id,
     utc_now,
 )
-from oralsight_platform.retention import sweep_retention
+from stoma3d_platform.retention import sweep_retention
 
 
 async def _accept_deletion(client, auth_headers, *, suffix: str = "base"):

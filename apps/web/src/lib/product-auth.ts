@@ -59,7 +59,7 @@ function identityFromUser(user: Record<string, unknown>): ViewerIdentity {
   const name = typeof user.name === "string" ? user.name.trim() : "";
   const email = typeof user.email === "string" ? user.email.trim() : "";
   return {
-    displayName: name || email || "OralSight user",
+    displayName: name || email || "Stoma3D user",
     email: email || null,
   };
 }
@@ -77,7 +77,7 @@ export const getProductContext = cache(async (): Promise<ProductContext> => {
       error instanceof PlatformApiError
         ? error
         : new PlatformApiError(
-            "Your OralSight account could not be checked. Try again.",
+            "Your Stoma3D account could not be checked. Try again.",
             "account_check_failed",
             503,
           );

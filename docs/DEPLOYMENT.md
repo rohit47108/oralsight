@@ -1,4 +1,4 @@
-# OralSight deployment handoff
+# Stoma3D deployment handoff
 
 Last reviewed: 2026-08-26
 
@@ -11,14 +11,14 @@ regulatory status.
 
 ## Deployment state
 
-| Surface               | Current evidence                                                                                                                                                                                                                                          | Deployment status                                                        |
-| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| Inference API         | `https://oralsight-inference.vercel.app/api/healthz` and `/api/v1/model-card` returned `200`, `Cache-Control: no-store`, production signing, release ID `oralsight-segmentation-release-2026-07-28`, and enabled anatomy/segmentation heads on 2026-08-08 | An older inference-only release is live                                  |
-| Current web app       | Next.js source, tests, build script, Auth0 integration, and Vercel configuration are in the repository                                                                                                                                                    | No deployment of the current tree has been verified                      |
-| Stateful platform API | Container, migrations, OIDC validation, PostgreSQL, private object storage, consent, sync, sharing, reports, audit, retention, and deletion paths are in the repository                                                                                   | No production deployment has been verified                               |
-| Durable worker        | Container, Redis consumer, artifact rendering, report/video/export/deletion processors, retry, heartbeat, and cleanup paths are in the repository                                                                                                         | No production deployment has been verified                               |
-| Mobile app            | Expo development-build source and EAS profiles are present                                                                                                                                                                                                | No final `.aab` or `.ipa` from the current tree exists in this workspace |
-| Full product          | The mobile, web, platform, worker, and inference pieces exist as separate deployable surfaces                                                                                                                                                             | Not yet proven end to end in one production environment                  |
+| Surface               | Current evidence                                                                                                                                                                                                                                      | Deployment status                                                        |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| Inference API         | `https://stoma3d-inference.vercel.app/api/healthz` and `/api/v1/model-card` returned `200`, `Cache-Control: no-store`, production signing, release ID `stoma3d-segmentation-release-2026-07-28`, and enabled anatomy/segmentation heads on 2026-08-08 | An older inference-only release is live                                  |
+| Current web app       | Next.js source, tests, build script, Auth0 integration, and Vercel configuration are in the repository                                                                                                                                                | No deployment of the current tree has been verified                      |
+| Stateful platform API | Container, migrations, OIDC validation, PostgreSQL, private object storage, consent, sync, sharing, reports, audit, retention, and deletion paths are in the repository                                                                               | No production deployment has been verified                               |
+| Durable worker        | Container, Redis consumer, artifact rendering, report/video/export/deletion processors, retry, heartbeat, and cleanup paths are in the repository                                                                                                     | No production deployment has been verified                               |
+| Mobile app            | Expo development-build source and EAS profiles are present                                                                                                                                                                                            | No final `.aab` or `.ipa` from the current tree exists in this workspace |
+| Full product          | The mobile, web, platform, worker, and inference pieces exist as separate deployable surfaces                                                                                                                                                         | Not yet proven end to end in one production environment                  |
 
 Do not describe the current source tree as deployed merely because the older
 inference endpoint is live.
@@ -51,17 +51,17 @@ Store, or Google Play; a domain does not replace the native build.
 
 Before a complete public deployment, the owner must provide:
 
-1. The public `rohit47108/oralsight` repository. The complete source now lives
-   in its local checkout at `C:\Users\rohit\Projects\oralsight`. The private
+1. The public `rohit47108/stoma3d` repository. The complete source now lives
+   in its local checkout at `C:\Users\rohit\Projects\stoma3d`. The private
    Autooral-assisted segmentation weight is excluded from the public source;
    deployment supplies it through the ignored, hash-verified release bundle.
 2. The current public web and signed inference releases are verified on the
-   `oralsight` and `oralsight-inference` Vercel projects. A future hosted account
+   `stoma3d` and `stoma3d-inference` Vercel projects. A future hosted account
    platform still needs its own production environment values and stateful host.
 3. An OIDC provider such as Auth0 with a public native client, a regular web
    client, an API audience, asymmetric signing, and the required patient,
    `clinician_pending`, clinician, and administrator role claims. The platform
-   defaults to the access-token claim `https://oralsight.app/roles`. It never
+   defaults to the access-token claim `https://stoma3d.app/roles`. It never
    falls back to a generic `roles` claim; production must deliberately emit or
    configure the exact claim.
 4. Managed PostgreSQL with TLS and point-in-time recovery.
@@ -85,7 +85,7 @@ Before a complete public deployment, the owner must provide:
     privacy page states the runbook's maximum 35-day encrypted backup lifetime;
     the deployed storage and backup policies must match it.
 14. Final native application identifiers. The checked source still uses
-    `org.oralsight.prototype` and has no owner-specific Expo project ID.
+    `org.stoma3d.prototype` and has no owner-specific Expo project ID.
 15. A hash-bound, reviewer-approved repeated-capture evaluation with area error
     no greater than 10% before any normalized or calibrated longitudinal change
     is enabled. A display registration transform does not satisfy this gate.
@@ -108,8 +108,8 @@ pnpm contracts:generate
 git diff --exit-code -- packages/contracts/generated
 pnpm test
 pnpm typecheck
-pnpm --filter @oralsight/web lint
-pnpm --filter @oralsight/web build
+pnpm --filter @stoma3d/web lint
+pnpm --filter @stoma3d/web build
 pnpm audit:dependencies
 pnpm format:check
 
@@ -161,17 +161,17 @@ This publishes PostgreSQL on `127.0.0.1:5432`, Redis on
 `127.0.0.1:8001`, and worker health on `127.0.0.1:8010`.
 The Compose stack signs inference responses with a documented, public
 development-only key and pins its public half in the worker. Override all three
-`ORALSIGHT_LOCAL_RESPONSE_SIGNING_*` values together to exercise key rotation;
+`STOMA3D_LOCAL_RESPONSE_SIGNING_*` values together to exercise key rotation;
 never reuse the checked-in development key in staging or production.
 
 Run the web app separately from the repository root:
 
 ```powershell
 Copy-Item apps/web/.env.example apps/web/.env.local
-pnpm --filter @oralsight/web dev
+pnpm --filter @stoma3d/web dev
 ```
 
-For the web app, `ORALSIGHT_PLATFORM_API_URL` must match the Compose port:
+For the web app, `STOMA3D_PLATFORM_API_URL` must match the Compose port:
 `http://127.0.0.1:8001`. Interactive web and mobile sign-in still needs a real
 development OIDC application. The platform's `local_test` token mode is for
 automated tests and direct development calls; it is not an OIDC discovery,
@@ -193,23 +193,23 @@ of the normal shutdown command.
 
 Set these values in every Vercel environment that will be exercised:
 
-| Variable                     | Purpose                                              |
-| ---------------------------- | ---------------------------------------------------- |
-| `AUTH0_DOMAIN`               | OIDC tenant domain                                   |
-| `AUTH0_CLIENT_ID`            | Auth0 regular web application ID                     |
-| `AUTH0_CLIENT_SECRET`        | Server-only web client secret                        |
-| `AUTH0_SECRET`               | Random secret used to protect web sessions           |
-| `APP_BASE_URL`               | Exact public origin for this deployment              |
-| `NEXT_PUBLIC_SITE_URL`       | Public origin used for metadata, sitemap, and robots |
-| `AUTH0_AUDIENCE`             | Exact platform API audience                          |
-| `ORALSIGHT_PLATFORM_API_URL` | Server-only HTTPS origin of the platform API         |
+| Variable                   | Purpose                                              |
+| -------------------------- | ---------------------------------------------------- |
+| `AUTH0_DOMAIN`             | OIDC tenant domain                                   |
+| `AUTH0_CLIENT_ID`          | Auth0 regular web application ID                     |
+| `AUTH0_CLIENT_SECRET`      | Server-only web client secret                        |
+| `AUTH0_SECRET`             | Random secret used to protect web sessions           |
+| `APP_BASE_URL`             | Exact public origin for this deployment              |
+| `NEXT_PUBLIC_SITE_URL`     | Public origin used for metadata, sitemap, and robots |
+| `AUTH0_AUDIENCE`           | Exact platform API audience                          |
+| `STOMA3D_PLATFORM_API_URL` | Server-only HTTPS origin of the platform API         |
 
 For a public competition deployment before hosted accounts are connected, set
-`ORALSIGHT_WEB_MODE=public` and `NEXT_PUBLIC_SITE_URL` to the deployed HTTPS
+`STOMA3D_WEB_MODE=public` and `NEXT_PUBLIC_SITE_URL` to the deployed HTTPS
 origin. The public site, product explanation, privacy, security, evidence, and
 professional pages remain available. Account-only routes send visitors to the
 mobile product flow instead of exposing a broken identity-provider link. Remove
-`ORALSIGHT_WEB_MODE=public` after the Auth0 and platform values above are set and
+`STOMA3D_WEB_MODE=public` after the Auth0 and platform values above are set and
 verified.
 
 Register exact callback, logout, and web-origin URLs for production and each
@@ -218,7 +218,7 @@ token, database URL, or signing private key in a `NEXT_PUBLIC_*` variable.
 
 The production build stops before compilation if any required web value is
 missing or still looks like a placeholder. CI may use explicit dummy values only
-with both `CI=true` and `ORALSIGHT_ALLOW_CI_DUMMY_WEB_ENV=true`. The bypass is
+with both `CI=true` and `STOMA3D_ALLOW_CI_DUMMY_WEB_ENV=true`. The bypass is
 disabled whenever `VERCEL=1`, so it cannot make a real Vercel deployment pass.
 
 ## Configure the inference API
@@ -226,16 +226,16 @@ disabled whenever `VERCEL=1`, so it cannot make a real Vercel deployment pass.
 The production inference runtime requires:
 
 ```text
-ORALSIGHT_DEPLOYMENT_MODE=production
-ORALSIGHT_REQUIRE_RESPONSE_SIGNING=true
-ORALSIGHT_RESPONSE_SIGNING_PRIVATE_KEY_B64=<raw 32-byte Ed25519 private key in base64>
-ORALSIGHT_RESPONSE_SIGNING_KEY_ID=<derived key ID>
-ORALSIGHT_RESPONSE_SIGNING_PUBLIC_KEY_B64=<raw 32-byte Ed25519 public key in base64 for worker Compose wiring>
-ORALSIGHT_ENABLE_DEMO_FIXTURES=false
-ORALSIGHT_MAX_CONCURRENT_INFERENCE=2
-ORALSIGHT_RATE_LIMIT_PER_CLIENT=30
-ORALSIGHT_RATE_LIMIT_GLOBAL=300
-ORALSIGHT_RATE_LIMIT_WINDOW_SECONDS=60
+STOMA3D_DEPLOYMENT_MODE=production
+STOMA3D_REQUIRE_RESPONSE_SIGNING=true
+STOMA3D_RESPONSE_SIGNING_PRIVATE_KEY_B64=<raw 32-byte Ed25519 private key in base64>
+STOMA3D_RESPONSE_SIGNING_KEY_ID=<derived key ID>
+STOMA3D_RESPONSE_SIGNING_PUBLIC_KEY_B64=<raw 32-byte Ed25519 public key in base64 for worker Compose wiring>
+STOMA3D_ENABLE_DEMO_FIXTURES=false
+STOMA3D_MAX_CONCURRENT_INFERENCE=2
+STOMA3D_RATE_LIMIT_PER_CLIENT=30
+STOMA3D_RATE_LIMIT_GLOBAL=300
+STOMA3D_RATE_LIMIT_WINDOW_SECONDS=60
 ```
 
 The three rate-limit values are process-local safety limits. Keep an additional
@@ -246,7 +246,7 @@ Generate one matching key set with
 `uv run --project services/inference python services/inference/scripts/generate_signing_key.py`.
 Store the private value only in the inference secret manager. The worker receives
 the public value as
-`ORALSIGHT_WORKER_INFERENCE_RESPONSE_SIGNING_PUBLIC_KEY_B64`; mobile receives the
+`STOMA3D_WORKER_INFERENCE_RESPONSE_SIGNING_PUBLIC_KEY_B64`; mobile receives the
 same public bytes through `EXPO_PUBLIC_RESPONSE_SIGNING_PUBLIC_KEY_B64`. The
 worker derives the expected 16-character key ID from the public bytes.
 
@@ -262,14 +262,14 @@ strategy is added.
 
 The root [`vercel.json`](../vercel.json) deploys the Next.js product and proxies
 `/api/v1/*` plus `/api/healthz` to the independently deployed, signed inference
-service at `https://oralsight-inference.vercel.app/api`. Keeping these releases
+service at `https://stoma3d-inference.vercel.app/api`. Keeping these releases
 separate lets the public website deploy without copying the private model bundle
 into its build. The standalone inference deployment remains defined by
 [`services/inference/vercel.json`](../services/inference/vercel.json) and the
 `[tool.vercel]` entry point in its `pyproject.toml`.
 
-The linked web project is `oralsight`. The inference project is
-`oralsight-inference`. Never replace the inference proxy with an unverified model
+The linked web project is `stoma3d`. The inference project is
+`stoma3d-inference`. Never replace the inference proxy with an unverified model
 build; its health and model-card responses must report signing, the expected
 release ID, and the enabled heads before a web deployment is promoted.
 
@@ -292,7 +292,7 @@ pnpm dlx vercel@58.8.0 promote <preview-url>
 ```
 
 Do not reuse an existing project link without checking its project name. In the
-current development workspace, the root `.vercel` link points to `oralsight`.
+current development workspace, the root `.vercel` link points to `stoma3d`.
 Link and deploy `services/inference` separately only when intentionally replacing
 the live model release, because that deployment also requires the ignored private
 release bundle and the response-signing secret.
@@ -318,38 +318,38 @@ the reverse proxy remain operator-owned.
 Build, scan, push, and record immutable image digests:
 
 ```powershell
-docker build -t <registry>/oralsight-platform-api:<version> services/platform-api
-docker build -t <registry>/oralsight-inference:<version> services/inference
-docker build -t <registry>/oralsight-worker:<version> services/worker
+docker build -t <registry>/stoma3d-platform-api:<version> services/platform-api
+docker build -t <registry>/stoma3d-inference:<version> services/inference
+docker build -t <registry>/stoma3d-worker:<version> services/worker
 ```
 
 Populate a copy of `deploy/production/production.env.example` in a protected
 location outside Git. Use digest-pinned image references. Then:
 
 ```powershell
-docker network create oralsight-ingress
-docker compose --env-file C:\secure\oralsight-production.env `
+docker network create stoma3d-ingress
+docker compose --env-file C:\secure\stoma3d-production.env `
   -f compose.production.yaml config --quiet
-docker compose --env-file C:\secure\oralsight-production.env `
+docker compose --env-file C:\secure\stoma3d-production.env `
   -f compose.production.yaml up -d
-docker compose --env-file C:\secure\oralsight-production.env `
+docker compose --env-file C:\secure\stoma3d-production.env `
   -f compose.production.yaml ps
 ```
 
 The ingress proxy must route the public platform origin to `platform-api:8080`
 and the public inference origin to `inference:8000`. Do not expose the worker,
 PostgreSQL, Redis, or S3 admin surface publicly. Run multiple workers only with
-unique `ORALSIGHT_WORKER_CONSUMER_NAME` values.
+unique `STOMA3D_WORKER_CONSUMER_NAME` values.
 
 Production startup fails closed when it sees local authentication, SQLite,
 plain Redis, local object storage, HTTP public URLs, default secrets, or
 automatic schema creation. Keep that behavior enabled.
 
-Set `ORALSIGHT_PLATFORM_OIDC_ROLE_CLAIM` when the identity provider uses a
+Set `STOMA3D_PLATFORM_OIDC_ROLE_CLAIM` when the identity provider uses a
 different access-token role claim. A web profile field is not enough: the role
 must be present in the API access token, and verified-clinician status is still
 checked in PostgreSQL before professional access is granted. Set
-`ORALSIGHT_PLATFORM_PRIVILEGED_TOKEN_MAX_AGE_SECONDS` between 60 and 3600
+`STOMA3D_PLATFORM_PRIVILEGED_TOKEN_MAX_AGE_SECONDS` between 60 and 3600
 seconds, and configure the provider to refresh access tokens within that limit.
 
 ### Bootstrap the first administrator
@@ -362,15 +362,15 @@ current process, and pass only the variable name to Compose:
 
 ```powershell
 $bootstrapSubject = Read-Host "Exact OIDC subject for the first administrator"
-$env:ORALSIGHT_PLATFORM_BOOTSTRAP_ADMIN_SUBJECT = $bootstrapSubject
-$env:ORALSIGHT_PLATFORM_BOOTSTRAP_CONFIRMATION = "BOOTSTRAP ORALSIGHT FIRST ADMIN"
-docker compose --env-file C:\secure\oralsight-production.env `
+$env:STOMA3D_PLATFORM_BOOTSTRAP_ADMIN_SUBJECT = $bootstrapSubject
+$env:STOMA3D_PLATFORM_BOOTSTRAP_CONFIRMATION = "BOOTSTRAP STOMA3D FIRST ADMIN"
+docker compose --env-file C:\secure\stoma3d-production.env `
   -f compose.production.yaml exec `
-  -e ORALSIGHT_PLATFORM_BOOTSTRAP_ADMIN_SUBJECT `
-  -e ORALSIGHT_PLATFORM_BOOTSTRAP_CONFIRMATION `
-  platform-api oralsight-bootstrap-admin
-Remove-Item Env:ORALSIGHT_PLATFORM_BOOTSTRAP_ADMIN_SUBJECT
-Remove-Item Env:ORALSIGHT_PLATFORM_BOOTSTRAP_CONFIRMATION
+  -e STOMA3D_PLATFORM_BOOTSTRAP_ADMIN_SUBJECT `
+  -e STOMA3D_PLATFORM_BOOTSTRAP_CONFIRMATION `
+  platform-api stoma3d-bootstrap-admin
+Remove-Item Env:STOMA3D_PLATFORM_BOOTSTRAP_ADMIN_SUBJECT
+Remove-Item Env:STOMA3D_PLATFORM_BOOTSTRAP_CONFIRMATION
 $bootstrapSubject = $null
 ```
 
@@ -383,11 +383,11 @@ removed. Assign `admin` in the configured access-token role claim, then require
 the administrator to sign out and back in. The portal stays locked until both
 the database role and a freshly validated token role agree.
 
-Add a second administrator before launch. `oralsight-add-admin` is a trusted
+Add a second administrator before launch. `stoma3d-add-admin` is a trusted
 infrastructure-operator command, not proof that another administrator personally
 approved the change. It requires a distinct active saved administrator as a
 reference, exact target and reference subjects supplied through temporary
-environment variables, and the confirmation phrase `ADD ORALSIGHT ADMIN`. The
+environment variables, and the confirmation phrase `ADD STOMA3D ADMIN`. The
 reference proves that this is a normal addition rather than zero-administrator
 recovery. The operation is audited without naming an approving person and never
 prints either subject.
@@ -397,18 +397,18 @@ Run the additional-admin command from a protected operator shell:
 ```powershell
 $targetSubject = Read-Host "Exact OIDC subject for the additional administrator"
 $referenceSubject = Read-Host "Exact OIDC subject for an active administrator reference"
-$env:ORALSIGHT_PLATFORM_ADMIN_TARGET_SUBJECT = $targetSubject
-$env:ORALSIGHT_PLATFORM_ADMIN_REFERENCE_SUBJECT = $referenceSubject
-$env:ORALSIGHT_PLATFORM_ADMIN_CONFIRMATION = "ADD ORALSIGHT ADMIN"
-docker compose --env-file C:\secure\oralsight-production.env `
+$env:STOMA3D_PLATFORM_ADMIN_TARGET_SUBJECT = $targetSubject
+$env:STOMA3D_PLATFORM_ADMIN_REFERENCE_SUBJECT = $referenceSubject
+$env:STOMA3D_PLATFORM_ADMIN_CONFIRMATION = "ADD STOMA3D ADMIN"
+docker compose --env-file C:\secure\stoma3d-production.env `
   -f compose.production.yaml exec `
-  -e ORALSIGHT_PLATFORM_ADMIN_TARGET_SUBJECT `
-  -e ORALSIGHT_PLATFORM_ADMIN_REFERENCE_SUBJECT `
-  -e ORALSIGHT_PLATFORM_ADMIN_CONFIRMATION `
-  platform-api oralsight-add-admin
-Remove-Item Env:ORALSIGHT_PLATFORM_ADMIN_TARGET_SUBJECT
-Remove-Item Env:ORALSIGHT_PLATFORM_ADMIN_REFERENCE_SUBJECT
-Remove-Item Env:ORALSIGHT_PLATFORM_ADMIN_CONFIRMATION
+  -e STOMA3D_PLATFORM_ADMIN_TARGET_SUBJECT `
+  -e STOMA3D_PLATFORM_ADMIN_REFERENCE_SUBJECT `
+  -e STOMA3D_PLATFORM_ADMIN_CONFIRMATION `
+  platform-api stoma3d-add-admin
+Remove-Item Env:STOMA3D_PLATFORM_ADMIN_TARGET_SUBJECT
+Remove-Item Env:STOMA3D_PLATFORM_ADMIN_REFERENCE_SUBJECT
+Remove-Item Env:STOMA3D_PLATFORM_ADMIN_CONFIRMATION
 $targetSubject = $null
 $referenceSubject = $null
 ```
@@ -423,15 +423,15 @@ while any administrator remains:
 
 ```powershell
 $recoverySubject = Read-Host "Exact OIDC subject for the recovery administrator"
-$env:ORALSIGHT_PLATFORM_RECOVERY_ADMIN_SUBJECT = $recoverySubject
-$env:ORALSIGHT_PLATFORM_RECOVERY_CONFIRMATION = "RECOVER ORALSIGHT SEALED INSTALLATION WITH ZERO ADMINS"
-docker compose --env-file C:\secure\oralsight-production.env `
+$env:STOMA3D_PLATFORM_RECOVERY_ADMIN_SUBJECT = $recoverySubject
+$env:STOMA3D_PLATFORM_RECOVERY_CONFIRMATION = "RECOVER STOMA3D SEALED INSTALLATION WITH ZERO ADMINS"
+docker compose --env-file C:\secure\stoma3d-production.env `
   -f compose.production.yaml exec `
-  -e ORALSIGHT_PLATFORM_RECOVERY_ADMIN_SUBJECT `
-  -e ORALSIGHT_PLATFORM_RECOVERY_CONFIRMATION `
-  platform-api oralsight-recover-admin
-Remove-Item Env:ORALSIGHT_PLATFORM_RECOVERY_ADMIN_SUBJECT
-Remove-Item Env:ORALSIGHT_PLATFORM_RECOVERY_CONFIRMATION
+  -e STOMA3D_PLATFORM_RECOVERY_ADMIN_SUBJECT `
+  -e STOMA3D_PLATFORM_RECOVERY_CONFIRMATION `
+  platform-api stoma3d-recover-admin
+Remove-Item Env:STOMA3D_PLATFORM_RECOVERY_ADMIN_SUBJECT
+Remove-Item Env:STOMA3D_PLATFORM_RECOVERY_CONFIRMATION
 $recoverySubject = $null
 ```
 
@@ -462,7 +462,7 @@ continues to check the current signed token. Privileged token roles are ignored
 provider role therefore locks a refreshed sign-in immediately and any previously
 issued token no later than that bound; it is not instant revocation.
 
-`ORALSIGHT_PLATFORM_PENDING_UPLOAD_LIFETIME_SECONDS` defaults to `3600`. This is
+`STOMA3D_PLATFORM_PENDING_UPLOAD_LIFETIME_SECONDS` defaults to `3600`. This is
 the maximum lifetime of an unfinished upload reservation; retention cleanup must
 be running so abandoned reservations and related objects do not remain
 indefinitely.
@@ -494,10 +494,10 @@ independently. Color normalization may adjust only approximate mean redness and
 brightness after every patch gate passes; it never rewrites the image or changes
 the mask, anatomy, quality, texture, learned heads, or guidance.
 
-Register the native callback generated for the `oralsight` app scheme with the
+Register the native callback generated for the `stoma3d` app scheme with the
 OIDC provider, then create the EAS project and build:
 
-Before `eas:configure`, replace `org.oralsight.prototype` with the stable iOS
+Before `eas:configure`, replace `org.stoma3d.prototype` with the stable iOS
 bundle identifier and Android application ID registered to the owner. Treat
 those identifiers as permanent after a store release. Record the EAS project ID
 created for the owner's Expo organization.
@@ -598,7 +598,7 @@ After the final checks and documentation are frozen, choose the release archive
 path from the protected operator shell:
 
 ```powershell
-$releaseArchive = Read-Host "Absolute path for the final OralSight source archive"
+$releaseArchive = Read-Host "Absolute path for the final Stoma3D source archive"
 .\scripts\package-source.ps1 `
   -OutputPath $releaseArchive `
   -Force

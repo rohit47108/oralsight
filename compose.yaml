@@ -1,16 +1,16 @@
-name: oralsight
+name: stoma3d
 
 services:
   postgres:
     image: postgres:17.6-alpine
     environment:
-      POSTGRES_DB: oralsight
-      POSTGRES_USER: oralsight
-      POSTGRES_PASSWORD: ${ORALSIGHT_LOCAL_POSTGRES_PASSWORD:-local-development-only}
+      POSTGRES_DB: stoma3d
+      POSTGRES_USER: stoma3d
+      POSTGRES_PASSWORD: ${STOMA3D_LOCAL_POSTGRES_PASSWORD:-local-development-only}
     volumes:
-      - oralsight-postgres:/var/lib/postgresql/data
+      - stoma3d-postgres:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U oralsight -d oralsight"]
+      test: ["CMD-SHELL", "pg_isready -U stoma3d -d stoma3d"]
       interval: 5s
       timeout: 3s
       retries: 20
@@ -29,7 +29,7 @@ services:
         "noeviction",
       ]
     volumes:
-      - oralsight-redis:/data
+      - stoma3d-redis:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -42,16 +42,16 @@ services:
   inference:
     build:
       context: ./services/inference
-    image: oralsight-inference:local
+    image: stoma3d-inference:local
     ports:
       - "127.0.0.1:8000:8000"
     environment:
-      ORALSIGHT_DEPLOYMENT_MODE: development
-      ORALSIGHT_ENABLE_DEMO_FIXTURES: "false"
-      ORALSIGHT_REQUIRE_RESPONSE_SIGNING: "true"
+      STOMA3D_DEPLOYMENT_MODE: development
+      STOMA3D_ENABLE_DEMO_FIXTURES: "false"
+      STOMA3D_REQUIRE_RESPONSE_SIGNING: "true"
       # Public, deterministic local-development key. Never use it outside this stack.
-      ORALSIGHT_RESPONSE_SIGNING_PRIVATE_KEY_B64: ${ORALSIGHT_LOCAL_RESPONSE_SIGNING_PRIVATE_KEY_B64:-QkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkI=}
-      ORALSIGHT_RESPONSE_SIGNING_KEY_ID: ${ORALSIGHT_LOCAL_RESPONSE_SIGNING_KEY_ID:-3097e2dee2cb4a34}
+      STOMA3D_RESPONSE_SIGNING_PRIVATE_KEY_B64: ${STOMA3D_LOCAL_RESPONSE_SIGNING_PRIVATE_KEY_B64:-QkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkI=}
+      STOMA3D_RESPONSE_SIGNING_KEY_ID: ${STOMA3D_LOCAL_RESPONSE_SIGNING_KEY_ID:-3097e2dee2cb4a34}
     read_only: true
     tmpfs:
       - /tmp:size=64m,mode=1777
@@ -75,36 +75,36 @@ services:
   platform-migrate:
     build:
       context: ./services/platform-api
-    image: oralsight-platform-api:local
+    image: stoma3d-platform-api:local
     command: ["alembic", "upgrade", "head"]
     environment: &platform-environment
-      ORALSIGHT_PLATFORM_DATABASE_URL: postgresql+asyncpg://oralsight:${ORALSIGHT_LOCAL_POSTGRES_PASSWORD:-local-development-only}@postgres:5432/oralsight
-      ORALSIGHT_PLATFORM_ENVIRONMENT: development
-      ORALSIGHT_PLATFORM_CREATE_SCHEMA_ON_START: "false"
-      ORALSIGHT_PLATFORM_AUTH_MODE: local_test
-      ORALSIGHT_PLATFORM_OIDC_AUDIENCE: oralsight-platform-api
-      ORALSIGHT_PLATFORM_LOCAL_TEST_ISSUER_URL: https://oralsight.local.test
-      ORALSIGHT_PLATFORM_LOCAL_TEST_SIGNING_SECRET: ${ORALSIGHT_LOCAL_SIGNING_SECRET:-local-development-signing-secret-change-me}
-      ORALSIGHT_PLATFORM_SHARE_SECRET_DERIVATION_KEY: ${ORALSIGHT_LOCAL_SHARE_SECRET:-local-development-share-secret-change-me-32-bytes}
-      ORALSIGHT_PLATFORM_WORKER_SERVICE_HMAC_SECRET: ${ORALSIGHT_LOCAL_SERVICE_HMAC_SECRET:-local-development-worker-hmac-secret-change-me}
-      ORALSIGHT_PLATFORM_OBJECT_STORAGE_BACKEND: local
-      ORALSIGHT_PLATFORM_OBJECT_STORAGE_ROOT: /var/lib/oralsight-assets
-      ORALSIGHT_PLATFORM_OBJECT_STORAGE_PUBLIC_BASE_URL: http://127.0.0.1:8001
-      ORALSIGHT_PLATFORM_QUEUE_BACKEND: redis
-      ORALSIGHT_PLATFORM_REDIS_URL: redis://redis:6379/0
-      ORALSIGHT_PLATFORM_REDIS_STREAM_NAME: oralsight:jobs:v1
-      ORALSIGHT_PLATFORM_REDIS_CANCEL_PREFIX: "oralsight:job-cancelled:v1:"
+      STOMA3D_PLATFORM_DATABASE_URL: postgresql+asyncpg://stoma3d:${STOMA3D_LOCAL_POSTGRES_PASSWORD:-local-development-only}@postgres:5432/stoma3d
+      STOMA3D_PLATFORM_ENVIRONMENT: development
+      STOMA3D_PLATFORM_CREATE_SCHEMA_ON_START: "false"
+      STOMA3D_PLATFORM_AUTH_MODE: local_test
+      STOMA3D_PLATFORM_OIDC_AUDIENCE: stoma3d-platform-api
+      STOMA3D_PLATFORM_LOCAL_TEST_ISSUER_URL: https://stoma3d.local.test
+      STOMA3D_PLATFORM_LOCAL_TEST_SIGNING_SECRET: ${STOMA3D_LOCAL_SIGNING_SECRET:-local-development-signing-secret-change-me}
+      STOMA3D_PLATFORM_SHARE_SECRET_DERIVATION_KEY: ${STOMA3D_LOCAL_SHARE_SECRET:-local-development-share-secret-change-me-32-bytes}
+      STOMA3D_PLATFORM_WORKER_SERVICE_HMAC_SECRET: ${STOMA3D_LOCAL_SERVICE_HMAC_SECRET:-local-development-worker-hmac-secret-change-me}
+      STOMA3D_PLATFORM_OBJECT_STORAGE_BACKEND: local
+      STOMA3D_PLATFORM_OBJECT_STORAGE_ROOT: /var/lib/stoma3d-assets
+      STOMA3D_PLATFORM_OBJECT_STORAGE_PUBLIC_BASE_URL: http://127.0.0.1:8001
+      STOMA3D_PLATFORM_QUEUE_BACKEND: redis
+      STOMA3D_PLATFORM_REDIS_URL: redis://redis:6379/0
+      STOMA3D_PLATFORM_REDIS_STREAM_NAME: stoma3d:jobs:v1
+      STOMA3D_PLATFORM_REDIS_CANCEL_PREFIX: "stoma3d:job-cancelled:v1:"
     depends_on:
       postgres:
         condition: service_healthy
     restart: "no"
 
   platform-storage-init:
-    image: oralsight-platform-api:local
+    image: stoma3d-platform-api:local
     user: "0:0"
-    command: ["chown", "-R", "oralsight:oralsight", "/var/lib/oralsight-assets"]
+    command: ["chown", "-R", "stoma3d:stoma3d", "/var/lib/stoma3d-assets"]
     volumes:
-      - oralsight-assets:/var/lib/oralsight-assets
+      - stoma3d-assets:/var/lib/stoma3d-assets
     security_opt:
       - no-new-privileges:true
     cap_drop:
@@ -114,7 +114,7 @@ services:
     restart: "no"
 
   platform-api:
-    image: oralsight-platform-api:local
+    image: stoma3d-platform-api:local
     environment: *platform-environment
     depends_on:
       platform-migrate:
@@ -129,7 +129,7 @@ services:
     tmpfs:
       - /tmp:size=32m,mode=1777
     volumes:
-      - oralsight-assets:/var/lib/oralsight-assets
+      - stoma3d-assets:/var/lib/stoma3d-assets
     security_opt:
       - no-new-privileges:true
     cap_drop:
@@ -150,19 +150,19 @@ services:
   worker:
     build:
       context: ./services/worker
-    image: oralsight-worker:local
+    image: stoma3d-worker:local
     environment:
-      ORALSIGHT_WORKER_ENVIRONMENT: development
-      ORALSIGHT_WORKER_CONSUMER_NAME: worker-compose-1
-      ORALSIGHT_WORKER_REDIS_URL: redis://redis:6379/0
-      ORALSIGHT_WORKER_HEALTH_PORT: "8010"
-      ORALSIGHT_WORKER_PLATFORM_API_URL: http://platform-api:8080
-      ORALSIGHT_WORKER_INFERENCE_API_URL: http://inference:8000
+      STOMA3D_WORKER_ENVIRONMENT: development
+      STOMA3D_WORKER_CONSUMER_NAME: worker-compose-1
+      STOMA3D_WORKER_REDIS_URL: redis://redis:6379/0
+      STOMA3D_WORKER_HEALTH_PORT: "8010"
+      STOMA3D_WORKER_PLATFORM_API_URL: http://platform-api:8080
+      STOMA3D_WORKER_INFERENCE_API_URL: http://inference:8000
       # Public half matching the local-development inference key above.
-      ORALSIGHT_WORKER_INFERENCE_RESPONSE_SIGNING_PUBLIC_KEY_B64: ${ORALSIGHT_LOCAL_RESPONSE_SIGNING_PUBLIC_KEY_B64:-IVL40Zt5HSRFMkLhXy6rbLfP+ntqXtMAl5YOBpiB2xI=}
-      ORALSIGHT_WORKER_SERVICE_ID: oralsight-worker
-      ORALSIGHT_WORKER_SERVICE_HMAC_SECRET: ${ORALSIGHT_LOCAL_SERVICE_HMAC_SECRET:-local-development-worker-hmac-secret-change-me}
-      ORALSIGHT_WORKER_CONCURRENCY: "2"
+      STOMA3D_WORKER_INFERENCE_RESPONSE_SIGNING_PUBLIC_KEY_B64: ${STOMA3D_LOCAL_RESPONSE_SIGNING_PUBLIC_KEY_B64:-IVL40Zt5HSRFMkLhXy6rbLfP+ntqXtMAl5YOBpiB2xI=}
+      STOMA3D_WORKER_SERVICE_ID: stoma3d-worker
+      STOMA3D_WORKER_SERVICE_HMAC_SECRET: ${STOMA3D_LOCAL_SERVICE_HMAC_SECRET:-local-development-worker-hmac-secret-change-me}
+      STOMA3D_WORKER_CONCURRENCY: "2"
     depends_on:
       redis:
         condition: service_healthy
@@ -182,6 +182,6 @@ services:
     restart: unless-stopped
 
 volumes:
-  oralsight-postgres:
-  oralsight-redis:
-  oralsight-assets:
+  stoma3d-postgres:
+  stoma3d-redis:
+  stoma3d-assets:

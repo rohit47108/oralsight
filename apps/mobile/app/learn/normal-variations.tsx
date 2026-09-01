@@ -24,7 +24,7 @@ const VARIATIONS = [
   {
     id: "lighting",
     title: "Color under different light",
-    body: "Flash, room light, shadows, and phone processing can shift apparent color. OralSight records color descriptors only when image quality is usable and still labels them approximate.",
+    body: "Flash, room light, shadows, and phone processing can shift apparent color. Stoma3D records color descriptors only when image quality is usable and still labels them approximate.",
   },
 ] as const;
 

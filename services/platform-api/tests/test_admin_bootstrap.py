@@ -5,7 +5,7 @@ import json
 import pytest
 from sqlalchemy import delete, func, select
 
-from oralsight_platform.admin_bootstrap import (
+from stoma3d_platform.admin_bootstrap import (
     ADDITIONAL_ADMIN_CONFIRMATION_PHRASE,
     FIRST_ADMIN_CONFIRMATION_PHRASE,
     RECOVERY_ADMIN_CONFIRMATION_PHRASE,
@@ -14,7 +14,7 @@ from oralsight_platform.admin_bootstrap import (
     bootstrap_first_admin,
     recover_zero_admin,
 )
-from oralsight_platform.models import (
+from stoma3d_platform.models import (
     AdminBootstrapSeal,
     AuditEvent,
     User,

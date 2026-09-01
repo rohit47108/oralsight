@@ -1,4 +1,4 @@
-# OralSight anatomy-head engineering release review
+# Stoma3D anatomy-head engineering release review
 
 Review date: 2026-07-27  
 Review type: engineering model-contract and release-gate review  

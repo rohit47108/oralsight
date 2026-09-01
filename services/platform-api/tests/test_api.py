@@ -5,7 +5,7 @@ import uuid
 
 from sqlalchemy import func, select
 
-from oralsight_platform.models import (
+from stoma3d_platform.models import (
     AuditEvent,
     DeletionRequest,
     IdempotencyRecord,
@@ -16,7 +16,7 @@ from oralsight_platform.models import (
     UserRole,
     UserStatus,
 )
-from oralsight_platform.security import issue_local_test_token
+from stoma3d_platform.security import issue_local_test_token
 
 
 async def test_health_and_readiness_have_privacy_headers(client) -> None:
@@ -25,7 +25,7 @@ async def test_health_and_readiness_have_privacy_headers(client) -> None:
     assert health.status_code == 200
     assert health.json() == {
         "status": "ok",
-        "service": "oralsight-platform-api",
+        "service": "stoma3d-platform-api",
         "version": "0.1.0",
     }
     assert health.headers["x-request-id"] == supplied_id
@@ -317,7 +317,7 @@ async def test_access_log_never_contains_body_query_token_or_key(
     marker = "body-secret-991827"
     token_header = auth_headers()["Authorization"]
     key = "idempotency-secret-0009"
-    with caplog.at_level(logging.INFO, logger="oralsight_platform.safe_access"):
+    with caplog.at_level(logging.INFO, logger="stoma3d_platform.safe_access"):
         response = await client.post(
             "/unmatched?query-secret=7755",
             headers={"Authorization": token_header, "Idempotency-Key": key},
@@ -327,7 +327,7 @@ async def test_access_log_never_contains_body_query_token_or_key(
     safe_log = "\n".join(
         record.getMessage()
         for record in caplog.records
-        if record.name == "oralsight_platform.safe_access"
+        if record.name == "stoma3d_platform.safe_access"
     )
     assert "request_complete method=POST route=<unmatched> status=404" in safe_log
     for secret in [marker, "query-secret", token_header, key, "7755"]:

@@ -1,4 +1,4 @@
-# OralSight production runbook
+# Stoma3D production runbook
 
 `compose.yaml` is local development only. `compose.production.yaml` is the hardened
 production surface. It starts application containers only; PostgreSQL, Redis, S3,
@@ -15,10 +15,10 @@ services.
   encryption. Prefer workload identity over static access keys.
 - An OIDC application with HTTPS issuer/JWKS URLs, asymmetric signing keys, and
   the exact API access-token role claim configured in
-  `ORALSIGHT_PLATFORM_OIDC_ROLE_CLAIM`. The platform does not accept a generic
+  `STOMA3D_PLATFORM_OIDC_ROLE_CLAIM`. The platform does not accept a generic
   `roles` claim as a fallback.
 - HTTPS routes for the platform and inference services. The proxy must attach to the
-  external Docker network named by `ORALSIGHT_INGRESS_NETWORK`.
+  external Docker network named by `STOMA3D_INGRESS_NETWORK`.
 - Immutable, digest-pinned platform, inference, and worker images. The inference
   image must contain the locked release manifest and every hash-matched artifact.
 - One Ed25519 response-signing key pair per environment. Store the private key
@@ -30,10 +30,10 @@ Copy `production.env.example` to a secret-managed location outside Git. Replace 
 placeholder, create the ingress network, validate the file, and deploy:
 
 ```sh
-docker network create oralsight-ingress
-docker compose --env-file /secure/oralsight-production.env \
+docker network create stoma3d-ingress
+docker compose --env-file /secure/stoma3d-production.env \
   -f compose.production.yaml config --quiet
-docker compose --env-file /secure/oralsight-production.env \
+docker compose --env-file /secure/stoma3d-production.env \
   -f compose.production.yaml up -d
 ```
 
@@ -55,7 +55,7 @@ by the ingress and object store. Only then allow delete-all workers from the upg
 release to complete. This is required because a PUT authorized before expiry or
 credential revocation may already be in progress.
 
-Keep `ORALSIGHT_PLATFORM_UPLOAD_COMPLETION_QUIET_SECONDS` at least as long as that
+Keep `STOMA3D_PLATFORM_UPLOAD_COMPLETION_QUIET_SECONDS` at least as long as that
 maximum request-completion duration. Delete-all continues to wait through recorded
 capability expiry, delete, rescan, and verify object keys as defense in depth.
 Migration `20260813_0010` conservatively drains pre-migration capabilities; do not
@@ -68,10 +68,10 @@ Before routing traffic:
 
 1. Confirm `platform-migrate` exited successfully.
 2. Have the designated first administrator sign in once, run
-   `oralsight-bootstrap-admin` with the exact subject and confirmation phrase as
-   `ORALSIGHT_PLATFORM_BOOTSTRAP_ADMIN_SUBJECT` and
-   `ORALSIGHT_PLATFORM_BOOTSTRAP_CONFIRMATION`. Require the exact phrase
-   `BOOTSTRAP ORALSIGHT FIRST ADMIN`, then remove both variables. The command
+   `stoma3d-bootstrap-admin` with the exact subject and confirmation phrase as
+   `STOMA3D_PLATFORM_BOOTSTRAP_ADMIN_SUBJECT` and
+   `STOMA3D_PLATFORM_BOOTSTRAP_CONFIRMATION`. Require the exact phrase
+   `BOOTSTRAP STOMA3D FIRST ADMIN`, then remove both variables. The command
    must create or confirm the durable bootstrap seal, remain idempotent only for
    the same sole administrator, and refuse every different second account. The
    seal must remain closed even if administrator or audit rows are later removed.
@@ -103,13 +103,13 @@ access**. The first-observed timestamp records when the role first appeared in a
 validated, signed access token; it is audit history, not a substitute for
 checking the current token.
 
-Before launch, use `oralsight-add-admin` to create a distinct recovery
+Before launch, use `stoma3d-add-admin` to create a distinct recovery
 administrator. This is a trusted infrastructure-operator command, not proof that
 another administrator personally approved the change. Supply target and active
 administrator reference subjects only through temporary
-`ORALSIGHT_PLATFORM_ADMIN_TARGET_SUBJECT` and
-`ORALSIGHT_PLATFORM_ADMIN_REFERENCE_SUBJECT` values. Supply the confirmation
-through `ORALSIGHT_PLATFORM_ADMIN_CONFIRMATION`, require the exact `ADD ORALSIGHT
+`STOMA3D_PLATFORM_ADMIN_TARGET_SUBJECT` and
+`STOMA3D_PLATFORM_ADMIN_REFERENCE_SUBJECT` values. Supply the confirmation
+through `STOMA3D_PLATFORM_ADMIN_CONFIRMATION`, require the exact `ADD STOMA3D
 ADMIN` phrase, verify the audit event, then clear all three values. The command
 must reject a non-admin reference and a target that matches the reference. The
 reference proves that this is an additional-admin operation rather than
@@ -118,16 +118,16 @@ require a fresh sign-in; the database promotion alone does not open
 administrator routes.
 
 If a durably sealed installation reaches zero saved administrators, run
-`oralsight-recover-admin` with only temporary
-`ORALSIGHT_PLATFORM_RECOVERY_ADMIN_SUBJECT` and
-`ORALSIGHT_PLATFORM_RECOVERY_CONFIRMATION` values. Require the exact phrase
-`RECOVER ORALSIGHT SEALED INSTALLATION WITH ZERO ADMINS`, then clear both values.
+`stoma3d-recover-admin` with only temporary
+`STOMA3D_PLATFORM_RECOVERY_ADMIN_SUBJECT` and
+`STOMA3D_PLATFORM_RECOVERY_CONFIRMATION` values. Require the exact phrase
+`RECOVER STOMA3D SEALED INSTALLATION WITH ZERO ADMINS`, then clear both values.
 The command must refuse an unsealed installation and any database in which an
 administrator still exists. Assign `admin` in the exact token claim and require
 a fresh sign-in after recovery. Exercise this break-glass path in staging and
 retain the operator evidence outside application logs.
 
-The default `ORALSIGHT_PLATFORM_PRIVILEGED_TOKEN_MAX_AGE_SECONDS=900` bounds how
+The default `STOMA3D_PLATFORM_PRIVILEGED_TOKEN_MAX_AGE_SECONDS=900` bounds how
 long an already-issued token can retain a removed administrator,
 `clinician_pending`, or clinician role. Configure the provider to refresh access
 tokens within that bound. This is bounded lockout, not instant token revocation.

@@ -69,8 +69,8 @@ function definition(schema: ZodType): Record<string, unknown> {
 
 const v1Document = {
   $schema: "https://json-schema.org/draft/2020-12/schema",
-  $id: "https://oralsight.local/contracts/v1/oralsight-contracts.schema.json",
-  title: "OralSight public API contracts",
+  $id: "https://stoma3d.local/contracts/v1/stoma3d-contracts.schema.json",
+  title: "Stoma3D public API contracts",
   description:
     "Generated from the canonical Zod schemas. This result is not a diagnosis.",
   $defs: {
@@ -85,10 +85,10 @@ const v1Document = {
 
 const platformDocument = {
   $schema: "https://json-schema.org/draft/2020-12/schema",
-  $id: "https://oralsight.local/contracts/v2/oralsight-platform-contracts.schema.json",
-  title: "OralSight platform contracts v2",
+  $id: "https://stoma3d.local/contracts/v2/stoma3d-platform-contracts.schema.json",
+  title: "Stoma3D platform contracts v2",
   description:
-    "Generated from the additive OralSight platform Zod schemas. This result is not a diagnosis.",
+    "Generated from the additive Stoma3D platform Zod schemas. This result is not a diagnosis.",
   $defs: {
     MouthRegion: definition(mouthRegionSchema),
     AnatomicalSite: definition(anatomicalSiteSchema),
@@ -191,5 +191,5 @@ function writeDocument(
   console.log(`Generated ${outputPath}`);
 }
 
-writeDocument("oralsight-contracts.schema.json", v1Document);
-writeDocument("oralsight-platform-contracts.schema.json", platformDocument);
+writeDocument("stoma3d-contracts.schema.json", v1Document);
+writeDocument("stoma3d-platform-contracts.schema.json", platformDocument);

@@ -1,4 +1,4 @@
-# OralSight calibration card
+# Stoma3D calibration card
 
 The A4 and Letter cards are generated at 300 DPI by
 `scripts/generate_calibration_cards.py`.
@@ -10,11 +10,11 @@ The A4 and Letter cards are generated at 300 DPI by
   `DICT_4X4_50`, confirms the card version and scale, and passes its pose,
   proximity, repeatability, and device-release checks.
 - The four neutral patches may normalize only the approximate mean-redness and
-  mean-brightness descriptors. OralSight applies that optional correction only
+  mean-brightness descriptors. Stoma3D applies that optional correction only
   when marker 17, same-plane confirmation, all four unobstructed patches, and
   bounded fit checks pass. It never changes the stored image, candidate mask,
   anatomy or quality checks, texture descriptor, or care guidance.
-- A printed card does not make OralSight a clinical measuring instrument.
+- A printed card does not make Stoma3D a clinical measuring instrument.
 
 The QR contains only the public card schema, version, marker dictionary, marker
 ID, marker size, and reference-bar size. It contains no user or health data.

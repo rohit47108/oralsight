@@ -18,7 +18,7 @@ export async function assertSqlCipherRuntime(
   );
   if (!version?.cipher_version?.trim()) {
     throw new Error(
-      "Encrypted storage is unavailable in this build. Install an OralSight development or release build with SQLCipher enabled.",
+      "Encrypted storage is unavailable in this build. Install an Stoma3D development or release build with SQLCipher enabled.",
     );
   }
   const header = await database.getFirstAsync<SqlCipherHeaderRow>(

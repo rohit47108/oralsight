@@ -9,12 +9,12 @@ from types import ModuleType
 
 from fastapi.testclient import TestClient
 
-from oralsight_api.deployment import packaged_release_manifest
+from stoma3d_api.deployment import packaged_release_manifest
 
 
 def load_vercel_entrypoint(service_root: Path) -> ModuleType:
     spec = importlib.util.spec_from_file_location(
-        "oralsight_vercel_entrypoint_under_test",
+        "stoma3d_vercel_entrypoint_under_test",
         service_root / "vercel_entrypoint.py",
     )
     if spec is None or spec.loader is None:
@@ -51,8 +51,8 @@ def test_deployment_helper_import_does_not_initialize_the_application() -> None:
             sys.executable,
             "-c",
             (
-                "import sys; import oralsight_api.deployment; "
-                "print('oralsight_api.main' in sys.modules)"
+                "import sys; import stoma3d_api.deployment; "
+                "print('stoma3d_api.main' in sys.modules)"
             ),
         ],
         cwd=service_root,

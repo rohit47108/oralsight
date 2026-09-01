@@ -76,7 +76,7 @@ export function VerificationForm({ operationKey }: { operationKey: string }) {
           />
         </label>
         <p id="evidence-help" className="field-help">
-          Enter the searchable reference supplied by the OralSight identity
+          Enter the searchable reference supplied by the Stoma3D identity
           administrator. They will use it to find this account later. Do not
           paste a password, access token, or private key.
         </p>
